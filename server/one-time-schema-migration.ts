@@ -161,6 +161,13 @@ export async function runOneTimeSchemaV87Migration() {
     const flagRows = await db.execute(sql`SELECT config_value FROM system_config WHERE config_key = ${MIGRATION_KEY_V87} LIMIT 1`);
     if ((flagRows.rows || []).length > 0) { return; }
     console.log("[OneTimeMigration] Starting schema v87 — warehouse_id to sales/delivery items...");
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    // Backup tables first — before any ALTER
+    for (const tbl of ["tax_invoice_items", "sales_order_items", "receipt_items", "delivery_note_items"]) {
+      const bak = `backup_${tbl}_${today}`;
+      await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS ${bak} AS SELECT * FROM ${tbl}`));
+      console.log(`[OneTimeMigration] ✓ backup ${bak}`);
+    }
     const addCol = async (table: string, column: string, colDef: string) => {
       try { await db.execute(sql.raw(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${colDef}`)); }
       catch (e: any) { if (!e.message?.includes("already exists")) console.log(`[OneTimeMigration] WARN: ${table}.${column}: ${e.message}`); }
