@@ -37,6 +37,7 @@ interface OrderItemForm {
   discount: string;
   total: string;
   vatType: string;
+  warehouseId?: number;
 }
 
 function fmt(val: string | number | null | undefined): string {
@@ -72,6 +73,7 @@ const emptyItem = (): OrderItemForm => ({
   discount: "0",
   total: "0",
   vatType: "vat7",
+  warehouseId: undefined,
 });
 
 export default function SalesOrderForm() {
@@ -179,6 +181,30 @@ export default function SalesOrderForm() {
     enabled: !!companyId,
   });
 
+  const { data: warehouses = [] } = useQuery<any[]>({
+    queryKey: ["/api/warehouses", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await fetch(`/api/warehouses?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: productStockList = [] } = useQuery<any[]>({
+    queryKey: ["/api/product-stock", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await fetch(`/api/product-stock?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+  const stockMap = Object.fromEntries(productStockList.map((s: any) => [s.productId, parseFloat(s.quantity || "0")]));
+
+
   const { dateEra, dateFmt } = useDateSettings();
   const { data: docSettings } = useQuery<any>({
     queryKey: ["/api/document-settings", companyId],
@@ -248,6 +274,7 @@ export default function SalesOrderForm() {
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"),
                 vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
           }
@@ -286,6 +313,7 @@ export default function SalesOrderForm() {
                 unitPrice: cleanDecimal(it.unitPrice, "0"),
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"), vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
           }
@@ -352,6 +380,7 @@ export default function SalesOrderForm() {
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"),
                 vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
             setSavedId(editingId);
@@ -605,6 +634,7 @@ export default function SalesOrderForm() {
         discount: it.discount,
         total: it.total,
         vatType: it.vatType,
+        warehouseId: it.warehouseId || null,
       })),
     };
 
@@ -1010,6 +1040,7 @@ export default function SalesOrderForm() {
                     </th>
                     <th className="text-center font-medium text-white text-xs py-2 px-1">ส่วนลด</th>
                     <th className="text-center font-medium text-white text-xs py-2 px-1">VAT</th>
+                    {warehouses.length > 1 && <th className="text-center font-medium text-white text-xs py-2 px-1">คลัง</th>}
                     <th className="text-right font-medium text-white text-xs py-2 px-1">มูลค่าก่อนภาษี</th>
                     <th className="py-2 px-0"></th>
                   </tr>
@@ -1081,6 +1112,11 @@ export default function SalesOrderForm() {
                       </td>
                       <td className="px-1 pt-1.5">
                         <Input data-testid={`input-qty-${idx}`} inputMode="decimal" className="h-9 text-sm text-center border-dashed w-full min-w-0 px-1" value={item.qty} onChange={e => { const v = e.target.value; if (/^\d*\.?\d*$/.test(v)) updateItem(idx, "qty", v); }} />
+                        {item.productId && stockMap[item.productId] !== undefined && (
+                          <div className={`text-[10px] text-center mt-0.5 ${stockMap[item.productId] <= 0 ? "text-red-500" : "text-slate-400"}`}>
+                            Bal. {stockMap[item.productId].toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </div>
+                        )}
                       </td>
                       <td className="px-1 pt-1.5">
                         <Input data-testid={`input-price-${idx}`} inputMode="decimal" className="h-9 text-sm text-right border-dashed w-full min-w-0 px-1" value={editingPriceIdx === idx ? item.unitPrice : (parseFloat(item.unitPrice || "0") > 0 ? fmt(item.unitPrice) : item.unitPrice)} onChange={e => { const v = e.target.value; if (/^\d*\.?\d*$/.test(v)) updateItem(idx, "unitPrice", v); }} onFocus={() => setEditingPriceIdx(idx)} onBlur={() => setEditingPriceIdx(null)} />
@@ -1093,6 +1129,21 @@ export default function SalesOrderForm() {
                           {item.vatType === "vat7" ? "7%" : item.vatType === "zero_rated" ? "0%" : "-"}
                         </span>
                       </td>
+                      {warehouses.length > 1 && (
+                        <td className="px-1 pt-1.5">
+                          <select
+                            data-testid={`select-warehouse-${idx}`}
+                            className="h-9 text-xs border border-dashed rounded w-full px-1 bg-transparent"
+                            value={item.warehouseId || ""}
+                            onChange={e => { const newItems = [...items]; newItems[idx] = { ...newItems[idx], warehouseId: e.target.value ? Number(e.target.value) : undefined }; setItems(newItems); }}
+                          >
+                            <option value="">-- คลัง --</option>
+                            {warehouses.map((w: any) => (
+                              <option key={w.id} value={w.id}>{w.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
                       <td className="text-right pt-3 px-1">
                         {priceMode === "included" && item.vatType === "vat7" ? (
                           <span className="text-sm font-normal text-slate-800">{fmt((parseFloat(item.total || "0") / 1.07).toFixed(2))}</span>

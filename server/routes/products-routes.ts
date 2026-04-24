@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
-import { eq, desc, and, or, ilike, inArray, count, sum , sql } from "drizzle-orm";
+import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzle-orm";
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware } from "../route-helpers";
@@ -512,6 +512,22 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
         }
         stockSetCount++;
       }
+
+      // Sync product_stock (warehouse page) with sum from warehouse_stock_levels
+      const syncProductIds = new Set<number>();
+      for (const entry of stockEntries) {
+        const pid = allCodeMap.get(entry.code);
+        if (pid) syncProductIds.add(pid);
+      }
+      for (const pid of syncProductIds) {
+        const levels = await db.select().from(warehouseStockLevels)
+          .where(and(
+            eq(warehouseStockLevels.companyId, companyId),
+            eq(warehouseStockLevels.productId, pid),
+          ));
+        const totalQty = levels.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
+        await storage.upsertProductStock(companyId, pid, String(totalQty));
+      }
     }
 
     const existingBarcodes = new Set(existingProducts.filter(p => p.barcode).map(p => p.barcode));
@@ -564,7 +580,7 @@ app.get("/api/products", requireAuth, requireModule("inventory"), async (req, re
     if (category) conditions.push(eq(products.category, category));
     const whereClause = and(...conditions);
     const [{ total }] = await db.select({ total: count() }).from(products).where(whereClause);
-    let query = db.select().from(products).where(whereClause).orderBy(desc(products.createdAt));
+    let query = db.select().from(products).where(whereClause).orderBy(asc(products.code), asc(products.name));
     const list = usePagination
       ? await query.limit(pageSize).offset(offset)
       : await query;
@@ -1442,6 +1458,29 @@ app.get("/api/inventory-reports/slow-moving", requireAuth, requireAnyModule("inv
     const { getSlowMovingProducts } = await import("./inventory-costing");
     const result = await getSlowMovingProducts(companyId, days);
     res.json({ daysThreshold: days, items: result });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.post("/api/product-stock/sync-from-warehouse", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const levels = await db.select({
+      productId: warehouseStockLevels.productId,
+      quantity: warehouseStockLevels.quantity,
+    }).from(warehouseStockLevels)
+      .where(eq(warehouseStockLevels.companyId, companyId));
+    const totals = new Map<number, number>();
+    for (const l of levels) {
+      const pid = l.productId;
+      totals.set(pid, (totals.get(pid) || 0) + Number(l.quantity || 0));
+    }
+    let synced = 0;
+    for (const [pid, total] of totals) {
+      await storage.upsertProductStock(companyId, pid, String(total));
+      synced++;
+    }
+    res.json({ message: `sync สำเร็จ ${synced} รายการ`, synced });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 

@@ -24,9 +24,10 @@ interface LineItem {
   qty: string;
   unit: string;
   notes: string;
+  warehouseId?: number;
 }
 
-const emptyLine = (): LineItem => ({ productId: null, productCode: "", productName: "", description: "", qty: "1", unit: "ชิ้น", notes: "" });
+const emptyLine = (): LineItem => ({ productId: null, productCode: "", productName: "", description: "", qty: "1", unit: "ชิ้น", notes: "", warehouseId: undefined });
 
 function fmtToday() {
   const d = new Date();
@@ -89,6 +90,17 @@ export default function DeliveryNoteFormPage(props: { Wrapper?: React.ComponentT
     enabled: !!selectedCompanyId && showSourcePicker && sourceType !== "standalone",
   });
 
+  const { data: warehouses = [] } = useQuery<any[]>({
+    queryKey: ["/api/warehouses", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return [];
+      const res = await fetch(`/api/warehouses?companyId=${selectedCompanyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!selectedCompanyId,
+  });
+
   useEffect(() => {
     if (!isEdit) return;
     (async () => {
@@ -119,6 +131,7 @@ export default function DeliveryNoteFormPage(props: { Wrapper?: React.ComponentT
           qty: String(i.qty),
           unit: i.unit || "ชิ้น",
           notes: i.notes || "",
+          warehouseId: i.warehouseId || undefined,
         })));
       }
       if (doc.signatureDataUrl) setSignaturePreview(doc.signatureDataUrl);
@@ -209,6 +222,7 @@ export default function DeliveryNoteFormPage(props: { Wrapper?: React.ComponentT
         qty: i.qty || "1",
         unit: i.unit || "ชิ้น",
         notes: i.notes,
+        warehouseId: i.warehouseId || null,
       })),
     });
   };
@@ -361,7 +375,7 @@ export default function DeliveryNoteFormPage(props: { Wrapper?: React.ComponentT
                 <div className="col-span-2">
                   <Input placeholder="รหัส" value={item.productCode} onChange={(e) => updateItem(idx, "productCode", e.target.value)} disabled={isDelivered} className="text-sm" />
                 </div>
-                <div className="col-span-4">
+                <div className={warehouses.length > 1 ? "col-span-3" : "col-span-4"}>
                   <Input placeholder="ชื่อสินค้า *" value={item.productName} onChange={(e) => updateItem(idx, "productName", e.target.value)} disabled={isDelivered} className="text-sm" />
                 </div>
                 <div className="col-span-2">
@@ -370,7 +384,23 @@ export default function DeliveryNoteFormPage(props: { Wrapper?: React.ComponentT
                 <div className="col-span-2">
                   <Input placeholder="หน่วย" value={item.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)} disabled={isDelivered} className="text-sm" />
                 </div>
-                <div className="col-span-2">
+                {warehouses.length > 1 && (
+                  <div className="col-span-2">
+                    <select
+                      data-testid={`select-warehouse-${idx}`}
+                      className="h-9 text-xs border border-gray-300 rounded w-full px-1 bg-white"
+                      value={item.warehouseId || ""}
+                      disabled={isDelivered}
+                      onChange={e => { const newItems = [...items]; newItems[idx] = { ...newItems[idx], warehouseId: e.target.value ? Number(e.target.value) : undefined }; setItems(newItems); }}
+                    >
+                      <option value="">-- คลัง --</option>
+                      {warehouses.map((w: any) => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className={warehouses.length > 1 ? "col-span-1" : "col-span-2"}>
                   <Input placeholder="หมายเหตุ" value={item.notes} onChange={(e) => updateItem(idx, "notes", e.target.value)} disabled={isDelivered} className="text-sm" />
                 </div>
               </div>

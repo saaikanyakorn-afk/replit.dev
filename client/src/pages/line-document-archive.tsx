@@ -359,6 +359,9 @@ export default function LineDocumentArchive() {
               จัดการกลุ่ม LINE ที่เชื่อมโยงกับลูกค้าสำนักงานบัญชี
             </p>
           </div>
+          {groups.length > 0 && (
+            <Badge className="bg-[#05b187] text-white ml-2">{groups.length} กลุ่มเชื่อมโยงแล้ว</Badge>
+          )}
           {pendingGroups.length > 0 && (
             <Badge className="bg-yellow-500 text-white ml-2">{pendingGroups.length} กลุ่มใหม่รออนุมัติ</Badge>
           )}
@@ -747,7 +750,12 @@ export default function LineDocumentArchive() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">กลุ่ม LINE ที่เชื่อมโยง</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                กลุ่ม LINE ที่เชื่อมโยง
+                {groups.length > 0 && (
+                  <span className="text-sm font-normal text-[#05b187] bg-[#05b187]/10 px-2 py-0.5 rounded-full">{groups.length} กลุ่ม</span>
+                )}
+              </CardTitle>
               <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="bg-[#05b187] hover:bg-[#049a76]" data-testid="button-add-group">

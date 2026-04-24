@@ -567,6 +567,7 @@ export default function InventoryList(props: { Wrapper?: React.ComponentType<{ c
                       />
                     ) : null}
                   </TableHead>
+                  <TableHead className="w-10 text-center text-muted-foreground">#</TableHead>
                   <TableHead className="w-24">รหัส</TableHead>
                   <TableHead>ชื่อสินค้า/บริการ</TableHead>
                   <TableHead className="w-28">หมวดหมู่</TableHead>
@@ -581,15 +582,15 @@ export default function InventoryList(props: { Wrapper?: React.ComponentType<{ c
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">กำลังโหลด...</TableCell>
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">กำลังโหลด...</TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       {activeProducts.length === 0 ? "ยังไม่มีข้อมูลสินค้า กด \"เพิ่มสินค้า/บริการ\" เพื่อเริ่มต้น" : "ไม่พบข้อมูลที่ค้นหา"}
                     </TableCell>
                   </TableRow>
-                ) : visibleItems.map(product => (
+                ) : visibleItems.map((product, index) => (
                   <TableRow key={product.id} data-testid={`row-product-${product.id}`} className={!product.active ? "opacity-60 bg-slate-50" : ""}>
                     <TableCell className="text-center">
                       {!product.active ? (
@@ -601,6 +602,7 @@ export default function InventoryList(props: { Wrapper?: React.ComponentType<{ c
                         />
                       ) : null}
                     </TableCell>
+                    <TableCell className="text-center text-xs text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="text-sm">{product.code}</TableCell>
                     <TableCell>
                       <div className="font-medium flex items-center gap-2">

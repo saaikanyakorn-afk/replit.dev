@@ -12,6 +12,23 @@ import * as XLSX from "xlsx";
 import path from "path";
 import { parse as csvParse } from "csv-parse/sync";
 
+async function fetchInvoiceItems(invoiceId: number): Promise<any[]> {
+  const r = await db.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM invoice_items WHERE invoice_id = ${invoiceId} ORDER BY id`);
+  return r.rows as any[];
+}
+async function fetchTaxInvoiceItems(taxInvoiceId: number): Promise<any[]> {
+  const r = await db.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM tax_invoice_items WHERE tax_invoice_id = ${taxInvoiceId} ORDER BY id`);
+  return r.rows as any[];
+}
+async function fetchSalesOrderItems(salesOrderId: number): Promise<any[]> {
+  const r = await db.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM sales_order_items WHERE sales_order_id = ${salesOrderId} ORDER BY id`);
+  return r.rows as any[];
+}
+async function fetchReceiptItems(receiptId: number): Promise<any[]> {
+  const r = await db.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM receipt_items WHERE receipt_id = ${receiptId} ORDER BY id`);
+  return r.rows as any[];
+}
+
 export function registerSalesDocsRoutes(app: Express) {
 // ========== Sales Orders ==========
 app.get("/api/sales-orders", requireAuth, requireAnyModule("sales", "ecommerce"), async (req, res) => {
@@ -116,9 +133,14 @@ app.post("/api/sales-orders", requireAuth, requireAnyModule("sales", "ecommerce"
           vatType: item.vatType || "vat7",
         };
       });
-      await db.insert(salesOrderItems).values(itemValues);
+      const insertedItems = await db.insert(salesOrderItems).values(itemValues).returning({ id: salesOrderItems.id });
+      for (let i = 0; i < insertedItems.length; i++) {
+        if (items[i]?.warehouseId) {
+          await db.execute(sql`UPDATE sales_order_items SET warehouse_id = ${Number(items[i].warehouseId)} WHERE id = ${insertedItems[i].id}`);
+        }
+      }
     }
-    const savedItems = await storage.getSalesOrderItems(order.id);
+    const savedItems = await fetchSalesOrderItems(order.id);
     logActivity({ companyId: Number(body.companyId), userId: user.id, userName: user.username, action: "create", entityType: "sales_order", entityId: String(order.id), entityName: body.orderNo || "" }).catch(() => {});
     res.status(201).json({ ...order, items: savedItems });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
@@ -160,10 +182,15 @@ app.patch("/api/sales-orders/:id", requireAuth, requireAnyModule("sales", "ecomm
             vatType: item.vatType || "vat7",
           };
         });
-        await db.insert(salesOrderItems).values(itemValues);
+        const insertedItems = await db.insert(salesOrderItems).values(itemValues).returning({ id: salesOrderItems.id });
+        for (let i = 0; i < insertedItems.length; i++) {
+          if (items[i]?.warehouseId) {
+            await db.execute(sql`UPDATE sales_order_items SET warehouse_id = ${Number(items[i].warehouseId)} WHERE id = ${insertedItems[i].id}`);
+          }
+        }
       }
     }
-    const savedItems = await storage.getSalesOrderItems(order.id);
+    const savedItems = await fetchSalesOrderItems(order.id);
     res.json({ ...order, items: savedItems });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
@@ -751,7 +778,7 @@ app.get("/api/invoices/:id", requireAuth, requireAnyModule("sales", "ecommerce")
     const [doc] = await db.select().from(invoices).where(eq(invoices.id, Number(req.params.id)));
     if (!doc) return res.status(404).json({ message: "ไม่พบใบแจ้งหนี้" });
     { const ac = await checkDocOwnership(doc.companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
-    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, doc.id));
+    const items = await fetchInvoiceItems(doc.id);
     let createdByName = "-";
     let updatedByName = "-";
     if (doc.createdBy) { const u = await storage.getUser(doc.createdBy); if (u) createdByName = u.fullName; }
@@ -845,12 +872,18 @@ app.post("/api/invoices", requireAuth, requireAnyModule("sales", "ecommerce"), a
             vatType: item.vatType || "vat7",
           };
         });
-        await tx.insert(invoiceItems).values(itemValues);
+        const insertedItems = await tx.insert(invoiceItems).values(itemValues).returning({ id: invoiceItems.id });
+        // warehouse_id: column not in schema.ts, patch via raw SQL
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].warehouseId) {
+            await tx.execute(sql`UPDATE invoice_items SET warehouse_id = ${Number(items[i].warehouseId)} WHERE id = ${insertedItems[i].id}`);
+          }
+        }
       }
       return doc;
     });
     console.log(`[Invoice] t2 insert=${Date.now()-t0}ms`);
-    const savedItems = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, result.id));
+    const savedItems = await fetchInvoiceItems(result.id);
     console.log(`[Invoice] t3 items=${Date.now()-t0}ms`);
 
     let journalResult = null;
@@ -942,7 +975,7 @@ app.patch("/api/invoices/:id", requireAuth, requireAnyModule("sales", "ecommerce
     });
     const [[updated], savedItems] = await Promise.all([
       db.select().from(invoices).where(eq(invoices.id, existing.id)),
-      db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, existing.id)),
+      fetchInvoiceItems(existing.id),
     ]);
 
     let journalResult = null;
@@ -1078,7 +1111,7 @@ app.post("/api/invoices/:id/clone", requireAuth, requireAnyModule("sales", "ecom
     const [doc] = await db.select().from(invoices).where(eq(invoices.id, Number(req.params.id)));
     if (!doc) return res.status(404).json({ message: "ไม่พบใบแจ้งหนี้" });
     { const ac = await checkDocOwnership(doc.companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
-    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, doc.id));
+    const items = await fetchInvoiceItems(doc.id);
     const prefix = (doc as any).docPrefix || "IV";
     const invoiceNo = await getNextDocNo(doc.companyId, prefix, invoices, invoices.invoiceNo, invoices.companyId, doc.invoiceDate);
     const user = req.user as any;
@@ -1137,7 +1170,7 @@ app.get("/api/share/invoice/:token", async (req, res) => {
     const [doc] = await db.select().from(invoices).where(eq(invoices.shareToken, req.params.token));
     if (!doc) return res.status(404).json({ message: "ไม่พบเอกสาร" });
     { const ac = await checkDocOwnership(doc.companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
-    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, doc.id));
+    const items = await fetchInvoiceItems(doc.id);
     const [company] = await db.select().from(companies).where(eq(companies.id, doc.companyId));
     let docSetting = null;
     let userSignature = null;
@@ -1762,11 +1795,16 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
             vatType: item.vatType || "vat7",
           };
         });
-        await tx.insert(taxInvoiceItems).values(itemValues);
+        const insertedItems = await tx.insert(taxInvoiceItems).values(itemValues).returning({ id: taxInvoiceItems.id });
+        for (let i = 0; i < insertedItems.length; i++) {
+          if (items[i]?.warehouseId) {
+            await tx.execute(sql`UPDATE tax_invoice_items SET warehouse_id = ${Number(items[i].warehouseId)} WHERE id = ${insertedItems[i].id}`);
+          }
+        }
       }
       return doc;
     });
-    const savedItems = await db.select().from(taxInvoiceItems).where(eq(taxInvoiceItems.taxInvoiceId, result.id));
+    const savedItems = await fetchTaxInvoiceItems(result.id);
 
     let journalResult = null;
     try {
@@ -1851,13 +1889,18 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
               vatType: item.vatType || "vat7",
             };
           });
-          await tx.insert(taxInvoiceItems).values(itemValues);
+          const insertedItems = await tx.insert(taxInvoiceItems).values(itemValues).returning({ id: taxInvoiceItems.id });
+          for (let i = 0; i < insertedItems.length; i++) {
+            if (items[i]?.warehouseId) {
+              await tx.execute(sql`UPDATE tax_invoice_items SET warehouse_id = ${Number(items[i].warehouseId)} WHERE id = ${insertedItems[i].id}`);
+            }
+          }
         }
       }
     });
     const [[updated], savedItems] = await Promise.all([
       db.select().from(taxInvoices).where(eq(taxInvoices.id, existing.id)),
-      db.select().from(taxInvoiceItems).where(eq(taxInvoiceItems.taxInvoiceId, existing.id)),
+      fetchTaxInvoiceItems(existing.id),
     ]);
 
     let journalResult = null;
@@ -2349,11 +2392,16 @@ app.post("/api/receipts", requireAuth, requireAnyModule("sales", "ecommerce"), a
             vatType: item.vatType || "vat7",
           };
         });
-        await tx.insert(receiptItems).values(itemValues);
+        const insertedItems = await tx.insert(receiptItems).values(itemValues).returning({ id: receiptItems.id });
+        for (let i = 0; i < insertedItems.length; i++) {
+          if (items[i]?.warehouseId) {
+            await tx.execute(sql`UPDATE receipt_items SET warehouse_id = ${Number(items[i].warehouseId)} WHERE id = ${insertedItems[i].id}`);
+          }
+        }
       }
       return doc;
     });
-    const savedItems = await db.select().from(receiptItems).where(eq(receiptItems.receiptId, result.id));
+    const savedItems = await fetchReceiptItems(result.id);
 
     if (result.taxInvoiceId) await recomputePaymentStatus("taxInvoice", result.taxInvoiceId);
     if (result.invoiceId) await recomputePaymentStatus("invoice", result.invoiceId);
@@ -2441,13 +2489,18 @@ app.patch("/api/receipts/:id", requireAuth, requireAnyModule("sales", "ecommerce
               vatType: item.vatType || "vat7",
             };
           });
-          await tx.insert(receiptItems).values(itemValues);
+          const insertedItems = await tx.insert(receiptItems).values(itemValues).returning({ id: receiptItems.id });
+          for (let i = 0; i < insertedItems.length; i++) {
+            if (items[i]?.warehouseId) {
+              await tx.execute(sql`UPDATE receipt_items SET warehouse_id = ${Number(items[i].warehouseId)} WHERE id = ${insertedItems[i].id}`);
+            }
+          }
         }
       }
     });
     const [[updated], savedItems] = await Promise.all([
       db.select().from(receipts).where(eq(receipts.id, existing.id)),
-      db.select().from(receiptItems).where(eq(receiptItems.receiptId, existing.id)),
+      fetchReceiptItems(existing.id),
     ]);
 
     if (existing.taxInvoiceId && existing.taxInvoiceId !== updated.taxInvoiceId) {

@@ -41,6 +41,7 @@ interface TaxInvoiceItemForm {
   discount: string;
   total: string;
   vatType: string;
+  warehouseId?: number;
 }
 
 function fmt(val: string | number | null | undefined): string {
@@ -76,6 +77,7 @@ const emptyItem = (): TaxInvoiceItemForm => ({
   discount: "0",
   total: "0",
   vatType: "vat7",
+  warehouseId: undefined,
 });
 
 type EtaxPrintType = "tax_invoice" | "tax_invoice_receipt" | "receipt";
@@ -349,6 +351,17 @@ export default function TaxInvoiceForm() {
   });
   const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
 
+  const { data: warehouses = [] } = useQuery<any[]>({
+    queryKey: ["/api/warehouses", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await fetch(`/api/warehouses?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
   useEffect(() => {
     if (!editingId && activePaymentMethods.length > 0 && !form.paymentMethod) {
       const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
@@ -455,6 +468,7 @@ export default function TaxInvoiceForm() {
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"),
                 vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
             if (inv.discountType === "percent") setDiscountMode("percent");
@@ -510,6 +524,7 @@ export default function TaxInvoiceForm() {
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"),
                 vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
             if (so.discountType === "percent") setDiscountMode("percent");
@@ -565,6 +580,7 @@ export default function TaxInvoiceForm() {
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"),
                 vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
             if (qo.discountType === "percent") setDiscountMode("percent");
@@ -606,6 +622,7 @@ export default function TaxInvoiceForm() {
                 unitPrice: cleanDecimal(it.unitPrice, "0"),
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"), vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
           }
@@ -673,6 +690,7 @@ export default function TaxInvoiceForm() {
                 discount: it.discountType === "percent" ? `${cleanDecimal(it.discount, "0")}%` : cleanDecimal(it.discount, "0"),
                 total: cleanDecimal(it.total, "0"),
                 vatType: it.vatType || "vat7",
+                warehouseId: it.warehouseId || undefined,
               })));
             }
             if (data.discountType === "percent") setDiscountMode("percent");
@@ -990,6 +1008,7 @@ export default function TaxInvoiceForm() {
         discount: it.discount,
         total: it.total,
         vatType: it.vatType,
+        warehouseId: it.warehouseId || null,
       })),
     };
 
@@ -1376,6 +1395,7 @@ export default function TaxInvoiceForm() {
                     </th>
                     <th className="text-center font-medium text-white text-xs py-2 px-1">ส่วนลด</th>
                     <th className="text-center font-medium text-white text-xs py-2 px-1">VAT</th>
+                    {warehouses.length > 1 && <th className="text-center font-medium text-white text-xs py-2 px-1">คลัง</th>}
                     <th className="text-right font-medium text-white text-xs py-2 px-1">มูลค่าก่อนภาษี</th>
                     <th className="py-2 px-0"></th>
                   </tr>
@@ -1459,6 +1479,21 @@ export default function TaxInvoiceForm() {
                           {item.vatType === "vat7" ? "7%" : item.vatType === "zero_rated" ? "0%" : "-"}
                         </span>
                       </td>
+                      {warehouses.length > 1 && (
+                        <td className="px-1 pt-1.5">
+                          <select
+                            data-testid={`select-warehouse-${idx}`}
+                            className="h-9 text-xs border border-dashed rounded w-full px-1 bg-transparent"
+                            value={item.warehouseId || ""}
+                            onChange={e => { const newItems = [...items]; newItems[idx] = { ...newItems[idx], warehouseId: e.target.value ? Number(e.target.value) : undefined }; setItems(newItems); }}
+                          >
+                            <option value="">-- คลัง --</option>
+                            {warehouses.map((w: any) => (
+                              <option key={w.id} value={w.id}>{w.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
                       <td className="text-right pt-3 px-1">
                         {priceMode === "included" && item.vatType === "vat7" ? (
                           <span className="text-sm font-normal text-slate-800">{fmt((parseFloat(item.total || "0") / 1.07).toFixed(2))}</span>

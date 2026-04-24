@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { eq, and, desc, ilike, or, count } from "drizzle-orm";
+import { eq, and, desc, ilike, or, count, sql } from "drizzle-orm";
 import { deliveryNotes, deliveryNoteItems, contacts, quotations, quotationItems, invoices, invoiceItems, companies } from "@shared/schema";
 import { requireAuth, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo } from "../route-helpers";
@@ -15,7 +15,7 @@ const ALLOWED_HEADER_FIELDS = [
 ] as const;
 
 const ALLOWED_ITEM_FIELDS = [
-  "productId", "productCode", "productName", "description", "qty", "unit", "notes",
+  "productId", "productCode", "productName", "description", "qty", "unit", "notes", "warehouseId",
 ] as const;
 
 const VALID_STATUSES = ["draft", "dispatched", "delivered", "cancelled"] as const;
@@ -72,8 +72,8 @@ export function registerDeliveryNoteRoutes(app: Express) {
       const [doc] = await db.select().from(deliveryNotes).where(eq(deliveryNotes.id, Number(req.params.id)));
       if (!doc) return res.status(404).json({ message: "ไม่พบใบส่งของ" });
       { const ac = await checkDocOwnership(doc.companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
-      const items = await db.select().from(deliveryNoteItems).where(eq(deliveryNoteItems.deliveryNoteId, doc.id));
-      res.json({ ...doc, items });
+      const itemsResult = await db.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM delivery_note_items WHERE delivery_note_id = ${doc.id} ORDER BY id`);
+      res.json({ ...doc, items: itemsResult.rows });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
@@ -108,13 +108,21 @@ export function registerDeliveryNoteRoutes(app: Express) {
         }).returning();
 
         if (safeItems.length) {
-          await tx.insert(deliveryNoteItems).values(
-            safeItems.map((item: any) => ({ ...item, deliveryNoteId: doc.id }))
-          );
+          const insertedItems = await tx.insert(deliveryNoteItems).values(
+            safeItems.map((item: any) => {
+              const { warehouseId, ...rest } = item as any;
+              return { ...rest, deliveryNoteId: doc.id };
+            })
+          ).returning({ id: deliveryNoteItems.id });
+          for (let i = 0; i < insertedItems.length; i++) {
+            if ((safeItems[i] as any)?.warehouseId) {
+              await tx.execute(sql`UPDATE delivery_note_items SET warehouse_id = ${Number((safeItems[i] as any).warehouseId)} WHERE id = ${insertedItems[i].id}`);
+            }
+          }
         }
 
-        const savedItems = await tx.select().from(deliveryNoteItems).where(eq(deliveryNoteItems.deliveryNoteId, doc.id));
-        return { ...doc, items: savedItems };
+        const savedItems = await tx.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM delivery_note_items WHERE delivery_note_id = ${doc.id} ORDER BY id`);
+        return { ...doc, items: savedItems.rows };
       });
 
       res.json(result);
@@ -145,13 +153,21 @@ export function registerDeliveryNoteRoutes(app: Express) {
 
         await tx.delete(deliveryNoteItems).where(eq(deliveryNoteItems.deliveryNoteId, id));
         if (safeItems.length) {
-          await tx.insert(deliveryNoteItems).values(
-            safeItems.map((item: any) => ({ ...item, deliveryNoteId: id }))
-          );
+          const insertedItems = await tx.insert(deliveryNoteItems).values(
+            safeItems.map((item: any) => {
+              const { warehouseId, ...rest } = item as any;
+              return { ...rest, deliveryNoteId: id };
+            })
+          ).returning({ id: deliveryNoteItems.id });
+          for (let i = 0; i < insertedItems.length; i++) {
+            if ((safeItems[i] as any)?.warehouseId) {
+              await tx.execute(sql`UPDATE delivery_note_items SET warehouse_id = ${Number((safeItems[i] as any).warehouseId)} WHERE id = ${insertedItems[i].id}`);
+            }
+          }
         }
 
-        const savedItems = await tx.select().from(deliveryNoteItems).where(eq(deliveryNoteItems.deliveryNoteId, id));
-        return { ...doc, items: savedItems };
+        const savedItems = await tx.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM delivery_note_items WHERE delivery_note_id = ${id} ORDER BY id`);
+        return { ...doc, items: savedItems.rows };
       });
 
       res.json(result);

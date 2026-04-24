@@ -99,9 +99,9 @@ export default function TaxReminderSettings() {
   });
 
   const { data: groups } = useQuery({
-    queryKey: ["/api/line-groups"],
+    queryKey: ["/api/line-documents/groups"],
     queryFn: async () => {
-      const res = await fetch("/api/line-groups", { credentials: "include" });
+      const res = await fetch("/api/line-documents/groups", { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },

@@ -11,8 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import ThaiDateInput from "@/components/thai-date-input";
 import { useDateSettings } from "@/hooks/use-date-settings";
 import {
-  FileText, Search, DollarSign, Users, CheckCircle, Loader2, AlertCircle, Printer, Receipt, Settings, Plus, Pencil, Save, X, Upload, Download,
+  FileText, Search, DollarSign, Users, CheckCircle, Loader2, AlertCircle, Printer, Receipt, Settings, Plus, Pencil, Save, X, Upload, Download, Send, CheckCircle2, XCircle,
 } from "lucide-react";
+
+const LINE_ICON = (props: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={props.className}><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+);
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { useLocation } from "wouter";
@@ -78,6 +82,9 @@ export default function FirmBilling() {
   const [csvResult, setCsvResult] = useState<any>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
   const [csvUpdateFees, setCsvUpdateFees] = useState(true);
+  const [lineSendConfirmOpen, setLineSendConfirmOpen] = useState(false);
+  const [lineSendResultsOpen, setLineSendResultsOpen] = useState(false);
+  const [lineSendResults, setLineSendResults] = useState<any[]>([]);
 
   const { data: clients, isLoading } = useQuery<any[]>({
     queryKey: ["/api/firm-clients"],
@@ -213,6 +220,28 @@ export default function FirmBilling() {
     },
     onError: (err: any) => {
       toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const batchSendLine = useMutation({
+    mutationFn: async () => {
+      const allGeneratedClientIds = (generated?.generated || []).map((g: any) => g.firmClientId);
+      const r = await fetch("/api/firm-billing/batch-send-line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ companyId, firmClientIds: allGeneratedClientIds, month: billingMonth, year: billingYear }),
+      });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.message); }
+      return r.json();
+    },
+    onSuccess: (data) => {
+      setLineSendResults(data.results || []);
+      setLineSendConfirmOpen(false);
+      setLineSendResultsOpen(true);
+    },
+    onError: (err: any) => {
+      toast({ title: "ส่ง LINE ไม่สำเร็จ", description: err.message, variant: "destructive" });
     },
   });
 
@@ -505,18 +534,31 @@ export default function FirmBilling() {
                 เพิ่มลูกค้า
               </Button>
               {generatedSet.size > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-9 gap-1"
-                  style={{ borderColor: "var(--theme-primary)", color: "var(--theme-primary)" }}
-                  onClick={() => backfillJournals.mutate()}
-                  disabled={backfillJournals.isPending}
-                  data-testid="button-backfill-journals"
-                >
-                  {backfillJournals.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}
-                  สร้างบัญชีย้อนหลัง
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 gap-1.5 border-[#06C755] text-[#06C755] hover:bg-[#06C755]/10"
+                    onClick={() => setLineSendConfirmOpen(true)}
+                    disabled={batchSendLine.isPending}
+                    data-testid="button-batch-send-line"
+                  >
+                    {batchSendLine.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LINE_ICON className="h-3.5 w-3.5" />}
+                    ส่ง LINE ({generatedSet.size} ใบ)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 gap-1"
+                    style={{ borderColor: "var(--theme-primary)", color: "var(--theme-primary)" }}
+                    onClick={() => backfillJournals.mutate()}
+                    disabled={backfillJournals.isPending}
+                    data-testid="button-backfill-journals"
+                  >
+                    {backfillJournals.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Receipt className="h-3.5 w-3.5" />}
+                    สร้างบัญชีย้อนหลัง
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -758,6 +800,92 @@ export default function FirmBilling() {
               {batchGenerate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Printer className="h-4 w-4 mr-1" />}
               ยืนยันออกใบแจ้งหนี้
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={lineSendConfirmOpen} onOpenChange={setLineSendConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <LINE_ICON className="h-4 w-4 text-[#06C755]" />
+              ยืนยันส่งใบแจ้งหนี้ผ่าน LINE
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="bg-[#06C755]/10 rounded-lg p-3 space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">ประจำเดือน</span>
+                <span className="font-medium">{THAI_MONTHS[billingMonth - 1]} {billingYear + 543}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">ส่งให้</span>
+                <span className="font-medium">{generatedSet.size} บริษัท</span>
+              </div>
+            </div>
+            <p className="text-muted-foreground text-xs">ระบบจะส่งใบแจ้งหนี้ผ่าน LINE ไปยังกลุ่มที่เชื่อมไว้ใน บริหารสำนักงาน → ตั้งค่ากลุ่ม LINE โดยอัตโนมัติ บริษัทที่ยังไม่มีกลุ่ม LINE จะไม่ถูกส่ง</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLineSendConfirmOpen(false)}>ยกเลิก</Button>
+            <Button
+              className="bg-[#06C755] hover:bg-[#05a849] text-white"
+              disabled={batchSendLine.isPending}
+              onClick={() => batchSendLine.mutate()}
+              data-testid="button-confirm-send-line"
+            >
+              {batchSendLine.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <LINE_ICON className="h-4 w-4 mr-1" />}
+              {batchSendLine.isPending ? "กำลังส่ง..." : "ส่งเลย"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={lineSendResultsOpen} onOpenChange={setLineSendResultsOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <LINE_ICON className="h-4 w-4 text-[#06C755]" />
+              ผลการส่งใบแจ้งหนี้ผ่าน LINE
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {(() => {
+              const successList = lineSendResults.filter(r => r.success);
+              const failList = lineSendResults.filter(r => !r.success);
+              return (
+                <>
+                  {successList.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs font-medium text-green-700 mb-1.5 flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> ส่งสำเร็จ {successList.length} ราย
+                      </p>
+                      {successList.map((r: any) => (
+                        <div key={r.firmClientId} className="flex items-center justify-between py-1.5 px-3 rounded bg-green-50 mb-1 text-sm">
+                          <span className="font-medium text-foreground">{r.clientName}</span>
+                          <span className="text-xs text-muted-foreground">{r.invoiceNo}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {failList.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-red-600 mb-1.5 flex items-center gap-1">
+                        <XCircle className="h-3.5 w-3.5" /> ส่งไม่ได้ {failList.length} ราย
+                      </p>
+                      {failList.map((r: any) => (
+                        <div key={r.firmClientId} className="flex items-start justify-between py-1.5 px-3 rounded bg-red-50 mb-1 text-sm">
+                          <span className="font-medium text-foreground">{r.clientName}</span>
+                          <span className="text-xs text-red-500 text-right max-w-[180px]">{r.error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+          <DialogFooter className="mt-3">
+            <Button onClick={() => setLineSendResultsOpen(false)}>ปิด</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

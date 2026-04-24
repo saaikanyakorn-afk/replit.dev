@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { eq, desc, and, asc, gte, lte , sql } from "drizzle-orm";
-import { billingNotes, receipts, receiptLinkedDocs, purchaseInvoices, expenses, paymentVouchers, paymentVoucherLinkedDocs, invoices, firmClients, contacts, invoiceItems, journalEntries, companies, journalLines, accounts, bankStatements } from "@shared/schema";
+import { billingNotes, receipts, receiptLinkedDocs, purchaseInvoices, expenses, paymentVouchers, paymentVoucherLinkedDocs, invoices, firmClients, contacts, invoiceItems, journalEntries, companies, journalLines, accounts, bankStatements, lineGroupMappings } from "@shared/schema";
 import { requireAuth, requireModule } from "../route-middleware";
 import { getNextDocNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, recomputePaymentStatus, recomputeAPPaymentStatus } from "../route-helpers";
 import { verifyCompanyAccess } from "../route-factory";
@@ -531,6 +531,134 @@ app.post("/api/firm-billing/batch-generate", requireAuth, requireModule("firm-mg
     }
 
     res.json({ success: true, count, skipped });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+app.post("/api/firm-billing/batch-send-line", requireAuth, requireModule("firm-mgmt"), async (req, res) => {
+  try {
+    const { companyId, firmClientIds, month, year } = req.body;
+    if (!companyId || !firmClientIds?.length || !month || !year) {
+      return res.status(400).json({ message: "companyId, firmClientIds, month, year required" });
+    }
+    const user = req.user as any;
+    if (!(await verifyCompanyAccess(user, companyId))) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
+
+    const tokenRows = await db.execute(sql`SELECT config_value FROM system_config WHERE config_key = 'LINE_CHANNEL_ACCESS_TOKEN' LIMIT 1`);
+    const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN || (tokenRows.rows?.[0] as any)?.config_value || "";
+    if (!lineToken) return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า LINE Channel Access Token" });
+
+    const periodKey = `${year}${String(month).padStart(2, "0")}`;
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+    const THAI_MONTHS_TH = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+    const monthLabel = `${THAI_MONTHS_TH[month - 1]} ${year + 543}`;
+
+    const invRows = await db.select().from(invoices).where(and(
+      eq(invoices.companyId, companyId),
+      sql`(${invoices.refDoc} LIKE ${"FIRM_BILLING_%_" + periodKey} OR (${invoices.refDoc} LIKE ${"FIRM_BILLING_%"} AND ${invoices.invoiceDate} >= ${startDate} AND ${invoices.invoiceDate} <= ${endDate}))`
+    ));
+
+    const invMap = new Map<number, any>();
+    for (const inv of invRows) {
+      const m = (inv.refDoc || "").match(/FIRM_BILLING_(\d+)/);
+      if (m) invMap.set(Number(m[1]), inv);
+    }
+
+    const [companyRow] = await db.select({ name: companies.name }).from(companies).where(eq(companies.id, companyId));
+    const senderName = companyRow?.name || "สำนักงานบัญชี";
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const { randomBytes } = await import("crypto");
+
+    const results: any[] = [];
+
+    for (const firmClientId of firmClientIds) {
+      const [client] = await db.select().from(firmClients).where(eq(firmClients.id, Number(firmClientId)));
+      const clientName = client?.name || `ลูกค้า #${firmClientId}`;
+
+      const inv = invMap.get(Number(firmClientId));
+      if (!inv) {
+        results.push({ firmClientId, clientName, success: false, error: "ยังไม่มีใบแจ้งหนี้ประจำเดือนนี้" });
+        continue;
+      }
+
+      const [groupMapping] = await db.select().from(lineGroupMappings)
+        .where(and(eq(lineGroupMappings.firmClientId, Number(firmClientId)), eq(lineGroupMappings.active, true)));
+      if (!groupMapping?.lineGroupId) {
+        results.push({ firmClientId, clientName, success: false, invoiceNo: inv.invoiceNo, error: "ยังไม่ได้เชื่อมกลุ่ม LINE" });
+        continue;
+      }
+
+      let shareToken = inv.shareToken;
+      if (!shareToken) {
+        shareToken = randomBytes(24).toString("hex");
+        await db.update(invoices).set({ shareToken }).where(eq(invoices.id, inv.id));
+      }
+
+      const shareUrl = `${baseUrl}/share/invoice/${shareToken}`;
+      const amount = parseFloat(inv.totalAmount || "0");
+      const amountStr = amount.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      try {
+        const lineRes = await fetch("https://api.line.me/v2/bot/message/push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lineToken}` },
+          body: JSON.stringify({
+            to: groupMapping.lineGroupId,
+            messages: [{
+              type: "flex",
+              altText: `ใบแจ้งหนี้ ${inv.invoiceNo} จาก ${senderName}`,
+              contents: {
+                type: "bubble",
+                header: {
+                  type: "box", layout: "vertical", backgroundColor: "#fb9678", paddingAll: "16px",
+                  contents: [
+                    { type: "text", text: senderName, size: "xs", color: "#ffffff", weight: "bold" },
+                    { type: "text", text: "ใบแจ้งหนี้", size: "lg", color: "#ffffff", weight: "bold" },
+                  ],
+                },
+                body: {
+                  type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px",
+                  contents: [
+                    { type: "text", text: inv.invoiceNo || "-", size: "md", weight: "bold", color: "#333333" },
+                    { type: "text", text: `ประจำเดือน ${monthLabel}`, size: "sm", color: "#888888" },
+                    { type: "separator", margin: "md" },
+                    {
+                      type: "box", layout: "horizontal", margin: "md",
+                      contents: [
+                        { type: "text", text: "ยอดชำระ", size: "sm", color: "#888888", flex: 1 },
+                        { type: "text", text: `฿${amountStr}`, size: "sm", weight: "bold", color: "#fb9678", align: "end" },
+                      ],
+                    },
+                  ],
+                },
+                footer: {
+                  type: "box", layout: "vertical", paddingAll: "16px",
+                  contents: [{
+                    type: "button",
+                    action: { type: "uri", label: "ดูใบแจ้งหนี้", uri: shareUrl },
+                    style: "primary", color: "#fb9678",
+                  }],
+                },
+              },
+            }],
+          }),
+        });
+        if (!lineRes.ok) {
+          const errBody = await lineRes.json().catch(() => ({}));
+          results.push({ firmClientId, clientName, success: false, invoiceNo: inv.invoiceNo, error: (errBody as any).message || "ส่ง LINE ไม่สำเร็จ" });
+        } else {
+          results.push({ firmClientId, clientName, success: true, invoiceNo: inv.invoiceNo });
+        }
+      } catch (e: any) {
+        results.push({ firmClientId, clientName, success: false, invoiceNo: inv.invoiceNo, error: e.message });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    res.json({ success: true, successCount, totalCount: firmClientIds.length, results });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 

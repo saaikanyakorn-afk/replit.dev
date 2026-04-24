@@ -50,7 +50,7 @@ export default function LineSendDialog({ open, onOpenChange, shareUrl, docType, 
   const [newType, setNewType] = useState<"group" | "user">("group");
   const [addingForCompany, setAddingForCompany] = useState(true);
 
-  const { data: recipients = [] } = useQuery<LineRecipient[]>({
+  const { data: rawRecipients = [] } = useQuery<LineRecipient[]>({
     queryKey: ["/api/line/recipients", companyId],
     queryFn: async () => {
       const url = companyId ? `/api/line/recipients?companyId=${companyId}` : "/api/line/recipients";
@@ -61,6 +61,31 @@ export default function LineSendDialog({ open, onOpenChange, shareUrl, docType, 
     enabled: open,
     staleTime: 0,
   });
+
+  const { data: mappedGroups = [] } = useQuery<any[]>({
+    queryKey: ["/api/line-documents/groups"],
+    queryFn: async () => {
+      const res = await fetch("/api/line-documents/groups", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: open,
+    staleTime: 0,
+  });
+
+  const recipients: LineRecipient[] = (() => {
+    const fromMappings: LineRecipient[] = mappedGroups
+      .filter((g: any) => g.active && g.lineGroupId)
+      .map((g: any) => ({
+        id: g.id + 100000,
+        lineId: g.lineGroupId,
+        type: "group",
+        displayName: g.groupName || g.lineGroupId,
+        companyId: g.companyId ?? null,
+      }));
+    const combined = [...fromMappings, ...rawRecipients];
+    return combined.filter((r, i, arr) => arr.findIndex((x) => x.lineId === r.lineId) === i);
+  })();
 
   const formLabel = showFormTypeSelector ? (FORM_OPTIONS.find(o => o.key === formType)?.label || docType) : docType;
   const resolvedUrl = showFormTypeSelector && formType !== "tax_invoice"
