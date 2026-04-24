@@ -7,7 +7,6 @@ export async function runOneTimeSchemaV85Migration() {
   try {
     const flagRows = await db.execute(sql`SELECT config_value FROM system_config WHERE config_key = ${MIGRATION_KEY} LIMIT 1`);
     if ((flagRows.rows || []).length > 0) {
-      await runOneTimeSchemaV87Migration();
       return;
     }
 
@@ -146,38 +145,37 @@ export async function runOneTimeSchemaV85Migration() {
   } catch (err: any) {
     console.error("[OneTimeMigration] ❌ Error:", err.message);
   }
-  // chain → next migration
-  await runOneTimeSchemaV87Migration();
 }
 
 if (process.argv[1]?.includes("one-time-schema-migration")) {
   runOneTimeSchemaV85Migration().then(() => process.exit(0)).catch(() => process.exit(1));
 }
 
-// ── v87: Add warehouse_id to all sales + delivery items tables ──
-const MIGRATION_KEY_V87 = "ADD_WAREHOUSE_ID_TO_SALES_ITEMS_2026-04-23";
-
-export async function runOneTimeSchemaV87Migration() {
-  try {
-    const flagRows = await db.execute(sql`SELECT config_value FROM system_config WHERE config_key = ${MIGRATION_KEY_V87} LIMIT 1`);
-    if ((flagRows.rows || []).length > 0) { return; }
-    console.log("[OneTimeMigration] Starting schema v87 — warehouse_id to sales/delivery items...");
-    const addCol = async (table: string, column: string, colDef: string) => {
-      try { await db.execute(sql.raw(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${colDef}`)); }
-      catch (e: any) { if (!e.message?.includes("already exists")) console.log(`[OneTimeMigration] WARN: ${table}.${column}: ${e.message}`); }
-    };
-    await addCol("tax_invoice_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
-    console.log("[OneTimeMigration] ✓ tax_invoice_items.warehouse_id");
-    await addCol("sales_order_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
-    console.log("[OneTimeMigration] ✓ sales_order_items.warehouse_id");
-    await addCol("receipt_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
-    console.log("[OneTimeMigration] ✓ receipt_items.warehouse_id");
-    await addCol("delivery_note_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
-    console.log("[OneTimeMigration] ✓ delivery_note_items.warehouse_id");
-    await db.execute(sql`INSERT INTO system_config (config_key, config_value, description) VALUES (${MIGRATION_KEY_V87}, ${"done_" + new Date().toISOString()}, 'Add warehouse_id to tax_invoice_items, sales_order_items, receipt_items, delivery_note_items') ON CONFLICT (config_key) DO NOTHING`);
-    console.log("[OneTimeMigration] ✅ Schema v87 complete");
-  } catch (err: any) { console.error("[OneTimeMigration] ❌ Error v87:", err.message); }
-}
+/* ── DONE 2026-04-24: Add warehouse_id to tax_invoice_items, sales_order_items, receipt_items, delivery_note_items ──
+ * Ran directly on deep-main via etaxusr (DB_PROD_URL) — chain via pm2 restart did not fire.
+ * Verified on deep-main: all 4 tables have warehouse_id (integer, nullable) ✓
+ * Flag: ADD_WAREHOUSE_ID_TO_SALES_ITEMS_2026-04-23 = done_2026-04-24T02:45:06.584Z
+ *
+ * const MIGRATION_KEY_V87 = "ADD_WAREHOUSE_ID_TO_SALES_ITEMS_2026-04-23";
+ *
+ * export async function runOneTimeSchemaV87Migration() {
+ *   try {
+ *     const flagRows = await db.execute(sql`SELECT config_value FROM system_config WHERE config_key = ${MIGRATION_KEY_V87} LIMIT 1`);
+ *     if ((flagRows.rows || []).length > 0) { return; }
+ *     console.log("[OneTimeMigration] Starting schema v87 — warehouse_id to sales/delivery items...");
+ *     const addCol = async (table: string, column: string, colDef: string) => {
+ *       try { await db.execute(sql.raw(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${colDef}`)); }
+ *       catch (e: any) { if (!e.message?.includes("already exists")) console.log(`[OneTimeMigration] WARN: ${table}.${column}: ${e.message}`); }
+ *     };
+ *     await addCol("tax_invoice_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
+ *     await addCol("sales_order_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
+ *     await addCol("receipt_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
+ *     await addCol("delivery_note_items", "warehouse_id", "INTEGER REFERENCES warehouses(id)");
+ *     await db.execute(sql`INSERT INTO system_config (config_key, config_value, description) VALUES (${MIGRATION_KEY_V87}, ${"done_" + new Date().toISOString()}, 'Add warehouse_id to tax_invoice_items, sales_order_items, receipt_items, delivery_note_items') ON CONFLICT (config_key) DO NOTHING`);
+ *     console.log("[OneTimeMigration] ✅ Schema v87 complete");
+ *   } catch (err: any) { console.error("[OneTimeMigration] ❌ Error v87:", err.message); }
+ * }
+ */
 
 /* ── DONE 2026-04-23: Add warehouse_id to invoice_items + purchase_invoice_items ──
  * Verified on deep-main: invoice_items.warehouse_id (integer, nullable) ✓
