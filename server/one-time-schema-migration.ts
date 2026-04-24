@@ -7,6 +7,7 @@ export async function runOneTimeSchemaV85Migration() {
   try {
     const flagRows = await db.execute(sql`SELECT config_value FROM system_config WHERE config_key = ${MIGRATION_KEY} LIMIT 1`);
     if ((flagRows.rows || []).length > 0) {
+      await runOneTimeSchemaV87Migration();
       return;
     }
 
