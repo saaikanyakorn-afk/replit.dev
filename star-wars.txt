@@ -516,6 +516,22 @@ Server command (พี่ช้าง ต้องรัน):
   git fetch origin && git checkout origin/main -- server/routes/reports-routes.ts client/src/pages/sales/tax-report.tsx && npm run build && pm2 restart etax-center
 
 ----------------------------------------------------------------
+DEPLOY #52 — 2026-05-11 (Restart #1 — product split migration)
+  Commits: bd9c234b (schema-extra.ts) + ee235584 (products-routes.ts)
+  Files:
+    - shared/schema-extra.ts → runProductSplitMigration Phase 0b backup + Phase 1 DROP + Phase 2 CREATE FK CASCADE + Phase 3 backfill
+    - server/routes/products-routes.ts → caller added
+  Result: FLAG PRODUCT_SPLIT_MIGRATION_20260510 = done_2026-05-11T13:35:09.281Z
+  Verify: active_products 2,603 | inactive_products 778 | products 3,381 — 2,603+778=3,381 ✅ | 0 orphans ✅
+  pm2: online 75.4mb ✅
+
+----------------------------------------------------------------
+DEPLOY #53 — 2026-05-11 (Restart #2 — comment out migration block)
+  Commit: 98d3dd2c
+  File: server/routes/products-routes.ts → runProductSplitMigration call + import commented out permanently
+  pm2: online 76.5mb ✅
+
+----------------------------------------------------------------
 ================================================================
 E-TAX CENTER — SSH DEPLOY KEY BACKUP
 ================================================================
