@@ -232,4 +232,6 @@ Backup location: `db/backups/YYYY-MM-DD_orphan_stock_movements_before_cleanup.sq
 
 **Reason:** active_products and inactive_products are denormalized views of the products table used for performance. The split tables had drifted permanently from the source of truth (products table) because they were never enforced by FK constraints. The only safe recovery was DROP + RECREATE + BACKFILL from the authoritative source.
 
-**Status:** 📝 Code ready — awaiting พี่ช้าง authorization to deploy
+**Status:** ✅ Deployed + verified 2026-05-11
+- FLAG: `PRODUCT_SPLIT_MIGRATION_20260510` = `done_2026-05-11T13:35:09.281Z`
+- `active_products`: 2,603 rows | `inactive_products`: 778 rows | `products` (source): 3,381 rows — 2,603 + 778 = 3,381 ✅
