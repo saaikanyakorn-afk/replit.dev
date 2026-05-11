@@ -468,7 +468,7 @@ DEPLOY LOG (latest first):
 ----------------------------------------------------------------
 
 พี่ช้าง is Yoda and kai is his padawan
-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
+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
 
 ----------------------------------------------------------------
 DEPLOY #45 — 2026-05-05
