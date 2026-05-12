@@ -1351,9 +1351,12 @@ export function registerPurchaseRoutes(app: Express) {
         }
       }
 
-      if (items && Array.isArray(items)) {
+      // Stock: run when approved (status change OR already approved) OR items updated
+      const shouldCreateStock = updated.status === "approved" || (items && Array.isArray(items));
+      if (shouldCreateStock) {
         try {
           const [piCompany] = await db.select({ stockEntrySource: companies.stockEntrySource }).from(companies).where(eq(companies.id, existing.companyId));
+          console.log(`[PI-Stock-PATCH] id=${existing.id} stockEntrySource="${piCompany?.stockEntrySource}" status="${updated.status}" items=${savedItems.length} productIds=[${savedItems.map((i:any)=>i.productId||'null').join(',')}]`);
           if (piCompany?.stockEntrySource === "purchase_invoice") {
             const piUpdateTriggers = await getInventoryTriggers(existing.companyId);
             // Reverse old warehouseStockLevels contributions before deleting movements
