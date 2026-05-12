@@ -473,7 +473,6 @@ export default function TaxInvoiceForm() {
               notes: inv.notes || "",
               currencyCode: inv.currencyCode || "THB",
               exchangeRate: String(inv.exchangeRate || "1"),
-              paymentMethod: "เครดิต",
             }));
             if (inv.items && inv.items.length > 0) {
               setItems(inv.items.map((it: any) => {
@@ -533,7 +532,6 @@ export default function TaxInvoiceForm() {
               notes: so.notes || "",
               currencyCode: so.currencyCode || "THB",
               exchangeRate: String(so.exchangeRate || "1"),
-              paymentMethod: "เครดิต",
             }));
             if (so.items && so.items.length > 0) {
               setItems(so.items.map((it: any) => ({
@@ -589,7 +587,6 @@ export default function TaxInvoiceForm() {
               notes: qo.notes || "",
               currencyCode: qo.currencyCode || "THB",
               exchangeRate: String(qo.exchangeRate || "1"),
-              paymentMethod: "เครดิต",
             }));
             if (qo.items && qo.items.length > 0) {
               setItems(qo.items.map((it: any) => ({
@@ -1307,7 +1304,9 @@ export default function TaxInvoiceForm() {
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="เครดิต">เครดิต (ตั้งลูกหนี้)</SelectItem>
+                          {(activePaymentMethods.length === 0 || (editingId && form.paymentMethod === "เครดิต")) && (
+                            <SelectItem value="เครดิต">เครดิต (ตั้งลูกหนี้)</SelectItem>
+                          )}
                           {activePaymentMethods.length > 0 ? (
                             activePaymentMethods.map((m: any) => (
                               <SelectItem key={m.id} value={`pm_${m.id}`}>
