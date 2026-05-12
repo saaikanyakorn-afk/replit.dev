@@ -275,6 +275,7 @@ export default function PurchaseDepositForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-deposits"] });
       toast({ title: "อัพเดทใบจ่ายเงินมัดจำสำเร็จ", variant: "success" as any });
+      navigate("/purchases/purchase-deposit");
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });

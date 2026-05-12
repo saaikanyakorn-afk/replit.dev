@@ -246,6 +246,7 @@ export default function DebitNoteForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-debit-notes"] });
       toast({ title: "อัพเดทใบลดหนี้ซื้อสำเร็จ", variant: "success" as any });
+      navigate("/purchases/debit-note");
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });

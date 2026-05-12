@@ -282,6 +282,7 @@ export default function DepositForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deposit-receipts"] });
       toast({ title: "อัพเดทใบรับเงินมัดจำสำเร็จ", variant: "success" as any });
+      navigate("/sales/deposit");
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });
