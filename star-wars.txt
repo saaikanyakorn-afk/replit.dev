@@ -537,11 +537,14 @@ DEPLOY #54 — 2026-05-12
   Reason: ปุ่ม "ดึงอัตรา" (exchange rate fetch) ไม่มีบน production — พี่ทรายแจ้ง
   Method: GitHub API PUT (no pm2 restart needed — frontend only)
 
-DEPLOY #55 — 2026-05-12
+DEPLOY #55 — 2026-05-12 (SUPERSEDED by #56)
+  File: server/routes/expense-routes.ts — wrong fix (passed tx instead of moving query out)
+
+DEPLOY #56 — 2026-05-12
   File: server/routes/expense-routes.ts
-  SHA: e4d1006c84ec4a34264ef446b94f3046c9a9b9cc
-  Reason: ENTRY #009 — getNextJournalEntryNo missing tx param (3 sites) → pool exhaustion → 400 timeout on expense/petty cash save
-  Method: GitHub API PUT — requires server: git fetch + checkout + build + pm2 restart
+  SHA: 4fdd210a31fcd0b5065748a52f43d4de22ce201b
+  Reason: ENTRY #009 — getNextJournalEntryNo moved OUTSIDE transaction at all 3 call sites (POST/PATCH/import) — production-grade fix, no tx param
+  Method: GitHub API PUT — requires server: git fetch + checkout origin/main -- server/routes/expense-routes.ts + npm run build + pm2 restart all
 
 ----------------------------------------------------------------
 ================================================================
