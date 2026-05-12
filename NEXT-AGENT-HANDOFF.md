@@ -33,7 +33,28 @@ Read this file first before touching anything.
 | `server/route-helpers.ts` | `upsertWarehouseReservedQty`: เพิ่ม productStock sync step |
 | `server/routes/sales-docs-routes.ts` | related-docs route: raw SQL แทน `salesOrders.quotationId`; QO list route: soRows raw SQL |
 
-### PENDING: push to production (#57–#61 all pending — SAME file set, same command)
+### PENDING: push to production (#57–#62 all pending — SAME file set, same command)
+
+---
+
+## ENTRY #012: Bug fix — Payment method dropdown double-checkmark (2026-05-12)
+
+### อาการ
+ใน TIV form (และ form อื่นๆ) dropdown วิธีชำระเงินแสดง ✓ สองตัวพร้อมกัน เช่น "BBL" และ "พร้อมเพย์" ถูก tick พร้อมกัน
+
+### Root cause
+Payment methods id=87 (Bank Transfer/BBL) และ id=90 (PromptPay) ใช้ `accountCode = "1011000"` ซ้ำกัน → `<SelectItem value={m.accountCode}>` ทั้งสองตัวมี value เดียวกัน → Radix UI Select เลยแสดง checkmark ทั้งสองตัว
+
+### Fix
+เปลี่ยน SelectItem ให้ใช้ `value={\`pm_${m.id}\`}` (unique per item) แทน `value={m.accountCode}` และเพิ่ม helper ใน `value` prop + `onValueChange` ของ Select เพื่อ convert ระหว่าง `pm_{id}` กับ `accountCode` — `form.paymentMethod` ยังเก็บ accountCode เหมือนเดิม (backward compat)
+
+### Files changed
+| File | จุดที่แก้ |
+|---|---|
+| `client/src/pages/sales/tax-invoice-form.tsx` | Select วิธีชำระเงินใน TIV form |
+| `client/src/pages/sales/receipt-form.tsx` | Select วิธีรับเงินใน receipt form |
+| `client/src/pages/purchases/debit-note-form.tsx` | Select วิธีชำระเงินใน debit-note |
+| `client/src/pages/finance/billing-notes.tsx` | Select วิธีรับเงิน + วิธีชำระเงิน (2 จุด) |
 
 ---
 

@@ -1289,7 +1289,20 @@ export default function TaxInvoiceForm() {
                     </td>
                     <td className="px-3 pt-1.5 pb-1 border-r align-top bg-amber-50/70" colSpan={2}>
                       <div className="text-[10px] text-amber-600 font-semibold mb-0.5">วิธีชำระเงิน</div>
-                      <Select value={form.paymentMethod || "เครดิต"} onValueChange={v => setForm(p => ({ ...p, paymentMethod: v }))}>
+                      <Select
+                        value={(() => {
+                          const pm = form.paymentMethod;
+                          if (!pm || pm === "เครดิต") return "เครดิต";
+                          const found = activePaymentMethods.find((m: any) => m.accountCode === pm && m.isDefault)
+                            || activePaymentMethods.find((m: any) => m.accountCode === pm);
+                          return found ? `pm_${found.id}` : pm;
+                        })()}
+                        onValueChange={v => {
+                          if (v === "เครดิต") { setForm(p => ({ ...p, paymentMethod: "เครดิต" })); return; }
+                          const pm = activePaymentMethods.find((m: any) => `pm_${m.id}` === v);
+                          setForm(p => ({ ...p, paymentMethod: pm ? pm.accountCode : v }));
+                        }}
+                      >
                         <SelectTrigger data-testid="select-payment-method" className="h-7 text-xs border-dashed border-amber-300 bg-white focus:border-amber-500 focus:ring-amber-200">
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
@@ -1297,7 +1310,7 @@ export default function TaxInvoiceForm() {
                           <SelectItem value="เครดิต">เครดิต (ตั้งลูกหนี้)</SelectItem>
                           {activePaymentMethods.length > 0 ? (
                             activePaymentMethods.map((m: any) => (
-                              <SelectItem key={m.id} value={m.accountCode}>
+                              <SelectItem key={m.id} value={`pm_${m.id}`}>
                                 {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
                               </SelectItem>
                             ))

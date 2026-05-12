@@ -1080,13 +1080,24 @@ export default function BillingNotes() {
             </div>
             <div>
               <Label className="text-xs">วิธีรับเงิน</Label>
-              <Select value={receiptPayMethod} onValueChange={setReceiptPayMethod}>
+              <Select
+                value={(() => {
+                  if (!receiptPayMethod) return "";
+                  const found = (paymentMethodsList || []).find((m: any) => m.accountCode === receiptPayMethod && m.isDefault)
+                    || (paymentMethodsList || []).find((m: any) => m.accountCode === receiptPayMethod);
+                  return found ? `pm_${found.id}` : receiptPayMethod;
+                })()}
+                onValueChange={v => {
+                  const pm = (paymentMethodsList || []).find((m: any) => `pm_${m.id}` === v);
+                  setReceiptPayMethod(pm ? pm.accountCode : v);
+                }}
+              >
                 <SelectTrigger className="mt-1 h-9 text-sm" data-testid="select-receipt-pay-method">
                   <SelectValue placeholder="เลือกวิธีรับเงิน" />
                 </SelectTrigger>
                 <SelectContent>
                   {(paymentMethodsList || []).map((m: any) => (
-                    <SelectItem key={m.id} value={m.accountCode}>
+                    <SelectItem key={m.id} value={`pm_${m.id}`}>
                       {m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
                     </SelectItem>
                   ))}
@@ -1163,13 +1174,24 @@ export default function BillingNotes() {
             </div>
             <div>
               <Label className="text-xs">วิธีชำระเงิน</Label>
-              <Select value={tivPayMethod} onValueChange={setTivPayMethod}>
+              <Select
+                value={(() => {
+                  if (!tivPayMethod) return "";
+                  const found = (paymentMethodsList || []).find((m: any) => m.accountCode === tivPayMethod && m.isDefault)
+                    || (paymentMethodsList || []).find((m: any) => m.accountCode === tivPayMethod);
+                  return found ? `pm_${found.id}` : tivPayMethod;
+                })()}
+                onValueChange={v => {
+                  const pm = (paymentMethodsList || []).find((m: any) => `pm_${m.id}` === v);
+                  setTivPayMethod(pm ? pm.accountCode : v);
+                }}
+              >
                 <SelectTrigger className="mt-1 h-9 text-sm" data-testid="select-tiv-pay-method">
                   <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                 </SelectTrigger>
                 <SelectContent>
                   {(paymentMethodsList || []).map((m: any) => (
-                    <SelectItem key={m.id} value={m.accountCode}>
+                    <SelectItem key={m.id} value={`pm_${m.id}`}>
                       {m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
                     </SelectItem>
                   ))}
