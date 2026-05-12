@@ -334,8 +334,54 @@ Dev HEAD at deploy: `9e96b8d8` | Production cherry-pick commit: `2adc257c`
 | 2026-04-30 | v107 r1 | schema-extra.ts | 7.5 MB | index-DWEFVmOj.js ~360 kB | WAREHOUSE MIGRATION ACTIVE: 8 columns (goods_receivings.warehouse_id, goods_receiving_items.warehouse_id, sales_credit_notes.return_to_stock/return_warehouse_id, ecommerce_orders.warehouse_id, manufacturing_orders.source/target_warehouse_id, general_settings.inventory_triggers) + unique index wsl_unique_warehouse_product_company. Backfill: 1,094 rows. Flag WAREHOUSE_STOCK_BACKFILL_DONE=done ✅ |
 | 2026-04-30 | v107 r2 | schema-extra.ts, warehouse-bin-routes.ts | 7.5 MB | — | WAREHOUSE MIGRATION COMMENTED OUT (loop close). runWarehouseColumnsMigration wrapped in /* */. Caller import+call commented out. Clean. commit a1c6996c ✅ |
 
+## 🚨 NEXT AGENT HANDOFF — READ THIS FIRST (updated 2026-05-12)
+
+### What was just completed this session
+**BUG FIX — Stock deduction never fired on ANY sales document (commit `6f23540c`)**
+- Root cause: Frontend sends `status: "cash"` or `"debtor"` on CREATE — never "approved"
+- Backend had `if (result.status === "approved")` → condition was NEVER true → zero stock movements
+- Fix: Changed to `!["draft","pending","cancelled","voided","rejected"].includes(result.status)` in BOTH:
+  - Tax Invoice CREATE (line 2033 `sales-docs-routes.ts`)
+  - Invoice CREATE (line 1010 `sales-docs-routes.ts`)
+- This whitelist also correctly BLOCKS stock deduction when status = "pending" (approval flow)
+- Dev verified: stock movement inserts OK manually, logic confirmed via simulation
+- File changed: `server/routes/sales-docs-routes.ts` only
+
+### What is next (DO NOT start without reading all of this)
+
+**Task 1 — DEPLOY #59 (stock fix) to production**
+- File: `server/routes/sales-docs-routes.ts` (commit `6f23540c`)
+- DEPLOY #57 + #58 still NOT fetched by พี่ช้าง → production still at commit `a1c6996c`
+- DEPLOY #58 (commit `6636c2fab526`) already pushed `sales-docs-routes.ts` to github-production
+- DEPLOY #59 (commit `6f23540c`) = newer version — must also push `sales-docs-routes.ts` to github-production
+- Push command (SSH key):
+  ```bash
+  GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" git push git@github.com:saaikanyakorn-afk/etaxcenter.git main
+  ```
+- Then tell พี่ช้าง to include `server/routes/sales-docs-routes.ts` in the server cherry-pick
+
+**Task 2 — Approval Flow (NOT YET STARTED)**
+- พี่ทราย approved this design in this session:
+  - All documents default = **approved** (no approval needed unless user opts in)
+  - User can click "ขออนุมัติ" → status changes to **"pending"** → document LOCKED (cannot edit/delete/void)
+  - To edit: must click "ยกเลิกขออนุมัติ" first → status reverts to approved
+  - Approver = configurable per company by role
+  - Applies to: ALL documents in system (sales, purchase, inventory)
+  - Existing `/approval-center` page exists → extend it (do NOT rebuild from scratch)
+- Status "pending" already blocks stock deduction (Task 1 fix covers this ✅)
+- NOT STARTED — only discussed. DO NOT implement without confirming with พี่ทราย first
+
+### Key files for next agent
+- `server/routes/sales-docs-routes.ts` — stock deduction fix (lines 1010, 2033)
+- `client/src/pages/inventory/product-import-export.tsx` — stockOpenDate picker (complete ✅)
+- `server/routes/products-routes.ts` — stockOpenDate backend (complete ✅)
+
+---
+
 ## ⏳ PENDING DEPLOY (production server currently STOPPED — safe window)
 Production is at commit `a1c6996c` on github-production. The following batches are queued.
+**DEPLOY #57 + #58 pushed to github-production but NOT YET fetched by พี่ช้าง.**
+**DEPLOY #59 = stock deduction fix (sales-docs-routes.ts commit 6f23540c) — push to github-production before telling พี่ช้าง to run server command.**
 
 **DEPLOY RULES — apply to every batch, every time:**
 1. **DB manipulation = its own isolated loop.** Never mix with code batch. Verify DB before closing loop.

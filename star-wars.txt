@@ -571,6 +571,26 @@ DEPLOY #58 — 2026-05-12
     - server/routes/sales-docs-routes.ts → stock deduct + movement recording from sales docs
   Reason: สต๊อกการ์ด production ไม่มีการเคลื่อนไหว — root cause = import path ผิดใน products-routes.ts
   pm2: online 85.1mb ✅
+  ⚠️ SUPERSEDED by DEPLOY #59 for sales-docs-routes.ts
+
+DEPLOY #59 — 2026-05-12
+  Commit: 6f23540c
+  Files:
+    - server/routes/sales-docs-routes.ts
+  Reason: ROOT CAUSE FIX — stock deduction never fired on ANY document since launch
+    Frontend sends status="cash"/"debtor" on CREATE (never "approved")
+    Backend condition `result.status === "approved"` → never true → zero stock movements ever
+    Fixed: condition changed to !["draft","pending","cancelled","voided","rejected"].includes(result.status)
+    Covers BOTH Tax Invoice CREATE (line 2033) and Invoice CREATE (line 1010)
+    Also future-proof for Approval Flow: status="pending" will correctly block deduction
+  ⚠️ STATUS: pushed to github-dev — NOT YET pushed to github-production
+  ⚠️ DEPLOY #57 + #58 also NOT YET fetched by พี่ช้าง on production server
+  Next step: Push sales-docs-routes.ts to github-production via SSH key, then tell พี่ช้าง
+  Server command (when พี่ช้าง is ready):
+    git fetch origin
+    git checkout origin/main -- server/routes/sales-docs-routes.ts server/routes/products-routes.ts client/src/pages/inventory/inventory-list.tsx
+    npm run build
+    pm2 restart etax-center
 
 ----------------------------------------------------------------
 ================================================================
