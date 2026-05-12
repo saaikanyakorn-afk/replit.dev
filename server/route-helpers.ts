@@ -1404,6 +1404,22 @@ export async function upsertWarehouseReservedQty(
         companyId, productId, warehouseId, quantity: "0", reservedQty: String(delta),
       });
     }
+    // sync productStock.reservedQty = SUM of all warehouseStockLevels.reservedQty for this product
+    try {
+      const levels = await db.select({ r: warehouseStockLevels.reservedQty })
+        .from(warehouseStockLevels)
+        .where(and(eq(warehouseStockLevels.companyId, companyId), eq(warehouseStockLevels.productId, productId)));
+      const totalReserved = levels.reduce((acc, l) => acc + Math.max(0, Number(l.r || "0")), 0);
+      const [ps] = await db.select().from(productStock)
+        .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, productId)));
+      if (ps) {
+        await db.update(productStock)
+          .set({ reservedQty: String(totalReserved), updatedAt: new Date() })
+          .where(eq(productStock.id, ps.id));
+      }
+    } catch (syncErr: any) {
+      console.error(`[warehouseReserved] productStock sync failed pid=${productId}:`, syncErr.message);
+    }
   } catch (e: any) {
     console.error(`[warehouseReserved] upsert failed cid=${companyId} pid=${productId} wid=${warehouseId} delta=${delta}:`, e.message);
   }

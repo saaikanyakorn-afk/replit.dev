@@ -11,6 +11,32 @@ Read this file first before touching anything.
 
 ---
 
+## ENTRY #011: Bug fixes — QO related docs + SO reservation display (2026-05-12)
+
+### Bug 1: QO related docs ไม่โชว์ SO ("ไม่พบเอกสารที่เกี่ยวข้อง")
+**Root cause**: `salesOrders.quotationId` ไม่มีใน Drizzle schema (salesOrders table ไม่มี column นี้) → Drizzle throw runtime error → API return 500 → frontend `res.ok = false` → แสดง empty
+**Fix**: 2 จุด ใน `sales-docs-routes.ts`:
+1. Related-docs route (line ~3075): เปลี่ยนจาก `db.select()...eq(salesOrders.quotationId, id)` → raw SQL `SELECT ... WHERE quotation_id = ${id}`
+2. QO list route (line ~402): เปลี่ยน `soRows` จาก Drizzle query → raw SQL (รองรับ `quotation_id = ANY(${qIds})`)
+**Verified**: DB simulation → SO6900001 พบจาก QO6900001 ✓
+
+### Bug 2: ระบบจองแสดง "จอง 0" ในหน้าคลังสินค้า
+**Root cause**: `upsertWarehouseReservedQty` แก้ `warehouseStockLevels.reservedQty` เท่านั้น แต่หน้าคลังสินค้าอ่านจาก `productStock.reservedQty` (คนละ table)
+**Fix**: ใน `upsertWarehouseReservedQty` (route-helpers.ts) เพิ่ม sync step:
+หลังอัปเดต warehouseStockLevels → SUM(`reserved_qty`) across all warehouses for this product → UPDATE `product_stock.reserved_qty`
+**DB one-time fix**: `UPDATE product_stock SET reserved_qty = SUM(wsl.reserved_qty) ... WHERE company_id=3684` → 766 rows updated ✓
+**Verified**: product_stock product_id=5399 → reserved_qty=10 ✓
+
+### Files changed (in addition to ENTRY #010)
+| File | สิ่งที่แก้ |
+|---|---|
+| `server/route-helpers.ts` | `upsertWarehouseReservedQty`: เพิ่ม productStock sync step |
+| `server/routes/sales-docs-routes.ts` | related-docs route: raw SQL แทน `salesOrders.quotationId`; QO list route: soRows raw SQL |
+
+### PENDING: push to production (#57–#61 all pending — SAME file set, same command)
+
+---
+
 ## ENTRY #010: SO Stock Reservation System — IMPLEMENTED (2026-05-12)
 
 ### What was built

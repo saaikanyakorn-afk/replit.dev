@@ -399,7 +399,8 @@ app.get("/api/quotations", requireAuth, requireAnyModule("sales", "ecommerce"), 
       const qIds = list.map(q => q.id);
       if (qIds.length > 0) {
         const invoiceRows = await db.select({ qid: invoices.quotationId, total: sql<string>`COALESCE(SUM(${invoices.totalAmount}::numeric), 0)` }).from(invoices).where(and(inArray(invoices.quotationId, qIds as number[]), eq(invoices.companyId, companyId))).groupBy(invoices.quotationId);
-        const soRows = await db.select({ qid: salesOrders.quotationId, total: sql<string>`COALESCE(SUM(${salesOrders.totalAmount}::numeric), 0)` }).from(salesOrders).where(and(inArray(salesOrders.quotationId, qIds as number[]), eq(salesOrders.companyId, companyId))).groupBy(salesOrders.quotationId);
+        const soRowsRaw = await db.execute(sql`SELECT quotation_id AS qid, COALESCE(SUM(total_amount::numeric), 0)::text AS total FROM sales_orders WHERE quotation_id = ANY(${qIds}) AND company_id = ${companyId} GROUP BY quotation_id`);
+        const soRows = (soRowsRaw.rows as any[]).map(r => ({ qid: r.qid, total: r.total }));
         for (const r of invoiceRows) { if (r.qid) convertedMap[r.qid] = (convertedMap[r.qid] || 0) + parseFloat(r.total || "0"); }
         for (const r of soRows) { if (r.qid) convertedMap[r.qid] = (convertedMap[r.qid] || 0) + parseFloat(r.total || "0"); }
       }
@@ -3069,8 +3070,8 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
         const [so] = await db.select().from(salesOrders).where(and(eq(salesOrders.id, qo.salesOrderId), eq(salesOrders.companyId, companyId)));
         if (so) addUnique({ type: "sales_order", id: so.id, docNo: so.orderNo, date: so.orderDate, status: so.status, totalAmount: so.totalAmount });
       }
-      const sosByQuotationId = await db.select().from(salesOrders).where(and(eq(salesOrders.quotationId, id), eq(salesOrders.companyId, companyId)));
-      for (const so of sosByQuotationId) addUnique({ type: "sales_order", id: so.id, docNo: so.orderNo, date: so.orderDate, status: so.status, totalAmount: so.totalAmount });
+      const sosByQuotationIdRaw = await db.execute(sql`SELECT id, order_no, order_date, status, total_amount FROM sales_orders WHERE quotation_id = ${id} AND company_id = ${companyId}`);
+      for (const so of sosByQuotationIdRaw.rows as any[]) addUnique({ type: "sales_order", id: so.id, docNo: so.order_no, date: so.order_date, status: so.status, totalAmount: so.total_amount });
       if (qo.quotationNo) {
         const sosByRef = await db.select().from(salesOrders).where(and(eq(salesOrders.refDoc, qo.quotationNo), eq(salesOrders.companyId, companyId)));
         for (const so of sosByRef) addUnique({ type: "sales_order", id: so.id, docNo: so.orderNo, date: so.orderDate, status: so.status, totalAmount: so.totalAmount });
