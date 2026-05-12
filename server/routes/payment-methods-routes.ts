@@ -52,6 +52,7 @@ app.get("/api/payment-methods", requireAuth, async (req, res) => {
 app.post("/api/payment-methods", requireAuth, async (req, res) => {
   try {
     const user = req.user as any;
+    console.log("[PM-POST] req.body:", JSON.stringify(req.body));
     const { name, nameTh, accountCode, accountId, active, isDefault, sortOrder, companyId: bodyCompanyId, bankName, bankAccountNo, paymentType } = req.body;
     const companyId = Number(bodyCompanyId) || Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });

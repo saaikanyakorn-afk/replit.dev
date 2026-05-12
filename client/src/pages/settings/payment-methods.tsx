@@ -224,10 +224,10 @@ export default function PaymentMethodSettings() {
                       <tr className="border-b bg-green-50/50">
                         <td className="px-3 py-2 text-slate-400">ใหม่</td>
                         <td className="px-3 py-2">
-                          <Input data-testid="input-new-name" value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="Cash" className="h-8 text-sm" />
+                          <Input data-testid="input-new-name" value={addForm.name} onChange={e => setAddForm(prev => prev ? { ...prev, name: e.target.value } : prev)} placeholder="Cash" className="h-8 text-sm" />
                         </td>
                         <td className="px-3 py-2">
-                          <Input data-testid="input-new-name-th" value={addForm.nameTh} onChange={e => setAddForm({ ...addForm, nameTh: e.target.value })} placeholder="เงินสด" className="h-8 text-sm" />
+                          <Input data-testid="input-new-name-th" value={addForm.nameTh} onChange={e => setAddForm(prev => prev ? { ...prev, nameTh: e.target.value } : prev)} placeholder="เงินสด" className="h-8 text-sm" />
                         </td>
                         <td className="px-3 py-2">
                           <Select value={addForm.accountCode} onValueChange={v => handleAccountSelect(v, true)}>
@@ -243,19 +243,19 @@ export default function PaymentMethodSettings() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-col gap-1">
-                            <Input data-testid="input-new-bank-name" value={addForm.bankName || ""} onChange={e => setAddForm({ ...addForm, bankName: e.target.value })} placeholder="ชื่อธนาคาร" className="h-8 text-sm" />
-                            <Input data-testid="input-new-bank-account-no" value={addForm.bankAccountNo || ""} onChange={e => setAddForm({ ...addForm, bankAccountNo: e.target.value })} placeholder="เลขที่บัญชี" className="h-8 text-sm" />
+                            <Input data-testid="input-new-bank-name" value={addForm.bankName || ""} onChange={e => setAddForm(prev => prev ? { ...prev, bankName: e.target.value } : prev)} placeholder="ชื่อธนาคาร" className="h-8 text-sm" />
+                            <Input data-testid="input-new-bank-account-no" value={addForm.bankAccountNo || ""} onChange={e => setAddForm(prev => prev ? { ...prev, bankAccountNo: e.target.value } : prev)} placeholder="เลขที่บัญชี" className="h-8 text-sm" />
                           </div>
                         </td>
                         <td className="px-3 py-2 text-center">
-                          <Switch checked={addForm.isDefault} onCheckedChange={v => setAddForm({ ...addForm, isDefault: v })} />
+                          <Switch checked={addForm.isDefault} onCheckedChange={v => setAddForm(prev => prev ? { ...prev, isDefault: v } : prev)} />
                         </td>
                         <td className="px-3 py-2 text-center">
-                          <Switch checked={addForm.active} onCheckedChange={v => setAddForm({ ...addForm, active: v })} />
+                          <Switch checked={addForm.active} onCheckedChange={v => setAddForm(prev => prev ? { ...prev, active: v } : prev)} />
                         </td>
                         <td className="px-3 py-2 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <Button data-testid="button-save-new" size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:text-green-700" onClick={() => saveMutation.mutate(addForm)} disabled={saveMutation.isPending}>
+                            <Button data-testid="button-save-new" size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:text-green-700" onClick={() => saveMutation.mutate({ ...addForm, paymentType: activeTab })} disabled={saveMutation.isPending}>
                               <Save className="h-4 w-4" />
                             </Button>
                             <Button data-testid="button-cancel-new" size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-slate-600" onClick={() => setAddForm(null)}>
