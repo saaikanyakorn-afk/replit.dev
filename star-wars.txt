@@ -531,6 +531,12 @@ DEPLOY #53 — 2026-05-11 (Restart #2 — comment out migration block)
   File: server/routes/products-routes.ts → runProductSplitMigration call + import commented out permanently
   pm2: online 76.5mb ✅
 
+DEPLOY #54 — 2026-05-12
+  File: client/src/pages/purchases/expense.tsx
+  SHA: 018e75ece4333b5d8bf05c70a62d83597cc44790
+  Reason: ปุ่ม "ดึงอัตรา" (exchange rate fetch) ไม่มีบน production — พี่ทรายแจ้ง
+  Method: GitHub API PUT (no pm2 restart needed — frontend only)
+
 ----------------------------------------------------------------
 ================================================================
 E-TAX CENTER — SSH DEPLOY KEY BACKUP
