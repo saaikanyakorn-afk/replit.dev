@@ -23,9 +23,15 @@ interface PaymentMethodRow {
   sortOrder: number;
   bankName?: string;
   bankAccountNo?: string;
+  paymentType: "receive" | "pay";
   isEditing?: boolean;
   isNew?: boolean;
 }
+
+const PAYMENT_TYPE_OPTIONS = [
+  { value: "receive", label: "รับเงิน" },
+  { value: "pay", label: "จ่ายเงิน" },
+];
 
 export default function PaymentMethodSettings() {
   const queryClient = useQueryClient();
@@ -35,6 +41,7 @@ export default function PaymentMethodSettings() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<PaymentMethodRow | null>(null);
   const [addForm, setAddForm] = useState<PaymentMethodRow | null>(null);
+  const [activeTab, setActiveTab] = useState<"receive" | "pay">("receive");
 
   const { data: methods = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/payment-methods", selectedCompanyId],
@@ -59,6 +66,8 @@ export default function PaymentMethodSettings() {
   const cashBankAccounts = accountsList.filter((a: any) =>
     a.code?.startsWith("1") && a.active !== false && (a.type === "asset" || a.type === "assets")
   );
+
+  const filteredMethods = methods.filter((m: any) => (m.paymentType || "receive") === activeTab);
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -112,6 +121,7 @@ export default function PaymentMethodSettings() {
       sortOrder: m.sortOrder || 0,
       bankName: m.bankName || "",
       bankAccountNo: m.bankAccountNo || "",
+      paymentType: (m.paymentType || "receive") as "receive" | "pay",
     };
     setEditingId(m.id);
     setEditForm(form);
@@ -129,6 +139,7 @@ export default function PaymentMethodSettings() {
       sortOrder: (methods.length + 1) * 10,
       bankName: "",
       bankAccountNo: "",
+      paymentType: activeTab,
     });
     setEditingId(null);
     setEditForm(null);
@@ -143,6 +154,8 @@ export default function PaymentMethodSettings() {
     }
   };
 
+  const tabLabel = activeTab === "receive" ? "รับเงิน" : "จ่ายเงิน";
+
   return (
     <Layout>
       <SettingsTabs />
@@ -152,16 +165,33 @@ export default function PaymentMethodSettings() {
             <Banknote className="h-5 w-5 text-[#fb9678]" />
           </div>
           <div>
-            <h1 className="text-xl font-medium text-slate-800">ตั้งค่าวิธีการรับเงิน</h1>
-            <p className="text-sm text-slate-500">กำหนดวิธีการรับเงินและผูกบัญชี เพื่อให้ใบเสร็จลงบัญชีอัตโนมัติถูกต้อง</p>
+            <h1 className="text-xl font-medium text-slate-800">ตั้งค่าวิธีการชำระเงิน</h1>
+            <p className="text-sm text-slate-500">กำหนดวิธีรับเงินและจ่ายเงิน พร้อมผูกบัญชีสำหรับลงรายการอัตโนมัติ</p>
           </div>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          {PAYMENT_TYPE_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              data-testid={`tab-${opt.value}`}
+              onClick={() => { setActiveTab(opt.value as "receive" | "pay"); setAddForm(null); setEditingId(null); setEditForm(null); }}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === opt.value
+                  ? "bg-[#fb9678] text-white shadow-sm"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         <Card className="flexy-card">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-medium">รายการวิธีการรับเงิน</CardTitle>
+            <CardTitle className="text-base font-medium">รายการวิธี{tabLabel}</CardTitle>
             <Button data-testid="button-add-payment-method" size="sm" onClick={startAdd} className="bg-[#fb9678] hover:bg-[#fb9678]/90 text-white rounded-lg">
-              <Plus className="h-4 w-4 mr-1" /> เพิ่มวิธีรับเงิน
+              <Plus className="h-4 w-4 mr-1" /> เพิ่มวิธี{tabLabel}
             </Button>
           </CardHeader>
           <CardContent>
@@ -230,7 +260,7 @@ export default function PaymentMethodSettings() {
                         </td>
                       </tr>
                     )}
-                    {methods.map((m: any, idx: number) => (
+                    {filteredMethods.map((m: any, idx: number) => (
                       <tr key={m.id} className={`border-b hover:bg-slate-50/50 ${editingId === m.id ? "bg-blue-50/50" : ""}`}>
                         {editingId === m.id && editForm ? (
                           <>
@@ -312,7 +342,7 @@ export default function PaymentMethodSettings() {
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button data-testid={`button-delete-${m.id}`} size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-red-500" onClick={() => {
-                                  if (confirm("ต้องการลบวิธีการรับเงินนี้?")) deleteMutation.mutate(m.id);
+                                  if (confirm(`ต้องการลบวิธี${tabLabel}นี้?`)) deleteMutation.mutate(m.id);
                                 }}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -322,8 +352,8 @@ export default function PaymentMethodSettings() {
                         )}
                       </tr>
                     ))}
-                    {methods.length === 0 && !addForm && (
-                      <tr><td colSpan={8} className="text-center py-8 text-slate-400">ยังไม่มีวิธีการรับเงิน</td></tr>
+                    {filteredMethods.length === 0 && !addForm && (
+                      <tr><td colSpan={8} className="text-center py-8 text-slate-400">ยังไม่มีวิธี{tabLabel}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -331,7 +361,7 @@ export default function PaymentMethodSettings() {
             )}
             <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
               <p className="text-xs text-amber-700">
-                <strong>หมายเหตุ:</strong> วิธีการรับเงินที่ตั้งค่าไว้จะแสดงในฟอร์มใบเสร็จรับเงิน เมื่อเลือกวิธีรับเงิน ระบบจะลงบัญชีด้านเดบิตตามบัญชีที่ผูกไว้โดยอัตโนมัติ
+                <strong>หมายเหตุ:</strong> วิธี<strong>รับเงิน</strong>จะแสดงในฟอร์มใบเสร็จ, ใบกำกับภาษี, ใบสั่งขาย เมื่อเลือก ระบบจะลงบัญชีเดบิตตามบัญชีที่ผูกไว้อัตโนมัติ · วิธี<strong>จ่ายเงิน</strong>จะแสดงในฟอร์มใบแจ้งหนี้ซื้อ, ค่าใช้จ่าย เมื่อเลือก ระบบจะลงบัญชีเครดิตตามบัญชีที่ผูกไว้อัตโนมัติ
               </p>
             </div>
           </CardContent>

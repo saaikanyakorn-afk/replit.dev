@@ -349,7 +349,7 @@ export default function TaxInvoiceForm() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
 
   const isCashMethod = (pm: string) => {
     if (!pm) return false;

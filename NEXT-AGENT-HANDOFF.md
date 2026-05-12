@@ -4,6 +4,40 @@ Read this file first before touching anything.
 
 ---
 
+## ENTRY #017: payment_methods — เพิ่ม payment_type (รับเงิน/จ่ายเงิน) (2026-05-12)
+
+### สิ่งที่ทำ
+1. **DB** — `ALTER TABLE payment_methods ADD COLUMN payment_type TEXT NOT NULL DEFAULT 'receive'`
+   - records เดิม 6 รายการ (id 86–91 company 3684) ยังเป็น `receive` ทั้งหมด
+   - ไม่ต้องแตะ schema.ts (protected) — ใช้ raw SQL ใน routes
+
+2. **Backend** (`server/routes/payment-methods-routes.ts`):
+   - GET: คืน `payment_type AS "paymentType"` ใน SELECT; รองรับ `?type=receive|pay` filter
+   - POST: รับ `paymentType` จาก body, บันทึกด้วย UPDATE หลัง INSERT
+   - PATCH: รับ `paymentType` จาก body, อัพเดตด้วย COALESCE SQL
+
+3. **Settings page** (`client/src/pages/settings/payment-methods.tsx`):
+   - เพิ่ม 2 tabs: **รับเงิน** | **จ่ายเงิน** (activeTab state)
+   - แสดงเฉพาะ methods ของ tab ที่เลือก
+   - กดปุ่มเพิ่ม → addForm.paymentType = activeTab (pre-filled)
+   - title/button text เปลี่ยนตาม tab
+
+4. **Form filters**:
+   - **รับเงิน** (receipt, TIV, credit-note, SO): `paymentType === 'receive'`
+   - **จ่ายเงิน** (purchase-invoice): `paymentType === 'pay'` **พร้อม fallback** → ถ้าไม่มี pay methods ให้แสดงทั้งหมด (ไม่ break existing data)
+
+### สิ่งที่ user ต้องทำ (config)
+- ไป Settings → ตั้งค่าวิธีการชำระเงิน → tab **จ่ายเงิน** → เพิ่ม Cash/Bank Transfer/Cheque สำหรับฝั่งจ่าย
+- หรือ SQL: `UPDATE payment_methods SET payment_type='pay' WHERE id IN (86,87,88) AND company_id=3684;` (ถ้าต้องการให้ Cash/โอน/เช็คเป็นฝั่งจ่ายด้วย — แต่ต้องสร้าง records แยก เพราะ account code ฝั่งจ่ายต่างกัน)
+
+### Production SQL ที่ต้องรัน
+```sql
+ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL DEFAULT 'receive';
+```
+(DEV รันแล้ว — PROD ยังไม่ได้รัน)
+
+---
+
 ## ENTRY #016: Payment methods — ลบ hard-coded options, ใช้จาก settings (2026-05-12)
 
 ### ปัญหา

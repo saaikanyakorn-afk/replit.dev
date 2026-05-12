@@ -43,7 +43,8 @@ app.get("/api/payment-methods", requireAuth, async (req, res) => {
         });
       }
     }
-    const result = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo" FROM payment_methods WHERE company_id = ${companyId} ORDER BY sort_order`);
+    const typeFilter = req.query.type ? sql` AND payment_type = ${req.query.type}` : sql``;
+    const result = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE company_id = ${companyId}${typeFilter} ORDER BY sort_order`);
     res.json(result.rows);
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
@@ -51,7 +52,7 @@ app.get("/api/payment-methods", requireAuth, async (req, res) => {
 app.post("/api/payment-methods", requireAuth, async (req, res) => {
   try {
     const user = req.user as any;
-    const { name, nameTh, accountCode, accountId, active, isDefault, sortOrder, companyId: bodyCompanyId, bankName, bankAccountNo } = req.body;
+    const { name, nameTh, accountCode, accountId, active, isDefault, sortOrder, companyId: bodyCompanyId, bankName, bankAccountNo, paymentType } = req.body;
     const companyId = Number(bodyCompanyId) || Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
     if (!name || !accountCode) return res.status(400).json({ message: "กรุณาระบุชื่อและรหัสบัญชี" });
@@ -69,10 +70,9 @@ app.post("/api/payment-methods", requireAuth, async (req, res) => {
       sortOrder: sortOrder || 0,
     }).returning();
     if (!method?.id) return res.status(500).json({ message: "บันทึกไม่สำเร็จ กรุณาลองใหม่" });
-    if (bankName || bankAccountNo) {
-      await db.execute(sql`UPDATE payment_methods SET bank_name = ${bankName || null}, bank_account_no = ${bankAccountNo || null} WHERE id = ${method.id}`);
-    }
-    const finalRow = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo" FROM payment_methods WHERE id = ${method.id} LIMIT 1`);
+    const pmType = paymentType || "receive";
+    await db.execute(sql`UPDATE payment_methods SET bank_name = ${bankName || null}, bank_account_no = ${bankAccountNo || null}, payment_type = ${pmType} WHERE id = ${method.id}`);
+    const finalRow = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE id = ${method.id} LIMIT 1`);
     res.status(201).json(finalRow.rows[0] ?? method);
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
@@ -88,7 +88,7 @@ app.patch("/api/payment-methods/:id", requireAuth, async (req, res) => {
       const [co] = await db.select().from(companies).where(eq(companies.id, existing.companyId));
       if (co && co.tenantId && co.tenantId !== user.tenantId) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
     }
-    const { name, nameTh, accountCode, accountId, active, isDefault, sortOrder, bankName, bankAccountNo } = req.body;
+    const { name, nameTh, accountCode, accountId, active, isDefault, sortOrder, bankName, bankAccountNo, paymentType } = req.body;
     if (isDefault) {
       await db.update(paymentMethods).set({ isDefault: false }).where(eq(paymentMethods.companyId, existing.companyId!));
     }
@@ -103,13 +103,10 @@ app.patch("/api/payment-methods/:id", requireAuth, async (req, res) => {
     if (Object.keys(updateData).length > 0) {
       await db.update(paymentMethods).set(updateData).where(eq(paymentMethods.id, id));
     }
-    if (bankName !== undefined) {
-      await db.execute(sql`UPDATE payment_methods SET bank_name = ${bankName || null} WHERE id = ${id}`);
+    if (bankName !== undefined || bankAccountNo !== undefined || paymentType !== undefined) {
+      await db.execute(sql`UPDATE payment_methods SET bank_name = COALESCE(${bankName ?? null}, bank_name), bank_account_no = COALESCE(${bankAccountNo ?? null}, bank_account_no), payment_type = COALESCE(${paymentType ?? null}, payment_type) WHERE id = ${id}`);
     }
-    if (bankAccountNo !== undefined) {
-      await db.execute(sql`UPDATE payment_methods SET bank_account_no = ${bankAccountNo || null} WHERE id = ${id}`);
-    }
-    const finalRow = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo" FROM payment_methods WHERE id = ${id} LIMIT 1`);
+    const finalRow = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE id = ${id} LIMIT 1`);
     res.json(finalRow.rows[0]);
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });

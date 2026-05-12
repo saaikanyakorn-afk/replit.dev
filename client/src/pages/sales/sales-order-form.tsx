@@ -170,7 +170,7 @@ export default function SalesOrderForm() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && m.name !== "Credit" && m.nameTh !== "เครดิต");
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
 
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", companyId],

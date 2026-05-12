@@ -256,7 +256,7 @@ export default function CreditNoteForm() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
 
   useEffect(() => {
     if (!editingId && activePaymentMethods.length > 0 && !form.paymentMethod) {
