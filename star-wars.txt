@@ -605,6 +605,28 @@ DEPLOY #60 — 2026-05-12
     pm2 restart etax-center
 
 ----------------------------------------------------------------
+DEPLOY #61 — SO Stock Reservation System (2026-05-12)
+  Implemented by: Kai (dev Replit)
+  Files changed:
+    - server/route-helpers.ts (new: upsertWarehouseReservedQty)
+    - server/routes/sales-docs-routes.ts (SO CREATE/UPDATE/DELETE reserve/release + IV CREATE release + imports)
+    - client/src/pages/sales/sales-order-form.tsx (warehouse validation in handleSubmit)
+  Logic:
+    - SO CREATE → reserveSOStock (upsert reserved_qty +qty per item per warehouse)
+    - SO UPDATE → releaseSOStock (old items) then reserveSOStock (new items)
+    - SO DELETE → releaseSOStock before delete
+    - IV CREATE from SO (salesOrderId set) → releaseSOStock after deductStock
+    - Frontend: if warehouses.length > 1, any product item missing warehouseId → toast error, block save
+    - Single-warehouse companies: auto-assign singleWid (no frontend change needed)
+  Dev compile: ✅ server started on port 5000, no TS/runtime errors
+  ⚠️ STATUS: NOT YET pushed to github-production (all #57–61 pending)
+  Server command (when พี่ช้าง is ready):
+    git fetch origin
+    git checkout origin/main -- server/route-helpers.ts server/routes/sales-docs-routes.ts server/routes/products-routes.ts client/src/pages/inventory/inventory-list.tsx client/src/pages/sales/sales-order-form.tsx
+    npm run build
+    pm2 restart etax-center
+
+----------------------------------------------------------------
 ================================================================
 E-TAX CENTER — SSH DEPLOY KEY BACKUP
 ================================================================

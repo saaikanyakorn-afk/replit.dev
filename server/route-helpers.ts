@@ -1382,6 +1382,33 @@ export async function reverseWarehouseStockBundleAware(
   }
 }
 
+// Upsert reserved_qty ใน warehouseStockLevels สำหรับระบบจอง SO
+export async function upsertWarehouseReservedQty(
+  companyId: number, productId: number, warehouseId: number, delta: number
+): Promise<void> {
+  try {
+    const [existing] = await db.select().from(warehouseStockLevels).where(
+      and(
+        eq(warehouseStockLevels.companyId, companyId),
+        eq(warehouseStockLevels.productId, productId),
+        eq(warehouseStockLevels.warehouseId, warehouseId),
+      )
+    );
+    if (existing) {
+      const newReserved = Math.max(0, Number(existing.reservedQty || "0") + delta);
+      await db.update(warehouseStockLevels)
+        .set({ reservedQty: String(newReserved), updatedAt: new Date() })
+        .where(eq(warehouseStockLevels.id, existing.id));
+    } else if (delta > 0) {
+      await db.insert(warehouseStockLevels).values({
+        companyId, productId, warehouseId, quantity: "0", reservedQty: String(delta),
+      });
+    }
+  } catch (e: any) {
+    console.error(`[warehouseReserved] upsert failed cid=${companyId} pid=${productId} wid=${warehouseId} delta=${delta}:`, e.message);
+  }
+}
+
 // Upsert warehouseStockLevels: เพิ่ม/ลด stock ใน warehouse cลัง cถ้า warehouseId มีค่า
 export async function upsertWarehouseStockLevel(
   companyId: number, productId: number, warehouseId: number, delta: number, dbInst?: any

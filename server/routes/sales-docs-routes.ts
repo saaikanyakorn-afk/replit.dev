@@ -2,10 +2,10 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, and, inArray, count, sql, isNull } from "drizzle-orm";
-import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements } from "@shared/schema";
+import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements, warehouses, warehouseStockLevels } from "@shared/schema";
 import { gte, lte, or } from "drizzle-orm";
 import { requireAuth, requireRole, requireAnyModule, getCompanyTenantId, checkDocOwnership } from "../route-middleware";
-import { getNextDocNo, validateDocNo, getNextJournalEntryNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, logActivity, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, recomputePaymentStatus, deductStockBundleAware, upsertWarehouseStockLevel, reverseWarehouseStockBundleAware, getInventoryTriggers } from "../route-helpers";
+import { getNextDocNo, validateDocNo, getNextJournalEntryNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, logActivity, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, recomputePaymentStatus, deductStockBundleAware, upsertWarehouseStockLevel, upsertWarehouseReservedQty, reverseWarehouseStockBundleAware, getInventoryTriggers } from "../route-helpers";
 import { parsePagination, paginatedResponse } from "./pagination";
 import multer from "multer";
 import * as XLSX from "xlsx";
@@ -33,6 +33,34 @@ async function fetchSalesOrderItems(salesOrderId: number): Promise<any[]> {
   for (const r of extras.rows as any[]) warehouseMap[r.id] = r.warehouseId ?? null;
   return rows.map(r => ({ ...r, warehouseId: warehouseMap[r.id] ?? null }));
 }
+
+async function getCompanySingleWarehouseId(companyId: number): Promise<number | null> {
+  const whs = await db.select({ id: warehouses.id }).from(warehouses).where(eq(warehouses.companyId, companyId));
+  return whs.length === 1 ? whs[0].id : null;
+}
+async function reserveSOStock(items: any[], companyId: number) {
+  const singleWid = await getCompanySingleWarehouseId(companyId);
+  for (const item of items) {
+    if (!item.productId) continue;
+    const qty = parseFloat(String(item.qty || "0"));
+    if (qty <= 0) continue;
+    const wid = item.warehouseId || singleWid;
+    if (!wid) continue;
+    await upsertWarehouseReservedQty(companyId, Number(item.productId), wid, qty);
+  }
+}
+async function releaseSOStock(items: any[], companyId: number) {
+  const singleWid = await getCompanySingleWarehouseId(companyId);
+  for (const item of items) {
+    if (!item.productId) continue;
+    const qty = parseFloat(String(item.qty || "0"));
+    if (qty <= 0) continue;
+    const wid = item.warehouseId || singleWid;
+    if (!wid) continue;
+    await upsertWarehouseReservedQty(companyId, Number(item.productId), wid, -qty);
+  }
+}
+
 async function fetchReceiptItems(receiptId: number): Promise<any[]> {
   const rows = await db.select().from(receiptItems).where(eq(receiptItems.receiptId, receiptId)).orderBy(receiptItems.id);
   const extras = await db.execute(sql`SELECT id, warehouse_id AS "warehouseId" FROM receipt_items WHERE receipt_id = ${receiptId} ORDER BY id`);
@@ -159,6 +187,7 @@ app.post("/api/sales-orders", requireAuth, requireAnyModule("sales", "ecommerce"
       }
     }
     const savedItems = await fetchSalesOrderItems(order.id);
+    try { await reserveSOStock(savedItems, Number(body.companyId)); } catch (e: any) { console.error("[SO-CREATE] reserve failed:", e.message); }
     logActivity({ companyId: Number(body.companyId), userId: user.id, userName: user.username, action: "create", entityType: "sales_order", entityId: String(order.id), entityName: body.orderNo || "" }).catch(() => {});
     res.status(201).json({ ...order, items: savedItems });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
@@ -177,7 +206,9 @@ app.patch("/api/sales-orders/:id", requireAuth, requireAnyModule("sales", "ecomm
     body.updatedBy = user.id;
     const order = await storage.updateSalesOrder(Number(req.params.id), body);
     if (!order) return res.status(404).json({ message: "ไม่พบรายการขาย" });
+    let oldItems: any[] = [];
     if (items && Array.isArray(items)) {
+      oldItems = await fetchSalesOrderItems(order.id);
       await storage.deleteSalesOrderItems(order.id);
       if (items.length > 0) {
         const itemValues = items.map((item: any) => {
@@ -209,6 +240,10 @@ app.patch("/api/sales-orders/:id", requireAuth, requireAnyModule("sales", "ecomm
       }
     }
     const savedItems = await fetchSalesOrderItems(order.id);
+    try {
+      await releaseSOStock(oldItems, order.companyId);
+      await reserveSOStock(savedItems, order.companyId);
+    } catch (e: any) { console.error("[SO-UPDATE] reserve failed:", e.message); }
     res.json({ ...order, items: savedItems });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
@@ -221,10 +256,12 @@ app.delete("/api/sales-orders/:id", requireAuth, requireAnyModule("sales", "ecom
     // cascade protection: ต้องลบเอกสารปลายทางก่อน
     const linkedIV = await db.select({ id: invoices.id, no: invoices.invoiceNo }).from(invoices).where(eq(invoices.salesOrderId, existing.id));
     if (linkedIV.length > 0) return res.status(400).json({ message: `ไม่สามารถลบได้ เนื่องจากมีใบแจ้งหนี้เชื่อมอยู่:\n${linkedIV.map(r => r.no).join(", ")}\nกรุณาลบเอกสารที่เชื่อมก่อน` });
+    const soItemsForRelease = await fetchSalesOrderItems(existing.id);
     await db.transaction(async (tx) => {
       await tx.delete(salesOrderItems).where(eq(salesOrderItems.salesOrderId, existing.id));
       await tx.delete(salesOrders).where(eq(salesOrders.id, existing.id));
     });
+    try { await releaseSOStock(soItemsForRelease, existing.companyId); } catch (e: any) { console.error("[SO-DELETE] release failed:", e.message); }
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
@@ -1015,6 +1052,13 @@ app.post("/api/invoices", requireAuth, requireAnyModule("sales", "ecommerce"), a
           await deductStockBundleAware(deductItems, result.companyId, docLabel, "invoice", result.id, user.id).catch((err: any) => { console.error(`[Invoice-CREATE] deductStock failed for invoice#${result.id}:`, err.message); });
         }
       }
+    }
+    // ถ้า IV สร้างจาก SO → release การจองของ SO
+    if (result.salesOrderId) {
+      try {
+        const soItems = await fetchSalesOrderItems(result.salesOrderId);
+        await releaseSOStock(soItems, companyId);
+      } catch (e: any) { console.error("[IV-CREATE] release SO reservation failed:", e.message); }
     }
     logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "invoice", entityId: String(result.id), entityName: invoiceNo }).catch(() => {});
     console.log(`[Invoice] TOTAL=${Date.now()-t0}ms`);

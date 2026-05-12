@@ -1,4 +1,4 @@
-# Next Agent Handoff (updated 2026-05-11)
+# Next Agent Handoff (updated 2026-05-12)
 
 Read this file first before touching anything.
 
@@ -8,6 +8,41 @@ Read this file first before touching anything.
 
 - **พี่ช้าง** = Technical Authority — all production pushes require explicit authorization from พี่ช้าง
 - **พี่ทราย** = Business Owner — tests on dev screen, approves UX/business behavior, cannot authorize production push
+
+---
+
+## ENTRY #010: SO Stock Reservation System — IMPLEMENTED (2026-05-12)
+
+### What was built
+ระบบจอง stock เมื่อสร้าง SO และ release เมื่อ SO ถูกลบ/แก้ไข หรือสร้าง IV จาก SO
+
+### Files changed
+| File | สิ่งที่เพิ่ม/แก้ |
+|---|---|
+| `server/route-helpers.ts` | `upsertWarehouseReservedQty(companyId, productId, warehouseId, delta)` — floor at 0 |
+| `server/routes/sales-docs-routes.ts` | import `warehouses, warehouseStockLevels`; import `upsertWarehouseReservedQty`; helpers `getCompanySingleWarehouseId`, `reserveSOStock`, `releaseSOStock`; SO CREATE/UPDATE/DELETE; IV CREATE |
+| `client/src/pages/sales/sales-order-form.tsx` | handleSubmit: if `warehouses.length > 1` + any product item missing warehouseId → toast error + return |
+
+### Logic detail
+- **SO CREATE** → `reserveSOStock(savedItems, companyId)` — เพิ่ม `reserved_qty` ทุก item
+- **SO UPDATE** → `releaseSOStock(oldItems)` แล้ว `reserveSOStock(savedItems)` — release เก่า จอง ใหม่
+- **SO DELETE** → `releaseSOStock(soItemsForRelease)` หลัง delete transaction
+- **IV CREATE** (เมื่อ `salesOrderId` มีค่า) → `releaseSOStock(soItems)` หลัง deductStock
+- **Single-warehouse company**: `getCompanySingleWarehouseId()` คืน warehouseId อัตโนมัติ → ไม่ต้อง frontend change
+- **Multi-warehouse company**: frontend บล็อก save ถ้า product item ไม่มี warehouseId
+
+### Dev compile
+✅ server started on port 5000 — ไม่มี TS error
+
+### PENDING: push to production (#57–#61 all pending)
+```
+git fetch origin
+git checkout origin/main -- server/route-helpers.ts server/routes/sales-docs-routes.ts server/routes/products-routes.ts client/src/pages/inventory/inventory-list.tsx client/src/pages/sales/sales-order-form.tsx
+npm run build
+pm2 restart etax-center
+```
+
+### ⚠️ ยังรอพี่ช้าง authorize push ทั้ง #57–#61
 
 ---
 

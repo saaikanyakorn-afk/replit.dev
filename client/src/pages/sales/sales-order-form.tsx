@@ -617,6 +617,13 @@ export default function SalesOrderForm() {
       toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", description: "ต้องระบุชื่อลูกค้า", variant: "destructive" });
       return;
     }
+    if (warehouses.length > 1) {
+      const missingWarehouse = items.filter(it => it.productName && it.productId && !it.warehouseId);
+      if (missingWarehouse.length > 0) {
+        toast({ title: "กรุณาเลือกคลังสินค้า", description: `มี ${missingWarehouse.length} รายการที่ยังไม่ได้เลือกคลัง กรุณาเลือกคลังให้ครบทุกรายการ`, variant: "destructive" });
+        return;
+      }
+    }
     let newContact: { id: number; code: string } | null = null;
     if (form.saveToContacts && !form.customerId) {
       newContact = await handleSaveNewContact();
