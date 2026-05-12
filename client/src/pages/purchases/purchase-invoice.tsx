@@ -1186,21 +1186,11 @@ export default function PurchaseInvoice() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="เครดิต">เครดิต (ตั้งเจ้าหนี้)</SelectItem>
-                          {activePaymentMethods.length > 0 ? (
-                            activePaymentMethods.map((m: any) => (
-                              <SelectItem key={m.id} value={m.name || m.nameTh}>
-                                {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="เงินสด">เงินสด</SelectItem>
-                              <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                              <SelectItem value="เช็ค">เช็ค</SelectItem>
-                              <SelectItem value="บัตรเครดิต">บัตรเครดิต</SelectItem>
-                              <SelectItem value="พร้อมเพย์">พร้อมเพย์</SelectItem>
-                            </>
-                          )}
+                          {activePaymentMethods.map((m: any) => (
+                            <SelectItem key={m.id} value={m.name || m.nameTh}>
+                              {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </td>

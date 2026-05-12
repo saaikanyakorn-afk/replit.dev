@@ -986,21 +986,11 @@ export default function ReceiptForm() {
                           <SelectValue placeholder="เลือกวิธีรับเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          {activePaymentMethods.length > 0 ? (
-                            activePaymentMethods.map((m: any) => (
-                              <SelectItem key={m.id} value={`pm_${m.id}`}>
-                                {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="cash">เงินสด</SelectItem>
-                              <SelectItem value="transfer">โอนเงิน</SelectItem>
-                              <SelectItem value="cheque">เช็ค</SelectItem>
-                              <SelectItem value="credit_card">บัตรเครดิต</SelectItem>
-                              <SelectItem value="other">อื่นๆ</SelectItem>
-                            </>
-                          )}
+                          {activePaymentMethods.map((m: any) => (
+                            <SelectItem key={m.id} value={`pm_${m.id}`}>
+                              {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </td>

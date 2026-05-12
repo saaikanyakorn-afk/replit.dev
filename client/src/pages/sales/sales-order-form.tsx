@@ -160,6 +160,18 @@ export default function SalesOrderForm() {
     }
   }, [form.creditDays, form.orderDate, loaded]);
 
+  const { data: paymentMethodsList = [] } = useQuery<any[]>({
+    queryKey: ["/api/payment-methods", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && m.name !== "Credit" && m.nameTh !== "เครดิต");
+
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", companyId],
     queryFn: async () => {
@@ -942,11 +954,21 @@ export default function SalesOrderForm() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">ไม่ระบุ</SelectItem>
-                          <SelectItem value="cash">เงินสด</SelectItem>
-                          <SelectItem value="transfer">โอนเงิน</SelectItem>
-                          <SelectItem value="credit_card">บัตรเครดิต</SelectItem>
-                          <SelectItem value="promptpay">พร้อมเพย์</SelectItem>
-                          <SelectItem value="cheque">เช็ค</SelectItem>
+                          {activePaymentMethods.length > 0 ? (
+                            activePaymentMethods.map((m: any) => (
+                              <SelectItem key={m.id} value={m.accountCode || m.name || m.nameTh || String(m.id)}>
+                                {m.nameTh || m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <>
+                              <SelectItem value="cash">เงินสด</SelectItem>
+                              <SelectItem value="transfer">โอนเงิน</SelectItem>
+                              <SelectItem value="credit_card">บัตรเครดิต</SelectItem>
+                              <SelectItem value="promptpay">พร้อมเพย์</SelectItem>
+                              <SelectItem value="cheque">เช็ค</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </td>

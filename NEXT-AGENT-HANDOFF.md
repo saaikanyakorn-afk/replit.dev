@@ -4,6 +4,30 @@ Read this file first before touching anything.
 
 ---
 
+## ENTRY #016: Payment methods — ลบ hard-coded options, ใช้จาก settings (2026-05-12)
+
+### ปัญหา
+4 ฟอร์มมี dropdown วิธีชำระเงิน hard-coded (cash/transfer/credit_card) แทนที่จะดึงจาก `/api/payment-methods?companyId=` ทำให้:
+- ผู้ใช้ตั้งค่าช่องทางรับเงินใน Settings → Payment Methods แล้ว แต่ฟอร์มไม่แสดง
+- journal ไม่ได้ลงบัญชีตามที่ตั้งค่าไว้ (resolvePaymentMethodAccountCode อ่านจาก DB ถูก แต่ dropdown ส่ง value ผิด)
+
+### Fix
+| ไฟล์ | สิ่งที่แก้ |
+|---|---|
+| `receipt-form.tsx` | ลบ fallback hard-coded block → `activePaymentMethods.map(...)` เสมอ |
+| `credit-note-form.tsx` | ลบ fallback hard-coded block → `activePaymentMethods.map(...)` เสมอ |
+| `purchase-invoice.tsx` | ลบ fallback hard-coded block → `activePaymentMethods.map(...)` เสมอ |
+| `sales-order-form.tsx` | เพิ่ม `useQuery(["/api/payment-methods", companyId])` + `activePaymentMethods` filter (ไม่รวม Credit) + แทน hard-coded SelectItems |
+
+### Note
+- `receipt-form`, `credit-note-form`, `purchase-invoice` มี `activePaymentMethods` จาก API อยู่แล้ว — แค่มี ternary fallback hard-coded → ลบออก
+- SO form ไม่มี payment-methods query เลย → ต้องเพิ่มใหม่ + filter ไม่รวม Credit (SO ไม่ใช้ credit)
+- `resolvePaymentMethodAccountCode` บน backend ทำงานถูกอยู่แล้ว — journal ลงบัญชีตาม accountCode ที่ตั้งใน payment_methods table
+
+### Status: Dev ✅ — รอพี่ช้าง authorize push production
+
+---
+
 ## ENTRY #015: ผังบัญชี — เปลี่ยน businessType เป็น trading (2026-05-12)
 
 ### ปัญหา
