@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useCompany } from "@/lib/company-context";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, downloadFile } from "@/lib/queryClient";
 import ThaiDateInput from "@/components/thai-date-input";
 import { useDateSettings } from "@/hooks/use-date-settings";
 import { toLocalDateStr } from "@/lib/utils";
@@ -99,12 +99,14 @@ export default function AssetRegistry() {
     return matchSearch && matchCategory && matchStatus && matchDateFrom && matchDateTo;
   });
 
-  const handleExport = () => {
-    window.open(`/api/fixed-assets/export?companyId=${selectedCompanyId}`, "_blank");
+  const handleExport = async () => {
+    try { await downloadFile(`/api/fixed-assets/export?companyId=${selectedCompanyId}`, "fixed_assets_export.xlsx"); }
+    catch { toast({ title: "Export ไม่สำเร็จ", variant: "destructive" }); }
   };
 
-  const handleDownloadTemplate = () => {
-    window.open("/api/fixed-assets/import/template", "_blank");
+  const handleDownloadTemplate = async () => {
+    try { await downloadFile("/api/fixed-assets/import/template", "template_fixed_assets.xlsx"); }
+    catch { toast({ title: "ดาวน์โหลด template ไม่สำเร็จ", variant: "destructive" }); }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

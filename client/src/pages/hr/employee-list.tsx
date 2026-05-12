@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState, useRef, useEffect } from "react";
 import { useShowMore } from "@/hooks/use-show-more";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { downloadFile } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useHrCompanyId } from "@/lib/company-context";
@@ -433,8 +434,9 @@ export default function EmployeeList() {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    window.open("/api/employees/template-excel", "_blank");
+  const handleDownloadTemplate = async () => {
+    try { await downloadFile("/api/employees/template-excel", "template_employees.xlsx"); }
+    catch { toast({ title: "ดาวน์โหลด template ไม่สำเร็จ", variant: "destructive" }); }
   };
 
   const handleSubmit = () => {

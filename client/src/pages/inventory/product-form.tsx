@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Save, AlertTriangle, Package, ChevronsUpDown, Check, Wand2, Plus, Settings2, Trash2, Pencil, Upload, FileDown, ScanBarcode } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { downloadFile } from "@/lib/queryClient";
 import { useCompany } from "@/lib/company-context";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -823,7 +824,7 @@ export default function ProductForm(props: { Wrapper?: React.ComponentType<{ chi
             <div className="border rounded-lg p-3 bg-blue-50">
               <p className="text-sm font-medium mb-2">นำเข้าจาก Excel</p>
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" className="h-8" onClick={() => window.open("/api/product-categories/import/template", "_blank")}>
+                <Button type="button" variant="outline" size="sm" className="h-8" onClick={async () => { try { await downloadFile("/api/product-categories/import/template", "template_categories.xlsx"); } catch {} }}>
                   <FileDown className="w-3 h-3 mr-1" />ดาวน์โหลด Template
                 </Button>
                 <Button type="button" variant="outline" size="sm" className="h-8" disabled={catImporting} onClick={() => catFileRef.current?.click()}>

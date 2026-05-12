@@ -19,7 +19,7 @@ import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useShowMore } from "@/hooks/use-show-more";
 import { useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, downloadFile } from "@/lib/queryClient";
 import type { Product } from "@shared/schema";
 import ImportBatchHistory from "@/components/import-batch-history";
 
@@ -382,8 +382,8 @@ export default function InventoryList(props: { Wrapper?: React.ComponentType<{ c
                     <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileUpload} />
                     <div className="flex items-center justify-center gap-3">
                       <Button data-testid="button-select-file" onClick={() => fileInputRef.current?.click()}>เลือกไฟล์</Button>
-                      <Button data-testid="button-download-template" variant="outline" className="gap-2" onClick={() => {
-                        window.open("/api/products/import/template", "_blank");
+                      <Button data-testid="button-download-template" variant="outline" className="gap-2" onClick={async () => {
+                        try { await downloadFile("/api/products/import/template", "template_products.xlsx"); } catch {}
                       }}>
                         <FileDown className="h-4 w-4" /> ดาวน์โหลดแบบฟอร์ม
                       </Button>

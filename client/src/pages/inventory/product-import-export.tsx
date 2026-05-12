@@ -10,6 +10,7 @@ import { useCompany } from "@/lib/company-context";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import ImportBatchHistory from "@/components/import-batch-history";
+import { downloadFile } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
 
@@ -271,8 +272,8 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
                     <Upload className="h-4 w-4" /> เลือกไฟล์
                   </Button>
                 </div>
-                <Button data-testid="button-download-template" variant="outline" className="w-full gap-2" onClick={() => {
-                  window.open("/api/products/import/template", "_blank");
+                <Button data-testid="button-download-template" variant="outline" className="w-full gap-2" onClick={async () => {
+                  try { await downloadFile("/api/products/import/template", "template_products.xlsx"); } catch {}
                 }}>
                   <FileDown className="h-4 w-4" /> ดาวน์โหลดแบบฟอร์ม (Template)
                 </Button>
@@ -306,7 +307,7 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
                     <Button data-testid="button-bundle-select-file" onClick={() => bundleFileRef.current?.click()} className="gap-2 bg-purple-600 hover:bg-purple-700">
                       <Upload className="h-4 w-4" /> เลือกไฟล์
                     </Button>
-                    <Button data-testid="button-bundle-template" variant="outline" className="gap-2" onClick={() => window.open("/api/bundles/import/template", "_blank")}>
+                    <Button data-testid="button-bundle-template" variant="outline" className="gap-2" onClick={async () => { try { await downloadFile("/api/bundles/import/template", "template_bundles.xlsx"); } catch {} }}>
                       <FileDown className="h-4 w-4" /> Template
                     </Button>
                   </div>

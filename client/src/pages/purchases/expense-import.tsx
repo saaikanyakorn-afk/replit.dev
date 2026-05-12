@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
 import ImportBatchHistory from "@/components/import-batch-history";
+import { downloadFile } from "@/lib/queryClient";
 import {
   Upload, FileSpreadsheet, Eye, CheckCircle2, XCircle,
   AlertCircle, ArrowLeft, FileText, Loader2, ChevronDown, ChevronUp, Download,
@@ -181,8 +182,9 @@ export default function ExpenseImport() {
     setExpandedDocs(new Set());
   };
 
-  const handleDownloadTemplate = () => {
-    window.open("/api/expenses/import/template", "_blank");
+  const handleDownloadTemplate = async () => {
+    try { await downloadFile("/api/expenses/import/template", "template_expenses.xlsx"); }
+    catch { toast({ title: "ดาวน์โหลด template ไม่สำเร็จ", variant: "destructive" }); }
   };
 
   const selectedCount = previewData ? previewData.documents.filter(d => selectedDocs.has(d.key) && !d.hasErrors).length : 0;
