@@ -1706,4 +1706,49 @@ app.post("/api/expense-journal-preview", requireAuth, async (req, res) => {
   }
 });
 
+app.post("/api/accounts/merge-template", requireAuth, requireModule("accounting"), async (req, res) => {
+  try {
+    const user = req.user as any;
+    const { companyId, template } = req.body;
+    if (!companyId || !template) return res.status(400).json({ message: "กรุณาระบุ companyId และ template" });
+
+    const company = await storage.getCompany(companyId);
+    if (!company) return res.status(404).json({ message: "ไม่พบบริษัท" });
+    if (user.tenantId && company.tenantId !== user.tenantId) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
+
+    const { getChartOfAccounts } = await import("@shared/chart-of-accounts");
+    const templateAccounts = getChartOfAccounts(template);
+    if (templateAccounts.length === 0) return res.status(400).json({ message: "ไม่พบ template นี้" });
+
+    const existingAccounts = await db.select({ code: accounts.code }).from(accounts).where(eq(accounts.companyId, companyId));
+    const existingCodes = new Set(existingAccounts.map(a => a.code));
+
+    const toInsert = templateAccounts.filter(a => !existingCodes.has(a.code));
+    let added = 0;
+    for (const acc of toInsert) {
+      try {
+        await db.insert(accounts).values({
+          companyId, code: acc.code, name: acc.name,
+          nameTh: acc.nameTh, nameZh: acc.nameZh,
+          type: acc.type, parentCode: acc.parentCode, isHeader: acc.isHeader,
+        });
+        added++;
+      } catch { /* skip duplicate */ }
+    }
+
+    if (added > 0) {
+      const refreshed = await db.select().from(accounts).where(eq(accounts.companyId, companyId));
+      const usedParents = new Set(refreshed.map(a => a.parentCode).filter(Boolean));
+      for (const acc of refreshed) {
+        const shouldBeHeader = usedParents.has(acc.code);
+        if (acc.isHeader !== shouldBeHeader) {
+          await db.update(accounts).set({ isHeader: shouldBeHeader }).where(eq(accounts.id, acc.id));
+        }
+      }
+    }
+
+    res.json({ success: true, added, skipped: toInsert.length - added, total: templateAccounts.length, existing: existingCodes.size });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
 }

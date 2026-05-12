@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Building2, Save, Loader2, Phone, Mail, Globe, MapPin, FileText, MessageCircle, ShieldCheck, Receipt, Package } from "lucide-react";
+import { Building2, Save, Loader2, Phone, Mail, Globe, MapPin, FileText, MessageCircle, ShieldCheck, Receipt, Package, BookOpen, CheckCircle2, AlertCircle } from "lucide-react";
 import { DatePicker, type DateFormat } from "@/components/ui/date-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -115,6 +115,45 @@ export default function CompanyInfo() {
 
   const handleSave = () => mutation.mutate(form);
   const set = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [mergeResult, setMergeResult] = useState<{ added: number; existing: number } | null>(null);
+
+  const CHART_TEMPLATES = [
+    { key: "standard", label: "มาตรฐาน (ทั่วไป)", description: "384 บัญชี — เหมาะกับธุรกิจทุกประเภท" },
+    { key: "ecommerce", label: "E-Commerce / ขายออนไลน์", description: "+ 111 บัญชี — Shopee, Lazada, TikTok Shop wallet และลูกหนี้แพลตฟอร์ม" },
+    { key: "accounting_firm", label: "สำนักงานบัญชี", description: "+ 38 บัญชี — รายได้ค่าทำบัญชี, ค่าสอบบัญชี, ค่ายื่นภาษี, ค่าจดทะเบียน" },
+    { key: "restaurant", label: "ร้านอาหาร / คาเฟ่", description: "+ 71 บัญชี — Grab/LINE MAN/foodpanda wallet, สินค้าวัตถุดิบอาหาร" },
+    { key: "gas_station", label: "ปั๊มน้ำมัน", description: "+ 47 บัญชี — สต็อกน้ำมัน, ภาษีท้องถิ่น" },
+  ];
+
+  const mergeMutation = useMutation({
+    mutationFn: async ({ companyId, template }: { companyId: number; template: string }) => {
+      const r = await fetch("/api/accounts/merge-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ companyId, template }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ message: "เกิดข้อผิดพลาด" }));
+        throw new Error(err.message);
+      }
+      return r.json();
+    },
+    onSuccess: (data) => {
+      setMergeResult({ added: data.added, existing: data.existing });
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      if (data.added > 0) {
+        toast({ title: "นำเข้าผังบัญชีสำเร็จ", description: `เพิ่ม ${data.added} บัญชีใหม่ (มีอยู่แล้ว ${data.existing} บัญชี)`, variant: "success" as any });
+      } else {
+        toast({ title: "ผังบัญชีครบแล้ว", description: `ไม่มีบัญชีใหม่ที่ต้องเพิ่ม (มีครบ ${data.existing} บัญชีแล้ว)` });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -497,6 +536,59 @@ export default function CompanyInfo() {
               <Input value={form.etaxEmail} onChange={e => set("etaxEmail", e.target.value)} placeholder="etax@company.co.th (อีเมลที่ลงทะเบียนกับกรมสรรพากร)" data-testid="input-etax-email" />
               <p className="text-xs text-muted-foreground mt-1">ใช้สำหรับส่งใบกำกับภาษีอิเล็กทรอนิกส์ (e-Tax Invoice) และใบลดหนี้ ตามข้อกำหนดกรมสรรพากร</p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-violet-200 bg-violet-50/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-violet-600" />
+              นำเข้าผังบัญชีตามประเภทธุรกิจ
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">เลือก template แล้วกด "นำเข้า" — จะเพิ่มเฉพาะบัญชีที่ยังไม่มี ไม่ลบบัญชีเดิม</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              {CHART_TEMPLATES.map(tpl => (
+                <button
+                  key={tpl.key}
+                  type="button"
+                  onClick={() => { setSelectedTemplate(tpl.key); setMergeResult(null); }}
+                  className={`w-full text-left rounded-lg border-2 p-3 transition-all ${selectedTemplate === tpl.key ? "border-violet-400 bg-violet-50 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  data-testid={`button-template-${tpl.key}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedTemplate === tpl.key ? "border-violet-500" : "border-gray-300"}`}>
+                      {selectedTemplate === tpl.key && <div className="w-2 h-2 rounded-full bg-violet-500" />}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${selectedTemplate === tpl.key ? "text-violet-700" : "text-gray-700"}`}>{tpl.label}</p>
+                      <p className="text-xs text-muted-foreground">{tpl.description}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {mergeResult && (
+              <div className={`flex items-center gap-2 rounded-lg p-3 text-sm ${mergeResult.added > 0 ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-50 text-gray-600 border border-gray-200"}`}>
+                {mergeResult.added > 0
+                  ? <><CheckCircle2 className="h-4 w-4 flex-shrink-0" /> เพิ่ม <strong>{mergeResult.added}</strong> บัญชีใหม่ (มีอยู่แล้ว {mergeResult.existing} บัญชี)</>
+                  : <><AlertCircle className="h-4 w-4 flex-shrink-0" /> ผังบัญชีครบแล้ว ไม่มีบัญชีใหม่ที่ต้องเพิ่ม (มี {mergeResult.existing} บัญชี)</>
+                }
+              </div>
+            )}
+
+            <Button
+              type="button"
+              disabled={!selectedTemplate || mergeMutation.isPending || !selectedCompanyId}
+              onClick={() => mergeMutation.mutate({ companyId: selectedCompanyId!, template: selectedTemplate })}
+              className="bg-violet-600 hover:bg-violet-700 text-white"
+              data-testid="button-merge-template"
+            >
+              {mergeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <BookOpen className="h-4 w-4 mr-2" />}
+              นำเข้าผังบัญชี
+            </Button>
           </CardContent>
         </Card>
 
