@@ -393,18 +393,19 @@ export default function PurchaseInvoiceList() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <select
-                              data-testid={`select-approval-${ap.id}`}
-                              value={ap.status}
-                              onChange={e => statusMutation.mutate({ id: ap.id, status: e.target.value })}
-                              className="h-7 text-xs border border-slate-300 rounded px-1.5 bg-white w-full cursor-pointer focus:outline-none focus:ring-1"
-                              style={{ '--tw-ring-color': 'var(--theme-primary)' } as React.CSSProperties}
-                            >
-                              {Object.entries(STATUS_MAP).map(([key, val]) => (
-                                <option key={key} value={key}>{val.label}</option>
-                              ))}
-                            </select>
+                          <TableCell className="text-center">
+                            {ap.status === "pending_approval" && (
+                              <select
+                                data-testid={`select-approval-${ap.id}`}
+                                value={ap.status}
+                                onChange={e => statusMutation.mutate({ id: ap.id, status: e.target.value })}
+                                className="h-7 text-xs border border-amber-300 rounded px-1 bg-amber-50 text-amber-700 w-full cursor-pointer focus:outline-none"
+                              >
+                                <option value="pending_approval">รออนุมัติ</option>
+                                <option value="approved">อนุมัติ</option>
+                                <option value="rejected">ปฏิเสธ</option>
+                              </select>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge data-testid={`badge-payment-${ap.id}`} className={`${ps.color} border text-xs py-0.5 px-2.5 font-normal h-6`}>
