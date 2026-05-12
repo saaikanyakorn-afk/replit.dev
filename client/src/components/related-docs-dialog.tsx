@@ -29,6 +29,7 @@ const docTypeConfig: Record<string, { label: string; icon: any; color: string; l
   purchase_debit_note: { label: "ใบลดหนี้ซื้อ", icon: FileText, color: "#f94d4d", listPath: "/purchases/debit-note", searchParam: "debitNoteNo" },
   billing_note: { label: "ใบวางบิล", icon: FileText, color: "#fec90f", listPath: "/finance/billing-notes", searchParam: "billingNo" },
   credit_note: { label: "ใบลดหนี้", icon: FileX, color: "#dc2626", listPath: "/sales/credit-note", searchParam: "creditNoteNo" },
+  payment_voucher: { label: "ใบสำคัญจ่าย", icon: Receipt, color: "#03c9d7", listPath: "/finance/ap-billing", searchParam: "pvNo" },
 };
 
 const statusLabels: Record<string, { label: string; color: string }> = {

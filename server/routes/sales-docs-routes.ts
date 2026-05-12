@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, and, inArray, count, sql, isNull } from "drizzle-orm";
-import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements, warehouses, warehouseStockLevels } from "@shared/schema";
+import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements, warehouses, warehouseStockLevels, paymentVouchers, paymentVoucherLinkedDocs } from "@shared/schema";
 import { gte, lte, or } from "drizzle-orm";
 import { requireAuth, requireRole, requireAnyModule, getCompanyTenantId, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo, validateDocNo, getNextJournalEntryNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, logActivity, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, recomputePaymentStatus, deductStockBundleAware, upsertWarehouseStockLevel, upsertWarehouseReservedQty, reverseWarehouseStockBundleAware, getInventoryTriggers } from "../route-helpers";
@@ -3463,6 +3463,13 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
           }
         }
       }
+      const pvLinks = await db.select({ paymentVoucherId: paymentVoucherLinkedDocs.paymentVoucherId }).from(paymentVoucherLinkedDocs).where(and(eq(paymentVoucherLinkedDocs.docType, "AP"), eq(paymentVoucherLinkedDocs.docId, id)));
+      for (const link of pvLinks) {
+        const [pv] = await db.select().from(paymentVouchers).where(eq(paymentVouchers.id, link.paymentVoucherId));
+        if (pv) related.push({ type: "payment_voucher", id: pv.id, docNo: pv.pvNo, date: pv.pvDate, status: pv.status || "approved", totalAmount: pv.totalAmount || "0" });
+      }
+      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.refDocType, "purchase_invoice"), eq(journalEntries.refDocId, id)));
+      for (const je of jes) related.push({ type: "journal", id: je.id, docNo: je.entryNo, date: je.entryDate, status: je.status || "approved", totalAmount: je.totalDebit || "0" });
 
     } else if (docType === "expense") {
       const [exp] = await db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.companyId, companyId)));

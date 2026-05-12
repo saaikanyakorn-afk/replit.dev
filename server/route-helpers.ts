@@ -1262,10 +1262,13 @@ export async function recomputeAPPaymentStatus(docType: "purchaseInvoice" | "exp
   const docTotal = parseFloat((doc as any).totalAmount || "0");
   const linkedDocs = await db.select().from(paymentVoucherLinkedDocs).where(and(eq(paymentVoucherLinkedDocs.docType, pvDocType), eq(paymentVoucherLinkedDocs.docId, docId)));
   const totalPaid = linkedDocs.reduce((sum: number, ld: any) => sum + parseFloat(ld.amount || "0"), 0);
-  let status: "unpaid" | "partial" | "paid" = "unpaid";
-  if (totalPaid > 0 && totalPaid < docTotal - 0.01) status = "partial";
-  else if (totalPaid >= docTotal - 0.01 && totalPaid > 0) status = "paid";
-  await db.update(table).set({ paymentStatus: status }).where(eq(table.id, docId));
+  let payStatus: "unpaid" | "partial" | "paid" = "unpaid";
+  if (totalPaid > 0 && totalPaid < docTotal - 0.01) payStatus = "partial";
+  else if (totalPaid >= docTotal - 0.01 && totalPaid > 0) payStatus = "paid";
+  const updateFields: any = { paymentStatus: payStatus };
+  if (payStatus === "paid") updateFields.status = "paid";
+  else if (payStatus === "unpaid" && (doc as any).status === "paid") updateFields.status = "approved";
+  await db.update(table).set(updateFields).where(eq(table.id, docId));
 }
 
 export async function deleteCompaniesCascade(companyIds: number[]): Promise<{ deleted: number; errors: string[] }> {
