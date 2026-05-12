@@ -63,9 +63,14 @@ export default function PaymentMethodSettings() {
     enabled: !!selectedCompanyId,
   });
 
-  const cashBankAccounts = accountsList.filter((a: any) =>
+  const receiveAccounts = accountsList.filter((a: any) =>
     a.code?.startsWith("1") && a.active !== false && (a.type === "asset" || a.type === "assets")
   );
+  const payAccounts = accountsList.filter((a: any) =>
+    (a.code?.startsWith("1") || a.code?.startsWith("2")) && a.active !== false
+  );
+  const cashBankAccounts = activeTab === "pay" ? payAccounts : receiveAccounts;
+  const getAccountsForType = (type: "receive" | "pay") => type === "pay" ? payAccounts : receiveAccounts;
 
   const filteredMethods = methods.filter((m: any) => (m.paymentType || "receive") === activeTab);
 
