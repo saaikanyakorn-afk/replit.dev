@@ -95,7 +95,10 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 function ScrollToTopButton() {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 300);
+    const onScroll = () => {
+      const pageHasOwnBtn = !!document.querySelector('[data-testid="btn-scroll-to-top"]');
+      setVisible(!pageHasOwnBtn && window.scrollY > 300);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
