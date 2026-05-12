@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { FileText, Search, DollarSign, Clock, AlertTriangle, CheckCircle, Users, CreditCard, Loader2, ListChecks, Receipt, ChevronDown, ChevronRight, Link2, Trash2 } from "lucide-react";
+import { FileText, Search, DollarSign, Clock, AlertTriangle, CheckCircle, Users, CreditCard, Loader2, ListChecks, Receipt, ChevronDown, ChevronRight, Link2, Trash2, BookOpen } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { formatDate } from "@/lib/format";
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import ThaiDateInput from "@/components/thai-date-input";
 import JournalPreviewPanel, { type JournalLine } from "@/components/journal-preview-panel";
 import { toLocalDateStr } from "@/lib/utils";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 
 import { useDateSettings } from "@/hooks/use-date-settings";
 function fmt(n: number) {
@@ -43,6 +43,7 @@ export default function APBilling() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const searchStr = useSearch();
+  const [, navigate] = useLocation();
 
   const [search, setSearch] = useState("");
   const [journalOverrideLines, setJournalOverrideLines] = useState<JournalLine[] | null>(null);
@@ -561,6 +562,22 @@ export default function APBilling() {
                             <span className="text-xs text-muted-foreground">{formatDate(pv.pvDate, dateEra, dateFmt)}</span>
                             <Badge className="text-[9px] bg-blue-50 text-blue-600 border-0">{pv.paymentMethod || "โอนเงิน"}</Badge>
                             <span className="text-sm font-bold" style={{ color: "#03c9d7" }}>฿{fmt(pv.totalAmount)}</span>
+                            <button
+                              data-testid={`button-journal-pv-${pv.id}`}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  const res = await fetch(`/api/journal-entries/by-source/payment-voucher/${pv.id}`, { credentials: "include" });
+                                  if (res.ok) {
+                                    const j = await res.json();
+                                    if (j?.id) navigate(`/journal/edit/${j.id}`);
+                                  }
+                                } catch {}
+                              }}
+                              className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-700 hover:underline"
+                            >
+                              <BookOpen className="h-3 w-3" />ดูบัญชี
+                            </button>
                             {isDeleting ? (
                               <div className="flex items-center gap-1">
                                 <Button
