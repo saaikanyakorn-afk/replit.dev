@@ -78,7 +78,7 @@ export default function RelatedDocsDialog({
     setRelated([]);
     (async () => {
       try {
-        const res = await fetch(`/api/related-documents/${docType}/${docId}?companyId=${companyId}`, { credentials: "include" });
+        const res = await fetch(`/api/related-documents/${docType}/${docId}?companyId=${companyId}`, { credentials: "include", cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setRelated(data || []);
