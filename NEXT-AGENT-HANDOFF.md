@@ -4,6 +4,48 @@ Read this file first before touching anything.
 
 ---
 
+## ENTRY #013: Bug fixes — TIV reservation release + ต้นทุน/หน่วย ฿0.00 (2026-05-12)
+
+### Bug 3: SO reservation ไม่ถูก release หลัง TIV สร้างสำเร็จ
+**Root cause**: TIV CREATE route (`/api/tax-invoices` POST) ไม่มีการเรียก `releaseSOStock` เลย ต่างจาก IV CREATE ที่มีที่ line ~1058 (ใช้ `result.salesOrderId`). TIV table ไม่มี `salesOrderId` column ใน schema → ต้องใช้ `body.refDoc` แทน
+**Fix**: เพิ่ม block หลัง `deductStockBundleAware` (line ~2096) ใน `sales-docs-routes.ts`:
+- ถ้า `body.refDoc` ขึ้นต้นด้วย `"SO"` → `SELECT id FROM sales_orders WHERE order_no = refDoc` → `fetchSalesOrderItems(soId)` → `releaseSOStock(soItems, companyId)`
+- ใช้ raw SQL (`db.execute(sql\`...\``) เพราะ `salesOrders.orderNo` อาจไม่ match column ใน schema
+**DB manual fix**: SO6900001 reservation ค้างอยู่ (TIV สร้างไปก่อน fix) → `UPDATE warehouse_stock_levels SET reserved_qty=0 WHERE product_id=5399 AND warehouse_id=32` + `UPDATE product_stock SET reserved_qty=0 WHERE product_id=5399` ✓
+
+### Bug 4: ต้นทุน/หน่วย = ฿0.00 ในหน้าคลังสินค้า / Stock card
+**Root cause**: ยอดต้น (initial) stock_movements ถูกสร้างด้วย `unit_cost=0` (ไม่ได้ใส่ cost ตอน import). `inventory-costing.ts:calculateMovingAverage()` คำนวณ running avg จาก inbound movements → avg=0 → ต้นทุนทั้งหมด=0
+**`product_stock` table ไม่มี `avgCost` column** — cost คำนวณ live จาก stock_movements เสมอ
+**Fix**: DB backfill 779 rows:
+```sql
+UPDATE stock_movements sm
+SET unit_cost = p.cost, total_cost = ROUND(ABS(sm.quantity) * p.cost, 2)
+FROM products p
+WHERE sm.product_id = p.id AND sm.company_id = p.company_id
+  AND sm.movement_type = 'initial' AND sm.unit_cost = 0
+  AND sm.company_id = 3684 AND p.cost > 0;
+```
+315 rows ที่เหลือ (unit_cost=0) = products ที่ `products.cost=0` จริงๆ (ไม่มี cost ใน master) → ถูกต้องแล้ว ไม่ต้อง fix
+
+### Moving average ของ product 5399 หลัง fix:
+- id=14924: initial 77u × ฿360 = ฿27,720
+- id=14925: initial 5u × ฿360 = ฿1,800 → runningQty=82, runningAvg=฿360
+- id=16019: sale_deduct -10u ที่ avg=฿360 → cost=฿3,600, กำไร=ราคาขาย-3600
+- คงเหลือ: 72u × ฿360 = ฿25,920 ✓
+
+### Files changed
+| File | สิ่งที่แก้ |
+|---|---|
+| `server/routes/sales-docs-routes.ts` | TIV CREATE: เพิ่ม SO reservation release block (~line 2096) |
+| DB: `stock_movements` | backfill 779 rows: unit_cost + total_cost จาก product.cost |
+| DB: `warehouse_stock_levels` | manual reset reserved_qty=0 สำหรับ product 5399 warehouse 32 |
+| DB: `product_stock` | manual reset reserved_qty=0 สำหรับ product 5399 |
+
+### PENDING: push to production (#57–#63 pending — พี่ช้าง authorize)
+DB backfill ทำบน dev DB แล้ว — production DB ยังไม่ได้แก้ (รอ push พร้อม migrate script)
+
+---
+
 ## ROLES
 
 - **พี่ช้าง** = Technical Authority — all production pushes require explicit authorization from พี่ช้าง
