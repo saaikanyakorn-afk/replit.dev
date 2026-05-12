@@ -5,6 +5,7 @@ import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzl
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
+import { runInitialStockMovementBackfill } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { parsePagination, paginatedResponse } from "./pagination";
 import * as XLSX from "xlsx";
@@ -27,6 +28,9 @@ export function registerProductsRoutes(app: Express) {
   // runProductSplitMigration(db).catch((err: any) => { // ✅ DONE 2026-05-11T13:35:09Z — commented out after verify
   //   console.error("[migration] ❌ runProductSplitMigration failed — server continues but product split tables may be incomplete:", err.message);
   // });
+  runInitialStockMovementBackfill(db).catch((err: any) => {
+    console.error("[migration] ❌ runInitialStockMovementBackfill failed:", err.message);
+  });
 
 // ==================== Product Categories ====================
 app.get("/api/product-categories", requireAuth, async (req, res) => {
@@ -541,21 +545,17 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
         // บันทึก stock_movement สำหรับ initial stock ที่ตั้งจาก Excel import
         const delta = qty - prevQty;
         if (delta !== 0) {
-          try {
-            await db.insert(stockMovements).values({
-              companyId,
-              productId,
-              movementType: "initial",
-              quantity: String(delta),
-              notes: `ตั้งต้นสต๊อก (นำเข้า Excel) คลัง ${entry.warehouseName || warehouseId}`,
-              referenceType: null,
-              referenceId: null,
-              unitCost: "0",
-              totalCost: "0",
-            });
-          } catch (mvErr: any) {
-            console.error(`[ProductImport] stock_movement insert failed pid=${productId}:`, mvErr.message);
-          }
+          await db.insert(stockMovements).values({
+            companyId,
+            productId,
+            movementType: "initial",
+            quantity: String(delta),
+            notes: `ตั้งต้นสต๊อก (นำเข้า Excel) คลัง ${entry.warehouseName || warehouseId}`,
+            referenceType: null,
+            referenceId: null,
+            unitCost: "0",
+            totalCost: "0",
+          });
         }
         stockSetCount++;
       }

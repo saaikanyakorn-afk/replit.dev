@@ -877,3 +877,63 @@ export async function runProductSplitMigration(db: any) {
     throw new Error(`[runProductSplitMigration] Phase 3 backfill failed: ${err.message}`);
   }
 }
+
+// =============================================================================
+// INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12)
+// Problem: products imported via Excel before commit 080c7528 (2026-05-11) had
+// their stock set directly in warehouse_stock_levels without creating any
+// stock_movements record. Stock card shows 0 movements for those products.
+// Fix: INSERT one initial movement per warehouse_stock_level row (quantity > 0)
+// for any (company_id, product_id) that has no existing initial movement.
+// Additive only — no existing rows touched — no backup required.
+// Caller: server/routes/products-routes.ts (registerProductsRoutes startup)
+// History: db/schema-history.md ENTRY #010
+// =============================================================================
+export async function runInitialStockMovementBackfill(db: any) {
+  const FLAG = "INITIAL_STOCK_MOVEMENT_BACKFILL_20260512";
+  const check = await db.execute(sql.raw(
+    `SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`
+  ));
+  if ((check.rows || []).length > 0) {
+    console.log(`[migration] ⏭️ ${FLAG} already done — skipping`);
+    return;
+  }
+  try {
+    const result = await db.execute(sql.raw(`
+      INSERT INTO stock_movements
+        (company_id, product_id, movement_type, quantity, notes,
+         reference_type, reference_id, unit_cost, total_cost, created_at)
+      SELECT
+        wsl.company_id,
+        wsl.product_id,
+        'initial',
+        wsl.quantity,
+        'ตั้งต้นสต๊อก (ตั้งต้น) คลัง ' || COALESCE(w.name, 'ไม่ทราบ'),
+        NULL,
+        NULL,
+        '0',
+        '0',
+        NOW()
+      FROM warehouse_stock_levels wsl
+      LEFT JOIN warehouses w
+        ON w.id = wsl.warehouse_id AND w.company_id = wsl.company_id
+      WHERE wsl.quantity::numeric > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM stock_movements sm
+          WHERE sm.company_id = wsl.company_id
+            AND sm.product_id = wsl.product_id
+            AND sm.movement_type = 'initial'
+        )
+    `));
+    const inserted = result.rowCount ?? 0;
+    console.log(`[migration] ✅ ${FLAG} — backfilled ${inserted} initial stock movements`);
+    await db.execute(sql.raw(
+      `INSERT INTO system_config (config_key, config_value)
+       VALUES ('${FLAG}', 'done_${new Date().toISOString()}')
+       ON CONFLICT (config_key) DO NOTHING`
+    ));
+  } catch (err: any) {
+    console.error(`[migration] ❌ ${FLAG} failed:`, err.message);
+    throw new Error(`[runInitialStockMovementBackfill] failed: ${err.message}`);
+  }
+}

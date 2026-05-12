@@ -236,3 +236,31 @@ Backup location: `db/backups/YYYY-MM-DD_orphan_stock_movements_before_cleanup.sq
 - Restart #1: migration ran — FLAG `PRODUCT_SPLIT_MIGRATION_20260510` = `done_2026-05-11T13:35:09.281Z`
 - Verify: `active_products` 2,603 | `inactive_products` 778 | `products` 3,381 — 2,603+778=3,381 ✅ | 0 orphan rows ✅
 - Restart #2: migration block commented out — commit `98d3dd2c` — block gone permanently
+
+---
+
+## ENTRY #010 — 2026-05-12 — Initial Stock Movement Backfill
+
+**What changed:**
+- Inserted 1,091 rows into `stock_movements` (movement_type = `initial`)
+- Source: `warehouse_stock_levels` WHERE quantity > 0 AND no existing initial movement for (company_id, product_id)
+- Notes pattern: `ตั้งต้นสต๊อก (ตั้งต้น) คลัง {warehouse_name}`
+- unit_cost = 0, total_cost = 0, reference_type = NULL, reference_id = NULL
+- created_at = NOW() at time of migration run (2026-05-12T08:05:59Z)
+
+**Backup location:** Not required — additive INSERT only, no existing rows modified or deleted.
+
+**Migration code:** `shared/schema-extra.ts` → `runInitialStockMovementBackfill()`
+**Caller:** `server/routes/products-routes.ts` (registerProductsRoutes startup)
+**Flag:** `INITIAL_STOCK_MOVEMENT_BACKFILL_20260512` in `system_config`
+**Value:** `done_2026-05-12T08:06:00.037Z`
+
+**Also fixed in this session:**
+- `products-routes.ts` import execute: removed silent try-catch around `stock_movements` INSERT — Rule 0a compliance
+- `products-routes.ts` import execute: movement_type already = `initial`, delta-based (qty - prevQty) — correct going forward for new Excel imports
+
+**Reason:** Products imported via Excel before commit `080c7528` (2026-05-11) had stock set directly in `warehouse_stock_levels` without creating any `stock_movements` record. Stock card (สต๊อกการ์ด) showed 0 movements for all products on production. This migration backfills those missing initial entries so the stock card reflects the opening balance correctly.
+
+**Status:** ✅ Ran on dev 2026-05-12 — 1,091 rows inserted, flag set
+- Restart #2: migration skipped (flag guard ⏭️) ✅
+- Awaiting: พี่ทราย test on dev → พี่ช้าง authorize production deploy
