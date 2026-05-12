@@ -1351,6 +1351,7 @@ export function registerPurchaseRoutes(app: Express) {
         }
       }
 
+      console.log(`[PI-Stock-DEBUG] items type=${typeof items} isArray=${Array.isArray(items)} length=${Array.isArray(items)?items.length:'n/a'}`);
       if (items && Array.isArray(items)) {
         try {
           const [piCompany] = await db.select({ stockEntrySource: companies.stockEntrySource }).from(companies).where(eq(companies.id, existing.companyId));
