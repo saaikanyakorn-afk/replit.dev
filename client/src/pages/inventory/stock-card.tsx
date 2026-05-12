@@ -232,11 +232,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
     if (!refType || !refId) return;
     const info = REF_TYPE_LABELS[refType];
     if (!info) return;
-    if (info.editPath) {
-      setLocation(`${info.editPath}/${refId}`);
-    } else if (info.path) {
-      setLocation(info.path);
-    }
+    setLocation(info.path);
   }
 
   const stockColor = getStockColor(currentQty);
