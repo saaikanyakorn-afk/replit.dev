@@ -3,7 +3,7 @@ import { registerIndexExtraRoutes } from "../index-extra";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, and, or, isNull, inArray , sql } from "drizzle-orm";
-import { users, companies, employees, firmClients, permissions, tenants, accounts, tenantSubscriptions, subscriptionPlans, insertUserSchema } from "@shared/schema";
+import { users, companies, employees, firmClients, permissions, tenants, accounts, tenantSubscriptions, subscriptionPlans, insertUserSchema, journalLines } from "@shared/schema";
 import { requireAuth, requireAdmin, requireRole } from "../route-middleware";
 import { hashPassword } from "../auth";
 import { z } from "zod";
@@ -882,69 +882,96 @@ app.patch("/api/companies/:id", requireAuth, async (req, res) => {
   const company = await storage.updateCompany(companyId, req.body);
   if (!company) return res.status(404).json({ message: "ไม่พบบริษัท" });
 
-  // Auto-merge extra accounts from template when businessType changes
+  // Auto-merge + cleanup accounts when businessType changes
   if (req.body.businessType) {
     try {
-      const { ECOMMERCE_EXTRA_ACCOUNTS, ACCOUNTING_FIRM_EXTRA_ACCOUNTS } = await import("@shared/chart-of-accounts");
+      const {
+        ECOMMERCE_EXTRA_ACCOUNTS,
+        ACCOUNTING_FIRM_EXTRA_ACCOUNTS,
+        GAS_STATION_EXTRA_ACCOUNTS,
+        RESTAURANT_EXTRA_ACCOUNTS,
+      } = await import("@shared/chart-of-accounts");
+
       const bt = req.body.businessType;
-      let extraAccounts: typeof ECOMMERCE_EXTRA_ACCOUNTS = [];
-      if (bt === "online_shop" || bt === "ecommerce") {
-        extraAccounts = ECOMMERCE_EXTRA_ACCOUNTS;
-      } else if (bt === "accounting" || bt === "accounting_firm" || bt === "service") {
-        extraAccounts = ACCOUNTING_FIRM_EXTRA_ACCOUNTS;
-      }
 
-      if (extraAccounts.length > 0) {
-        const existingAccounts = await db.select().from(accounts).where(eq(accounts.companyId, companyId));
-        const existingByCode = new Map(existingAccounts.map(a => [a.code, a]));
-        const allCodes = new Set([...existingAccounts.map(a => a.code), ...extraAccounts.map(a => a.code)]);
-        const parentCodes = new Set(extraAccounts.map(a => a.parentCode).filter(Boolean));
-        const allParentCodes = new Set([...existingAccounts.filter(a => {
-          const children = existingAccounts.filter(c => c.parentCode === a.code);
-          return children.length > 0;
-        }).map(a => a.code), ...parentCodes]);
+      // Map each template key → its extra account codes
+      const templateExtraMap: Record<string, Set<string>> = {
+        ecommerce:        new Set(ECOMMERCE_EXTRA_ACCOUNTS.map(a => a.code)),
+        online_shop:      new Set(ECOMMERCE_EXTRA_ACCOUNTS.map(a => a.code)),
+        accounting_firm:  new Set(ACCOUNTING_FIRM_EXTRA_ACCOUNTS.map(a => a.code)),
+        accounting:       new Set(ACCOUNTING_FIRM_EXTRA_ACCOUNTS.map(a => a.code)),
+        service:          new Set(ACCOUNTING_FIRM_EXTRA_ACCOUNTS.map(a => a.code)),
+        gas_station:      new Set(GAS_STATION_EXTRA_ACCOUNTS.map(a => a.code)),
+        restaurant:       new Set(RESTAURANT_EXTRA_ACCOUNTS.map(a => a.code)),
+      };
 
-        for (const tmpl of extraAccounts) {
-          const existing = existingByCode.get(tmpl.code);
-          if (!existing) {
-            // Insert new account
-            const hasChildren = parentCodes.has(tmpl.code);
-            try {
-              await db.insert(accounts).values({
-                companyId,
-                code: tmpl.code,
-                name: tmpl.name,
-                nameTh: tmpl.nameTh,
-                nameZh: tmpl.nameZh,
-                type: tmpl.type,
-                parentCode: tmpl.parentCode,
-                isHeader: hasChildren,
-              });
-            } catch (e: any) { /* skip if duplicate */ }
-          } else {
-            const needsUpdate = existing.name !== tmpl.name || existing.nameTh !== tmpl.nameTh;
-            if (needsUpdate) {
-              await db.update(accounts)
-                .set({ name: tmpl.name, nameTh: tmpl.nameTh, nameZh: tmpl.nameZh })
-                .where(and(eq(accounts.companyId, companyId), eq(accounts.code, tmpl.code)));
-            }
+      // Codes that belong to the NEW template (keep these)
+      const keepCodes = templateExtraMap[bt] ?? new Set<string>();
+
+      // Codes that belong to OTHER templates (candidates for cleanup)
+      const otherTemplateCodes = new Set<string>();
+      for (const [key, codeSet] of Object.entries(templateExtraMap)) {
+        if (key !== bt) {
+          for (const code of codeSet) {
+            if (!keepCodes.has(code)) otherTemplateCodes.add(code);
           }
         }
+      }
 
-        // Fix isHeader flags: any account that is parentCode of another is a header
-        const refreshedAccounts = await db.select().from(accounts).where(eq(accounts.companyId, companyId));
-        const usedParents = new Set(refreshedAccounts.map(a => a.parentCode).filter(Boolean));
-        for (const acc of refreshedAccounts) {
-          const shouldBeHeader = usedParents.has(acc.code);
-          if (acc.isHeader !== shouldBeHeader) {
-            await db.update(accounts)
-              .set({ isHeader: shouldBeHeader })
-              .where(eq(accounts.id, acc.id));
+      // --- STEP 1: Merge new template accounts ---
+      const newExtraList = bt === "online_shop" || bt === "ecommerce"   ? ECOMMERCE_EXTRA_ACCOUNTS
+                         : bt === "accounting_firm" || bt === "accounting" || bt === "service" ? ACCOUNTING_FIRM_EXTRA_ACCOUNTS
+                         : bt === "gas_station"    ? GAS_STATION_EXTRA_ACCOUNTS
+                         : bt === "restaurant"     ? RESTAURANT_EXTRA_ACCOUNTS
+                         : [];
+
+      const existingAccounts = await db.select().from(accounts).where(eq(accounts.companyId, companyId));
+      const existingByCode = new Map(existingAccounts.map(a => [a.code, a]));
+      const newParentCodes = new Set(newExtraList.map(a => a.parentCode).filter(Boolean));
+
+      for (const tmpl of newExtraList) {
+        const existing = existingByCode.get(tmpl.code);
+        if (!existing) {
+          try {
+            await db.insert(accounts).values({
+              companyId, code: tmpl.code, name: tmpl.name,
+              nameTh: tmpl.nameTh, nameZh: tmpl.nameZh,
+              type: tmpl.type, parentCode: tmpl.parentCode,
+              isHeader: newParentCodes.has(tmpl.code),
+            });
+          } catch { /* skip duplicate */ }
+        }
+      }
+
+      // --- STEP 2: Cleanup accounts from other templates (only if unused) ---
+      if (otherTemplateCodes.size > 0) {
+        const staleAccounts = existingAccounts.filter(a => otherTemplateCodes.has(a.code));
+        if (staleAccounts.length > 0) {
+          const staleIds = staleAccounts.map(a => a.id);
+          // Check which stale accounts have been used in journal lines
+          const usedRows = await db.select({ accountId: journalLines.accountId })
+            .from(journalLines)
+            .where(inArray(journalLines.accountId, staleIds));
+          const usedAccountIds = new Set(usedRows.map(r => r.accountId));
+          const toDelete = staleAccounts.filter(a => !usedAccountIds.has(a.id));
+          if (toDelete.length > 0) {
+            await db.delete(accounts).where(inArray(accounts.id, toDelete.map(a => a.id)));
+            console.log(`[businessType cleanup] deleted ${toDelete.length} stale accounts for company ${companyId}`);
           }
+        }
+      }
+
+      // --- STEP 3: Fix isHeader flags ---
+      const refreshed = await db.select().from(accounts).where(eq(accounts.companyId, companyId));
+      const usedParents = new Set(refreshed.map(a => a.parentCode).filter(Boolean));
+      for (const acc of refreshed) {
+        const shouldBeHeader = usedParents.has(acc.code);
+        if (acc.isHeader !== shouldBeHeader) {
+          await db.update(accounts).set({ isHeader: shouldBeHeader }).where(eq(accounts.id, acc.id));
         }
       }
     } catch (e: any) {
-      console.log("Auto-merge accounts for businessType change:", e.message);
+      console.log("Auto-merge/cleanup accounts for businessType change:", e.message);
     }
   }
 
