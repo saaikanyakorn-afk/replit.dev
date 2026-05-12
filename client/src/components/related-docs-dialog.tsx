@@ -127,7 +127,11 @@ export default function RelatedDocsDialog({
                   data-testid={`related-link-${doc.type}-${doc.id}`}
                   onClick={() => {
                     onOpenChange(false);
-                    navigate(`${config.listPath}?companyId=${companyId}&search=${encodeURIComponent(doc.docNo)}`);
+                    if (doc.type === "payment_voucher") {
+                      navigate(`${config.listPath}?companyId=${companyId}&apId=${docId}`);
+                    } else {
+                      navigate(`${config.listPath}?companyId=${companyId}&${config.searchParam}=${encodeURIComponent(doc.docNo)}`);
+                    }
                   }}
                   className="w-full flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 hover:bg-gray-100 hover:border-gray-200 transition-colors text-left group"
                 >
