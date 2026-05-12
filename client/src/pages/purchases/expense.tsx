@@ -1123,7 +1123,6 @@ export default function Expense() {
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="เครดิต">เครดิต (ตั้งเจ้าหนี้)</SelectItem>
                           {activePaymentMethods.length > 0 ? (
                             activePaymentMethods.map((m: any) => {
                               const linkedAcc = m.accountCode ? accounts.find((a: any) => a.code === m.accountCode) : null;

@@ -602,7 +602,6 @@ export default function PurchaseDepositForm() {
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="เครดิต">เครดิต (ตั้งเจ้าหนี้)</SelectItem>
                           {activePaymentMethods.length > 0 ? (
                             activePaymentMethods.map((m: any) => (
                               <SelectItem key={m.id} value={m.name || m.nameTh}>

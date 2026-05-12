@@ -1185,7 +1185,6 @@ export default function PurchaseInvoice() {
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="เครดิต">เครดิต (ตั้งเจ้าหนี้)</SelectItem>
                           {activePaymentMethods.map((m: any) => (
                             <SelectItem key={m.id} value={m.name || m.nameTh}>
                               {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
