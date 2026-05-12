@@ -152,13 +152,41 @@ export default function ChartOfAccounts() {
     setDeleting(null);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!companyId) { toast({ title: "กรุณาเลือกบริษัทก่อน", variant: "destructive" }); return; }
-    window.open(`/api/accounts/export?companyId=${companyId}`, "_blank");
+    try {
+      const res = await fetch(`/api/accounts/export?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "chart_of_accounts_export.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Export ไม่สำเร็จ", variant: "destructive" });
+    }
   };
 
-  const handleDownloadTemplate = () => {
-    window.open("/api/accounts/import/template", "_blank");
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await fetch("/api/accounts/import/template");
+      if (!res.ok) throw new Error("template failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "template_chart_of_accounts.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "ดาวน์โหลด template ไม่สำเร็จ", variant: "destructive" });
+    }
   };
 
   const handleSeedStandard = async () => {

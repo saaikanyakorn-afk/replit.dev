@@ -68,9 +68,13 @@ app.get("/api/accounts/export", requireAuth, async (req, res) => {
     ws["!cols"] = [14, 30, 30, 20, 18, 12, 14, 10].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, "ผังบัญชี");
     const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const outBuf = Buffer.from(buf);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=chart_of_accounts_export.xlsx");
-    res.send(Buffer.from(buf));
+    res.setHeader("Content-Encoding", "identity");
+    res.setHeader("Content-Length", outBuf.length);
+    res.setHeader("Cache-Control", "no-cache");
+    res.end(outBuf);
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
