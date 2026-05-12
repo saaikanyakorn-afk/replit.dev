@@ -389,8 +389,19 @@ async function _createAutoJournalEntryInner(params: AutoJournalParams): Promise<
     ];
     console.log(`[AutoJournal] isLinkedReceipt fallback: DR ${cashCode} CR ${arCode}`);
   } else {
-    console.log(`[AutoJournal] No formula in DB for docType=${documentType}, bizType=${formulaBusinessType} — skipping (no hardcode fallback)`);
-    return { journalEntryId: null, skipped: true, reason: `ไม่พบสูตรบัญชีใน DB สำหรับ ${documentType} (${formulaBusinessType}) — กรุณาไปที่หน้าสูตรบัญชีแล้วกดตรวจสอบสูตร` };
+    // Fallback to DEFAULT_FORMULAS (same as preview) before giving up
+    const { DEFAULT_FORMULAS } = await import("@shared/accounting-formulas");
+    const defaultFormula = DEFAULT_FORMULAS.find(
+      f => f.documentType === documentType && f.businessType === formulaBusinessType
+    );
+    if (defaultFormula) {
+      console.log(`[AutoJournal] Using DEFAULT_FORMULAS fallback for docType=${documentType}, bizType=${formulaBusinessType}`);
+      noJournalEntry = defaultFormula.noJournalEntry === true;
+      formulaLines = defaultFormula.lines;
+    } else {
+      console.log(`[AutoJournal] No formula found (DB or default) for docType=${documentType}, bizType=${formulaBusinessType}`);
+      return { journalEntryId: null, skipped: true, reason: `ไม่พบสูตรบัญชีใน DB สำหรับ ${documentType} (${formulaBusinessType}) — กรุณาไปที่หน้าสูตรบัญชีแล้วกดตรวจสอบสูตร` };
+    }
   }
 
   if (noJournalEntry) {

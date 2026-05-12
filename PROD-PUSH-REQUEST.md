@@ -13,7 +13,7 @@
 ## 1. Git Commits ที่ต้อง Push
 
 ```
-DEV branch: b9e09278 → 578e4f25 (27+ commits)
+DEV branch: b9e09278 → HEAD (28+ commits)
 ```
 
 รายการ commits:
@@ -109,6 +109,7 @@ SELECT reserved_qty FROM products WHERE id = 5399;
 | **[ใหม่]** บริษัทใหม่ไม่มีผังบัญชี | สร้างบริษัทโดยไม่ระบุประเภทธุรกิจ → ได้ STANDARD 384 บัญชีเสมอ | ✅ แก้แล้ว |
 | **[ใหม่]** Export xlsx เปิดไม่ได้ | ไฟล์ผังบัญชี .xlsx ที่ download มา Excel เปิด error | ✅ แก้แล้ว |
 | **[ใหม่]** ปุ่มดาวน์โหลดทุกปุ่มในระบบ | 9 หน้า (สินทรัพย์, HR, นำเข้าค่าใช้จ่าย/ใบซื้อ/ใบขาย, สินค้า, Bundle ฯลฯ) เปลี่ยนจาก window.open → fetch+blob ทั้งหมด | ✅ แก้แล้ว |
+| **[ใหม่]** บันทึกบัญชีเอกสารซื้อ (trading) ไม่ได้ | preview แสดงได้แต่กด approve แล้ว error "ไม่พบสูตรบัญชีใน DB" — แก้ให้ fallback ไป DEFAULT_FORMULAS เหมือน preview | ✅ แก้แล้ว |
 
 ---
 
