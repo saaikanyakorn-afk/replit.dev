@@ -803,45 +803,31 @@ app.post("/api/companies", requireAuth, async (req, res) => {
     }
     const company = await storage.createCompany(parsed);
 
-    // Auto-seed extra accounts based on businessType
-    if (parsed.businessType) {
-      try {
-        const { ECOMMERCE_EXTRA_ACCOUNTS, ACCOUNTING_FIRM_EXTRA_ACCOUNTS } = await import("@shared/chart-of-accounts");
-        const bt = parsed.businessType;
-        let extraAccounts: typeof ECOMMERCE_EXTRA_ACCOUNTS = [];
-        if (bt === "online_shop" || bt === "ecommerce") {
-          extraAccounts = ECOMMERCE_EXTRA_ACCOUNTS;
-        } else if (bt === "accounting" || bt === "accounting_firm" || bt === "service") {
-          extraAccounts = ACCOUNTING_FIRM_EXTRA_ACCOUNTS;
-        }
-        if (extraAccounts.length > 0) {
-          const existingAccounts = await db.select().from(accounts).where(eq(accounts.companyId, company.id));
-          const existingByCode = new Map(existingAccounts.map(a => [a.code, a]));
-          const parentCodes = new Set(extraAccounts.map(a => a.parentCode).filter(Boolean));
-          for (const tmpl of extraAccounts) {
-            if (!existingByCode.has(tmpl.code)) {
-              const hasChildren = parentCodes.has(tmpl.code);
-              try {
-                await db.insert(accounts).values({
-                  companyId: company.id, code: tmpl.code, name: tmpl.name,
-                  nameTh: tmpl.nameTh, nameZh: tmpl.nameZh, type: tmpl.type,
-                  parentCode: tmpl.parentCode, isHeader: hasChildren,
-                });
-              } catch (e: any) { /* skip if duplicate */ }
-            }
-          }
-          // Fix isHeader flags
-          const refreshed = await db.select().from(accounts).where(eq(accounts.companyId, company.id));
-          const usedParents = new Set(refreshed.map(a => a.parentCode).filter(Boolean));
-          for (const acc of refreshed) {
-            const shouldBeHeader = usedParents.has(acc.code);
-            if (acc.isHeader !== shouldBeHeader) {
-              await db.update(accounts).set({ isHeader: shouldBeHeader }).where(eq(accounts.id, acc.id));
-            }
+    // Auto-seed full chart of accounts based on businessType (default: standard)
+    try {
+      const { getChartOfAccounts } = await import("@shared/chart-of-accounts");
+      const bt = parsed.businessType || "standard";
+      const templateKey = (bt === "online_shop") ? "ecommerce"
+                        : (bt === "accounting" || bt === "service") ? "accounting_firm"
+                        : bt;
+      const templateAccounts = getChartOfAccounts(templateKey);
+      if (templateAccounts.length > 0) {
+        const existingAccounts = await db.select({ code: accounts.code }).from(accounts).where(eq(accounts.companyId, company.id));
+        const existingCodes = new Set(existingAccounts.map(a => a.code));
+        for (const tmpl of templateAccounts) {
+          if (!existingCodes.has(tmpl.code)) {
+            try {
+              await db.insert(accounts).values({
+                companyId: company.id, code: tmpl.code, name: tmpl.name,
+                nameTh: tmpl.nameTh, nameZh: tmpl.nameZh, type: tmpl.type,
+                parentCode: tmpl.parentCode, isHeader: tmpl.isHeader,
+              });
+            } catch { /* skip duplicate */ }
           }
         }
-      } catch (e: any) { console.log("Auto-seed accounts:", e.message); }
-    }
+        await storage.seedDefaultFormulas(company.id, templateKey);
+      }
+    } catch (e: any) { console.log("Auto-seed accounts:", e.message); }
 
     try {
       await db.insert(branches).values({ companyId: company.id, code: "00000", name: "สำนักงานใหญ่", active: true });
