@@ -261,6 +261,8 @@ Backup location: `db/backups/YYYY-MM-DD_orphan_stock_movements_before_cleanup.sq
 
 **Reason:** Products imported via Excel before commit `080c7528` (2026-05-11) had stock set directly in `warehouse_stock_levels` without creating any `stock_movements` record. Stock card (สต๊อกการ์ด) showed 0 movements for all products on production. This migration backfills those missing initial entries so the stock card reflects the opening balance correctly.
 
-**Status:** ✅ Ran on dev 2026-05-12 — 1,091 rows inserted, flag set
-- Restart #2: migration skipped (flag guard ⏭️) ✅
-- Awaiting: พี่ทราย test on dev → พี่ช้าง authorize production deploy
+**Status:** ❌ CANCELLED 2026-05-12
+- Dev data cleaned up: 1,091 rows + flag `INITIAL_STOCK_MOVEMENT_BACKFILL_20260512` deleted from dev DB
+- Approach changed: user inputs วันที่เริ่มต้นสต๊อก via date picker in Excel import dialog
+- `runInitialStockMovementBackfill` commented out from schema-extra.ts — never deployed to production
+- Replacement: `stockOpenDate` field added to `/api/products/import/execute` — initial movement uses user-supplied date as `created_at`

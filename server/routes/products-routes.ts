@@ -5,7 +5,7 @@ import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzl
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
-import { runInitialStockMovementBackfill } from "@shared/schema-extra";
+// import { runInitialStockMovementBackfill } from "@shared/schema-extra"; // ❌ CANCELLED 2026-05-12 — approach changed: user inputs วันที่เริ่มต้นสต๊อก at import time
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { parsePagination, paginatedResponse } from "./pagination";
 import * as XLSX from "xlsx";
@@ -28,9 +28,6 @@ export function registerProductsRoutes(app: Express) {
   // runProductSplitMigration(db).catch((err: any) => { // ✅ DONE 2026-05-11T13:35:09Z — commented out after verify
   //   console.error("[migration] ❌ runProductSplitMigration failed — server continues but product split tables may be incomplete:", err.message);
   // });
-  runInitialStockMovementBackfill(db).catch((err: any) => {
-    console.error("[migration] ❌ runInitialStockMovementBackfill failed:", err.message);
-  });
 
 // ==================== Product Categories ====================
 app.get("/api/product-categories", requireAuth, async (req, res) => {
@@ -409,10 +406,14 @@ app.post("/api/products/import/preview", requireAuth, requireModule("inventory")
 
 app.post("/api/products/import/execute", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
-    const { companyId, products: productList, updateProducts, stockEntries } = req.body;
+    const { companyId, products: productList, updateProducts, stockEntries, stockOpenDate } = req.body;
     if (!companyId || !productList || !Array.isArray(productList)) {
       return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
     }
+    if (Array.isArray(stockEntries) && stockEntries.length > 0 && !stockOpenDate) {
+      return res.status(400).json({ message: "กรุณากำหนดวันที่เริ่มต้นสต๊อกก่อนนำเข้า" });
+    }
+    const stockOpenDateObj = stockOpenDate ? new Date(stockOpenDate + "T00:00:00") : new Date();
 
     // ── ONE-TIME CLEANUP: ENTRY #006 (2026-05-09) ──
     // Removes orphan stock_movements (movement_type='initial', no reference doc) that silently
@@ -555,6 +556,7 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
             referenceId: null,
             unitCost: "0",
             totalCost: "0",
+            createdAt: stockOpenDateObj,
           });
         }
         stockSetCount++;

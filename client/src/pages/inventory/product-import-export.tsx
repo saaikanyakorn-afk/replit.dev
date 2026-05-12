@@ -45,6 +45,7 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
   const [importPreview, setImportPreview] = useState<any>(null);
   const [importResult, setImportResult] = useState<any>(null);
   const [importing, setImporting] = useState(false);
+  const [stockOpenDate, setStockOpenDate] = useState<string>("");
   const bundleFileRef = useRef<HTMLInputElement>(null);
   const [bundlePreview, setBundlePreview] = useState<any>(null);
   const [bundleResult, setBundleResult] = useState<any>(null);
@@ -115,7 +116,7 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ companyId: selectedCompanyId, products: newItems, updateProducts: existingItems, stockEntries }),
+        body: JSON.stringify({ companyId: selectedCompanyId, products: newItems, updateProducts: existingItems, stockEntries, stockOpenDate: stockOpenDate || undefined }),
       });
       if (!r.ok) { const err = await r.json(); throw new Error(err.message); }
       const result = await r.json();
@@ -137,6 +138,7 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
     setImportResult(null);
     setBundlePreview(null);
     setBundleResult(null);
+    setStockOpenDate("");
   }
 
   async function handleBundleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -461,6 +463,21 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              {importPreview.hasWarehouseCol && importPreview.stats.stockEntries > 0 && (
+                <div className="mx-4 mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-amber-900">วันที่เริ่มต้นสต๊อก <span className="text-red-500">*</span></p>
+                    <p className="text-xs text-amber-700 mt-0.5">ยอดเปิดสต๊อกทุกรายการจะใช้วันที่นี้</p>
+                  </div>
+                  <input
+                    data-testid="input-stock-open-date"
+                    type="date"
+                    value={stockOpenDate}
+                    onChange={e => setStockOpenDate(e.target.value)}
+                    className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                  />
+                </div>
+              )}
               {importPreview.newWarehouseNames && importPreview.newWarehouseNames.length > 0 && (
                 <div className="mx-4 mt-3 rounded-md border border-blue-200 bg-blue-50 p-3">
                   <p className="text-sm font-medium text-blue-800">คลังใหม่ที่จะสร้างอัตโนมัติ:</p>
@@ -509,7 +526,11 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
               </div>
               <div className="flex justify-end gap-2 p-4 border-t">
                 <Button data-testid="button-import-cancel" variant="outline" onClick={resetImport}>ยกเลิก</Button>
-                <Button data-testid="button-import-execute" onClick={handleImportExecute} disabled={importing || (importPreview.stats.ok === 0 && !importPreview.hasWarehouseCol)}>
+                <Button
+                  data-testid="button-import-execute"
+                  onClick={handleImportExecute}
+                  disabled={importing || (importPreview.stats.ok === 0 && !importPreview.hasWarehouseCol) || (importPreview.hasWarehouseCol && importPreview.stats.stockEntries > 0 && !stockOpenDate)}
+                >
                   {importing ? "กำลังนำเข้า..." : importPreview.hasWarehouseCol ? `นำเข้า ${importPreview.totalRows} รายการ (พร้อม stock)` : `นำเข้า ${importPreview.stats.ok} รายการ`}
                 </Button>
               </div>
