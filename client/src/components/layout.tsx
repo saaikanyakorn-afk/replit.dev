@@ -96,7 +96,7 @@ function ScrollToTopButton() {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const onScroll = () => {
-      const pageHasOwnBtn = !!document.querySelector('[data-testid="btn-scroll-to-top"]');
+      const pageHasOwnBtn = !!document.querySelector('[data-testid="btn-scroll-to-top"], [data-testid="btn-scroll-top"]');
       setVisible(!pageHasOwnBtn && window.scrollY > 300);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
