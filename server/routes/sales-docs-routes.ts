@@ -3468,8 +3468,6 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
         const [pv] = await db.select().from(paymentVouchers).where(eq(paymentVouchers.id, link.paymentVoucherId));
         if (pv) related.push({ type: "payment_voucher", id: pv.id, docNo: pv.pvNo, date: pv.pvDate, status: pv.status || "approved", totalAmount: pv.totalAmount || "0" });
       }
-      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.sourceDocType, "purchase_invoice"), eq(journalEntries.sourceDocId, id)));
-      for (const je of jes) related.push({ type: "journal", id: je.id, docNo: je.entryNo, date: je.entryDate, status: je.status || "approved", totalAmount: je.totalDebit || "0" });
 
     } else if (docType === "expense") {
       const [exp] = await db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.companyId, companyId)));
