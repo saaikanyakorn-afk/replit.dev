@@ -4,6 +4,84 @@ Read this file first before touching anything.
 
 ---
 
+## ENTRY #015: ผังบัญชี — เปลี่ยน businessType เป็น trading (2026-05-12)
+
+### ปัญหา
+บริษัท พลังแสง จำกัด (id=3684) เป็นบริษัท**ซื้อมาขายไป** แต่ `companies.business_type = 'mixed'`
+→ `createAutoJournalEntry` เลือก `4100100 Service Revenue` แทน `4001000 Sales`
+
+### revenueMap logic ใน route-helpers.ts (line ~345)
+```
+trading  → 4001000 รายได้จากการขายสินค้า  ✓
+mixed    → 4100100 รายได้จากการให้บริการ  ✗
+service  → 4100100 รายได้จากการให้บริการ
+```
+
+### Fix
+1. **DB**: `UPDATE companies SET business_type='trading' WHERE id=3684` ✓
+   → TIV ใหม่ทุกใบจะ journal ไปที่ 4001000 (Sales) อัตโนมัติ
+2. **DB**: แก้ journal line ที่มีอยู่แล้วของ TIV6900001 (journal_entry id=12776):
+   - ก่อน: account_id=1747741 (4100100 Service Revenue) CR 4,000
+   - หลัง: account_id=1747736 (4001000 Sales) CR 4,000 ✓
+3. **DB**: company 3684 ไม่มี custom `accounting_formulas` สำหรับ tax_invoice
+   → ใช้ revenueMap default ทั้งหมด → แก้ businessType เพียงพอ
+
+### Journal TIV6900001 หลัง fix
+| Account | DR | CR |
+|---|---|---|
+| 1201000 ลูกหนี้การค้า | 4,280 | - |
+| 2341000 ภาษีขาย | - | 280 |
+| **4001000 รายได้จากการขายสินค้า** | - | **4,000** |
+
+### Note สำหรับ production
+Production DB ยังมี `business_type='mixed'` → ต้องรัน UPDATE เดียวกันหลัง push:
+```sql
+UPDATE companies SET business_type='trading' WHERE id=3684;
+```
+และตรวจ journal entries เก่าที่อาจใช้ 4100100 (อาจต้องแก้ manual ทีละใบ)
+
+### Status: Dev ✅ — รอพี่ช้าง authorize push production
+
+---
+
+## ENTRY #014: Bug fixes — TIV Cash→Credit + stock card navigation (2026-05-12)
+
+### Bug 5: TIV จาก SO แสดง "Cash[SO-TIV]" แทน "Credit[TIV]" + ถูก mark paid ผิด
+**Root cause**: Effect ใน `tax-invoice-form.tsx` (line 399-406 เดิม):
+```js
+if (isNew && activePaymentMethods.length > 0 && form.paymentMethod === "เครดิต") {
+  setForm(p => ({ ...p, paymentMethod: defaultMethod.accountCode }));
+}
+```
+Fire ทุกครั้งที่โหลด form ใหม่ → override "เครดิต" (default) ด้วย accountCode ของธนาคาร (e.g. "1201000") → TIV CREATE route เห็น paymentMethod ≠ "เครดิต" → `status='paid'`, `paymentStatus='paid'` ทันที
+และ dropdown "เครดิต (ตั้งลูกหนี้)" ซ่อนสำหรับ new TIV → ผู้ใช้เลือก credit ไม่ได้
+**Fix**:
+1. ลบ effect ที่ override "เครดิต" ออกทั้งก้อน (`tax-invoice-form.tsx`)
+2. เปลี่ยน condition dropdown: `activePaymentMethods.length === 0 || form.paymentMethod === "เครดิต"` (เปิดให้เห็น "เครดิต" ตลอดเมื่อ form มีค่า "เครดิต" ทั้ง new และ edit)
+3. DB fix TIV6900001 (id=10028): `payment_method='เครดิต'`, `payment_status='pending'`, `status='approved'` ✓
+**Note**: Journal entry ของ TIV6900001 (SV6900001) ถูกต้องอยู่แล้ว — DR: 1201000 ลูกหนี้การค้า 4,280 / CR: VAT 280 + Revenue 4,000
+
+### Bug 6: Stock card กดเลขเอกสารวิ่งไปหน้า edit โดยตรง
+**Fix**: `REF_TYPE_LABELS` ใน `stock-card.tsx` — เปลี่ยน path จาก `/edit` / `/form` → list path:
+- `goods_receiving/form` → `/inventory/receiving`
+- `goods_requisition/form` → `/inventory/requisition`  
+- `invoice/edit` → `/sales/invoice`
+- `tax_invoice/edit` → `/sales/tax-invoice`
+- `purchase_order/edit` → `/purchases/po`
+- `purchase_invoice/edit` → `/purchases/ap`
+และ `handleRefClick`: ลบ `/${refId}` ออก → navigate ไปแค่ list path
+
+### Files changed
+| File | สิ่งที่แก้ |
+|---|---|
+| `client/src/pages/sales/tax-invoice-form.tsx` | ลบ effect override "เครดิต"; เปิด dropdown เครดิต สำหรับ form ที่มีค่า "เครดิต" |
+| `client/src/pages/inventory/stock-card.tsx` | `REF_TYPE_LABELS` → list paths; `handleRefClick` ไม่ append `/{id}` |
+| DB: `tax_invoices` id=10028 | manual fix: payment_method/status/paymentStatus |
+
+### Status: Dev ✅ — รอพี่ช้าง authorize push production
+
+---
+
 ## ENTRY #013: Bug fixes — TIV reservation release + ต้นทุน/หน่วย ฿0.00 (2026-05-12)
 
 ### Bug 3: SO reservation ไม่ถูก release หลัง TIV สร้างสำเร็จ
