@@ -396,14 +396,6 @@ export default function TaxInvoiceForm() {
     }
   }, [defaultPrefix, isNew]);
 
-  useEffect(() => {
-    if (isNew && activePaymentMethods.length > 0 && form.paymentMethod === "เครดิต") {
-      const defaultMethod = activePaymentMethods.find((m: any) => m.isDefault);
-      if (defaultMethod) {
-        setForm(p => ({ ...p, paymentMethod: defaultMethod.accountCode }));
-      }
-    }
-  }, [activePaymentMethods, isNew, form.paymentMethod]);
 
   const { data: availableDeposits = [] } = useQuery<any[]>({
     queryKey: ["/api/deposit-receipts/available", companyId, form.customerId],
@@ -1304,7 +1296,7 @@ export default function TaxInvoiceForm() {
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(activePaymentMethods.length === 0 || (editingId && form.paymentMethod === "เครดิต")) && (
+                          {(activePaymentMethods.length === 0 || form.paymentMethod === "เครดิต") && (
                             <SelectItem value="เครดิต">เครดิต (ตั้งลูกหนี้)</SelectItem>
                           )}
                           {activePaymentMethods.length > 0 ? (
