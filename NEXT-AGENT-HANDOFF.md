@@ -36,6 +36,12 @@ ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS payment_type TEXT NOT NULL 
 ```
 (DEV รันแล้ว — PROD ยังไม่ได้รัน)
 
+### สถานะ ✅ แก้สำเร็จ
+- root cause: server เก่า bind port 5000 ค้าง → new code ไม่ได้ start → ต้อง restart workflow
+- หลัง restart ทุกอย่างทำงานถูกต้อง: paymentType="pay" บันทึกลง DB ถูกต้อง
+- company 3684 มี pay methods แล้ว: id=121 (Credit/AP 2101000), id=122 (Bank Transfer 1011000)
+- debug console.log ถูกลบออกแล้ว (cleanup)
+
 ---
 
 ## ENTRY #016: Payment methods — ลบ hard-coded options, ใช้จาก settings (2026-05-12)

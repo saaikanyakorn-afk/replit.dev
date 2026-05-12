@@ -95,12 +95,13 @@ SELECT reserved_qty FROM products WHERE id = 5399;
 | Journal 4001000 | บริษัท trading ลงบัญชีรายได้ผิด code | ✅ แก้แล้ว |
 | Payment dropdown | 4 ฟอร์มมี dropdown hard-coded | ✅ แก้แล้ว |
 | Settings payment | แยก tab รับเงิน/จ่ายเงิน + บัญชี 2xxx | ✅ แก้แล้ว |
+| Settings payment | บันทึกวิธีจ่ายเงิน type='pay' ถูกต้อง | ✅ แก้แล้ว |
 
 ---
 
 ## 4. หมายเหตุเพิ่มเติม
 
-- Feature **"บันทึกวิธีจ่ายเงิน"** ยังอยู่ระหว่าง debug (UI แสดงถูก แต่ save type ยัง 'receive') — ยังไม่ impact production จนกว่าจะ config วิธีจ่ายเงินจริง
+- Feature **"บันทึกวิธีจ่ายเงิน"** แก้สำเร็จแล้ว — company 3684 มี pay methods แล้ว 2 รายการ (id=121 Credit/AP, id=122 Bank Transfer)
 - หลัง push แนะนำให้ user **hard reload** (`Ctrl+Shift+R`) เพื่อเคลียร์ browser cache
 - ไม่มีการแตะ `schema.ts`, `App.tsx`, `server/index.ts`, `routes.ts`, `storage.ts`, `db.ts`
 
