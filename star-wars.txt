@@ -537,6 +537,12 @@ DEPLOY #54 — 2026-05-12
   Reason: ปุ่ม "ดึงอัตรา" (exchange rate fetch) ไม่มีบน production — พี่ทรายแจ้ง
   Method: GitHub API PUT (no pm2 restart needed — frontend only)
 
+DEPLOY #55 — 2026-05-12
+  File: server/routes/expense-routes.ts
+  SHA: e4d1006c84ec4a34264ef446b94f3046c9a9b9cc
+  Reason: ENTRY #009 — getNextJournalEntryNo missing tx param (3 sites) → pool exhaustion → 400 timeout on expense/petty cash save
+  Method: GitHub API PUT — requires server: git fetch + checkout + build + pm2 restart
+
 ----------------------------------------------------------------
 ================================================================
 E-TAX CENTER — SSH DEPLOY KEY BACKUP
