@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, and, inArray, count, sql, isNull } from "drizzle-orm";
-import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests } from "@shared/schema";
+import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements } from "@shared/schema";
 import { gte, lte, or } from "drizzle-orm";
 import { requireAuth, requireRole, requireAnyModule, getCompanyTenantId, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo, validateDocNo, getNextJournalEntryNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, logActivity, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, recomputePaymentStatus, deductStockBundleAware, upsertWarehouseStockLevel, reverseWarehouseStockBundleAware, getInventoryTriggers } from "../route-helpers";
@@ -1159,6 +1159,9 @@ app.delete("/api/invoices/:id", requireAuth, requireAnyModule("sales", "ecommerc
     if (linkedRC.length > 0) blockers.push(`ใบเสร็จรับเงิน: ${linkedRC.map(r => r.no).join(", ")}`);
     if (blockers.length > 0) return res.status(400).json({ message: `ไม่สามารถลบได้ เนื่องจากมีเอกสารเชื่อมอยู่:\n${blockers.join("\n")}\nกรุณาลบเอกสารที่เชื่อมก่อน` });
     const invItems = await fetchInvoiceItems(existing.id);
+    const invHadMovements = (await db.select({ id: stockMovements.id }).from(stockMovements).where(
+      and(eq(stockMovements.referenceType, "invoice"), eq(stockMovements.referenceId, existing.id))
+    )).length > 0;
     await db.transaction(async (tx) => {
       await deleteJournalEntriesForDoc(tx, "invoice", existing.id);
       await deleteStockMovementsForDoc(tx, "invoice", existing.id);
@@ -1166,7 +1169,7 @@ app.delete("/api/invoices/:id", requireAuth, requireAnyModule("sales", "ecommerc
       await tx.delete(invoices).where(eq(invoices.id, existing.id));
     });
     const invDelTriggers = await getInventoryTriggers(existing.companyId);
-    if (invDelTriggers.invoice_deduct) await reverseWarehouseStockBundleAware(invItems, existing.companyId);
+    if (invDelTriggers.invoice_deduct && invHadMovements) await reverseWarehouseStockBundleAware(invItems, existing.companyId);
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
@@ -1213,6 +1216,9 @@ app.post("/api/invoices/bulk-delete", requireAuth, requireAnyModule("sales", "ec
         const [existing] = await db.select().from(invoices).where(eq(invoices.id, Number(id)));
         if (!existing) { errors.push(`#${id}: ไม่พบ`); continue; }
         const bulkInvItems = await fetchInvoiceItems(existing.id);
+        const bulkInvHadMovements = (await db.select({ id: stockMovements.id }).from(stockMovements).where(
+          and(eq(stockMovements.referenceType, "invoice"), eq(stockMovements.referenceId, existing.id))
+        )).length > 0;
         await db.transaction(async (tx) => {
           await deleteJournalEntriesForDoc(tx, "invoice", existing.id);
           await deleteStockMovementsForDoc(tx, "invoice", existing.id);
@@ -1220,7 +1226,7 @@ app.post("/api/invoices/bulk-delete", requireAuth, requireAnyModule("sales", "ec
           await tx.delete(invoices).where(eq(invoices.id, existing.id));
         });
         const bulkInvDelTriggers = await getInventoryTriggers(existing.companyId);
-        if (bulkInvDelTriggers.invoice_deduct) await reverseWarehouseStockBundleAware(bulkInvItems, existing.companyId);
+        if (bulkInvDelTriggers.invoice_deduct && bulkInvHadMovements) await reverseWarehouseStockBundleAware(bulkInvItems, existing.companyId);
         logActivity({ companyId: existing.companyId, userId: user.id, userName: user.username, action: "delete", entityType: "invoice", entityId: String(existing.id), entityName: existing.invoiceNo }).catch(() => {});
         deleted++;
       } catch (e: any) {
@@ -2368,6 +2374,9 @@ app.delete("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecom
       return res.status(400).json({ message: `ไม่สามารถลบได้ เนื่องจากมีเอกสารเชื่อมอยู่:\n${blockers.join("\n")}\nกรุณาลบเอกสารที่เชื่อมก่อน` });
     }
     const tiItems = await fetchTaxInvoiceItems(existing.id);
+    const hadStockMovements = (await db.select({ id: stockMovements.id }).from(stockMovements).where(
+      and(eq(stockMovements.referenceType, "tax_invoice"), eq(stockMovements.referenceId, existing.id))
+    )).length > 0;
     await db.transaction(async (tx) => {
       await tx.update(liveCfOrders).set({ taxInvoiceId: null }).where(eq(liveCfOrders.taxInvoiceId, existing.id));
       await deleteJournalEntriesForDoc(tx, "tax_invoice", existing.id);
@@ -2376,7 +2385,7 @@ app.delete("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecom
       await tx.delete(taxInvoices).where(eq(taxInvoices.id, existing.id));
     });
     const tiDelTriggers = await getInventoryTriggers(existing.companyId);
-    if (tiDelTriggers.invoice_deduct) await reverseWarehouseStockBundleAware(tiItems, existing.companyId);
+    if (tiDelTriggers.invoice_deduct && hadStockMovements) await reverseWarehouseStockBundleAware(tiItems, existing.companyId);
     if (existing.invoiceId) {
       try { await recomputePaymentStatus("invoice", existing.invoiceId); } catch (e: any) { console.error(`[TIV-DELETE] recomputePaymentStatus invoice#${existing.invoiceId} failed:`, e.message); }
     }
@@ -2421,6 +2430,9 @@ app.post("/api/tax-invoices/bulk-delete", requireAuth, requireAnyModule("sales",
         const [existing] = await db.select().from(taxInvoices).where(eq(taxInvoices.id, Number(id)));
         if (!existing) { errors.push(`#${id}: ไม่พบ`); continue; }
         const bulkTiItems = await fetchTaxInvoiceItems(existing.id);
+        const bulkHadMovements = (await db.select({ id: stockMovements.id }).from(stockMovements).where(
+          and(eq(stockMovements.referenceType, "tax_invoice"), eq(stockMovements.referenceId, existing.id))
+        )).length > 0;
         await db.transaction(async (tx) => {
           await deleteJournalEntriesForDoc(tx, "tax_invoice", existing.id);
           await deleteStockMovementsForDoc(tx, "tax_invoice", existing.id);
@@ -2428,7 +2440,7 @@ app.post("/api/tax-invoices/bulk-delete", requireAuth, requireAnyModule("sales",
           await tx.delete(taxInvoices).where(eq(taxInvoices.id, existing.id));
         });
         const bulkTiDelTriggers = await getInventoryTriggers(existing.companyId);
-        if (bulkTiDelTriggers.invoice_deduct) await reverseWarehouseStockBundleAware(bulkTiItems, existing.companyId);
+        if (bulkTiDelTriggers.invoice_deduct && bulkHadMovements) await reverseWarehouseStockBundleAware(bulkTiItems, existing.companyId);
         if (existing.invoiceId) {
           try { await recomputePaymentStatus("invoice", existing.invoiceId); } catch (e: any) { console.error(`[TIV-BULK-DELETE] recomputePaymentStatus invoice#${existing.invoiceId} failed:`, e.message); }
         }

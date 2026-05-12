@@ -583,9 +583,21 @@ DEPLOY #59 — 2026-05-12
     Fixed: condition changed to !["draft","pending","cancelled","voided","rejected"].includes(result.status)
     Covers BOTH Tax Invoice CREATE (line 2033) and Invoice CREATE (line 1010)
     Also future-proof for Approval Flow: status="pending" will correctly block deduction
-  ⚠️ STATUS: pushed to github-dev — NOT YET pushed to github-production
-  ⚠️ DEPLOY #57 + #58 also NOT YET fetched by พี่ช้าง on production server
-  Next step: Push sales-docs-routes.ts to github-production via SSH key, then tell พี่ช้าง
+  ⚠️ SUPERSEDED by DEPLOY #60 (same file, additional fix added)
+
+DEPLOY #60 — 2026-05-12
+  Files:
+    - server/routes/sales-docs-routes.ts
+  Reason: SECOND BUG FIX — DELETE TIV/Invoice phantom stock restore
+    Symptom: สินค้าตัวแรก (product 5399) warehouse_stock_levels warehouse 32 = 87 ทั้งที่ควรเป็น 77
+    Root cause: CREATE ไม่ deduct warehouse_stock_levels (bug #1) แต่ DELETE เรียก
+      reverseWarehouseStockBundleAware เสมอโดยไม่ตรวจว่าเคย deduct จริงไหม
+      → ลบ TIV10027 (ขาย 10 ชิ้น ที่ไม่เคย deduct) → +10 phantom ใน warehouse_stock_levels
+    Fix: เพิ่ม hadStockMovements check ก่อนเรียก reverseWarehouseStockBundleAware ใน 4 จุด:
+      - TIV single delete, TIV bulk delete, Invoice single delete, Invoice bulk delete
+    Fix also: เพิ่ม stockMovements import ใน sales-docs-routes.ts
+    DB fix done: warehouse_stock_levels warehouse 32 product 5399 reset 87→77 manually ✅
+  ⚠️ STATUS: NOT YET pushed to github-production (DEPLOY #57+58+59+60 all pending)
   Server command (when พี่ช้าง is ready):
     git fetch origin
     git checkout origin/main -- server/routes/sales-docs-routes.ts server/routes/products-routes.ts client/src/pages/inventory/inventory-list.tsx

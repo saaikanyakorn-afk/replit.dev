@@ -334,23 +334,34 @@ Dev HEAD at deploy: `9e96b8d8` | Production cherry-pick commit: `2adc257c`
 | 2026-04-30 | v107 r1 | schema-extra.ts | 7.5 MB | index-DWEFVmOj.js ~360 kB | WAREHOUSE MIGRATION ACTIVE: 8 columns (goods_receivings.warehouse_id, goods_receiving_items.warehouse_id, sales_credit_notes.return_to_stock/return_warehouse_id, ecommerce_orders.warehouse_id, manufacturing_orders.source/target_warehouse_id, general_settings.inventory_triggers) + unique index wsl_unique_warehouse_product_company. Backfill: 1,094 rows. Flag WAREHOUSE_STOCK_BACKFILL_DONE=done ✅ |
 | 2026-04-30 | v107 r2 | schema-extra.ts, warehouse-bin-routes.ts | 7.5 MB | — | WAREHOUSE MIGRATION COMMENTED OUT (loop close). runWarehouseColumnsMigration wrapped in /* */. Caller import+call commented out. Clean. commit a1c6996c ✅ |
 
-## 🚨 NEXT AGENT HANDOFF — READ THIS FIRST (updated 2026-05-12)
+## 🚨 NEXT AGENT HANDOFF — READ THIS FIRST (updated 2026-05-12 session 2)
 
 ### What was just completed this session
-**BUG FIX — Stock deduction never fired on ANY sales document (commit `6f23540c`)**
+
+**BUG FIX #1 — Stock deduction never fired on ANY sales document (commit `6f23540c`)**
 - Root cause: Frontend sends `status: "cash"` or `"debtor"` on CREATE — never "approved"
 - Backend had `if (result.status === "approved")` → condition was NEVER true → zero stock movements
 - Fix: Changed to `!["draft","pending","cancelled","voided","rejected"].includes(result.status)` in BOTH:
-  - Tax Invoice CREATE (line 2033 `sales-docs-routes.ts`)
-  - Invoice CREATE (line 1010 `sales-docs-routes.ts`)
+  - Tax Invoice CREATE (`sales-docs-routes.ts`)
+  - Invoice CREATE (`sales-docs-routes.ts`)
 - This whitelist also correctly BLOCKS stock deduction when status = "pending" (approval flow)
-- Dev verified: stock movement inserts OK manually, logic confirmed via simulation
-- File changed: `server/routes/sales-docs-routes.ts` only
+
+**BUG FIX #2 — DELETE TIV/Invoice incorrectly reversed warehouse_stock_levels even when no stock was ever deducted (DEPLOY #60)**
+- Root cause: Asymmetry — CREATE didn't deduct (bug #1), but DELETE always called `reverseWarehouseStockBundleAware` regardless
+- Evidence: TIV10027 created (status="cash" → no deduct) → deleted → warehouse 32 jumped 77→87 (+10 phantom)
+- DB already corrected manually: warehouse_stock_levels warehouse 32 product 5399 = 77 ✅
+- Fix: Added `hadStockMovements` check BEFORE calling `reverseWarehouseStockBundleAware` in all 4 delete routes:
+  - TIV single delete (line ~2374)
+  - TIV bulk delete
+  - Invoice single delete
+  - Invoice bulk delete
+- Added `stockMovements` to imports in `sales-docs-routes.ts`
+- File changed: `server/routes/sales-docs-routes.ts` only (DEPLOY #60)
 
 ### What is next (DO NOT start without reading all of this)
 
-**Task 1 — DEPLOY #59 (stock fix) to production**
-- File: `server/routes/sales-docs-routes.ts` (commit `6f23540c`)
+**Task 1 — DEPLOY #60 (both stock fixes) to production**
+- File: `server/routes/sales-docs-routes.ts` (DEPLOY #60 = fix #1 + fix #2 combined)
 - DEPLOY #57 + #58 still NOT fetched by พี่ช้าง → production still at commit `a1c6996c`
 - DEPLOY #58 (commit `6636c2fab526`) already pushed `sales-docs-routes.ts` to github-production
 - DEPLOY #59 (commit `6f23540c`) = newer version — must also push `sales-docs-routes.ts` to github-production
