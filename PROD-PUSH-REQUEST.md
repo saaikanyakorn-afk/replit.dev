@@ -1,6 +1,7 @@
 # 🚀 Production Push Request
 **วันที่:** 12 พฤษภาคม 2569  
 **ขอโดย:** พี่ทราย  
+**อัปเดตล่าสุด:** 12 พฤษภาคม 2569 (เพิ่ม 4 รายการใหม่)  
 **สถานะ:** รอพี่ช้างอนุมัติ
 
 ---
@@ -12,11 +13,17 @@
 ## 1. Git Commits ที่ต้อง Push
 
 ```
-DEV branch: b9e09278 → 2a06079 (23+ commits)
+DEV branch: b9e09278 → 578e4f25 (27+ commits)
 ```
 
 รายการ commits:
 ```
+578e4f25 Improve file download functionality across the application
+85777ddb Fix Excel export and template download errors
+c61bca28 Always add a default chart of accounts to new companies
+59521a67 Improve account cleanup when changing company business types
+a4ffb6ab Add ability to import accounting chart templates into company data
+2a060792 Add default branch to all document forms
 ea477f4a Improve payment method saving functionality by fixing state updates
 9d14c4cf Add ability to add new payment methods with correct payment type
 dad0fac2 Update payment settings to include accounts payable
@@ -86,7 +93,7 @@ SELECT reserved_qty FROM products WHERE id = 5399;
 
 ## 3. สรุปสิ่งที่แก้ไข
 
-| Bug | รายละเอียด | Status |
+| Bug / Feature | รายละเอียด | Status |
 |-----|-----------|--------|
 | SO reserved_qty | ลบ/แก้ SO แล้วสต็อกไม่คืน | ✅ แก้แล้ว |
 | ต้นทุน ฿0.00 | Stock card แสดงต้นทุน ฿0.00 | ✅ แก้แล้ว |
@@ -98,6 +105,10 @@ SELECT reserved_qty FROM products WHERE id = 5399;
 | Settings payment | บันทึกวิธีจ่ายเงิน type='pay' ถูกต้อง | ✅ แก้แล้ว |
 | Payment dropdown (ทุกฟอร์ม) | ลบ hardcode เงินสด/โอน/เช็ค/ฯลฯ ออกจาก 13 ฟอร์ม ใช้ DB อย่างเดียว | ✅ แก้แล้ว |
 | branch default | ทุกเอกสาร (13 ฟอร์ม ขาย+ซื้อ) ตั้ง default สาขา = สำนักงานใหญ่ | ✅ แก้แล้ว |
+| **[ใหม่]** Cleanup ผังบัญชีเมื่อเปลี่ยนประเภทธุรกิจ | เปลี่ยน businessType → merge บัญชีใหม่ + ลบบัญชีเก่าที่ไม่ใช้งาน (บัญชีที่มีรายการแล้วไม่ถูกลบ) | ✅ แก้แล้ว |
+| **[ใหม่]** บริษัทใหม่ไม่มีผังบัญชี | สร้างบริษัทโดยไม่ระบุประเภทธุรกิจ → ได้ STANDARD 384 บัญชีเสมอ | ✅ แก้แล้ว |
+| **[ใหม่]** Export xlsx เปิดไม่ได้ | ไฟล์ผังบัญชี .xlsx ที่ download มา Excel เปิด error | ✅ แก้แล้ว |
+| **[ใหม่]** ปุ่มดาวน์โหลดทุกปุ่มในระบบ | 9 หน้า (สินทรัพย์, HR, นำเข้าค่าใช้จ่าย/ใบซื้อ/ใบขาย, สินค้า, Bundle ฯลฯ) เปลี่ยนจาก window.open → fetch+blob ทั้งหมด | ✅ แก้แล้ว |
 
 ---
 
