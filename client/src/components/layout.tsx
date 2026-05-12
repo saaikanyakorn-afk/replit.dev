@@ -67,7 +67,6 @@ import {
   Fuel,
   Factory,
   Archive,
-  ChevronUp,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -91,42 +90,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
-
-function ScrollToTopButton() {
-  const [location] = useLocation();
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    if (location.startsWith("/dashboard")) { setVisible(false); return; }
-    const check = () => {
-      const pageHasOwnBtn = !!document.querySelector('[data-testid="btn-scroll-to-top"], [data-testid="btn-scroll-top"]');
-      const mainEl = document.querySelector("main");
-      const scrolled = (mainEl?.scrollTop ?? 0) > 300 || window.scrollY > 300;
-      setVisible(!pageHasOwnBtn && scrolled);
-    };
-    const mainEl = document.querySelector("main");
-    window.addEventListener("scroll", check, { passive: true });
-    mainEl?.addEventListener("scroll", check, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", check);
-      mainEl?.removeEventListener("scroll", check);
-    };
-  }, [location]);
-  if (!visible) return null;
-  return (
-    <button
-      onClick={() => {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
-      }}
-      data-testid="button-scroll-to-top"
-      className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110"
-      style={{ background: "var(--theme-primary)", color: "#fff" }}
-      title="กลับขึ้นด้านบน"
-    >
-      <ChevronUp className="h-5 w-5" />
-    </button>
-  );
-}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -1322,7 +1285,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           ) : children}
         </div>
-        <ScrollToTopButton />
       </main>
       <BreakReminder />
 
