@@ -3468,7 +3468,7 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
         const [pv] = await db.select().from(paymentVouchers).where(eq(paymentVouchers.id, link.paymentVoucherId));
         if (pv) related.push({ type: "payment_voucher", id: pv.id, docNo: pv.pvNo, date: pv.pvDate, status: pv.status || "approved", totalAmount: pv.totalAmount || "0" });
       }
-      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.refDocType, "purchase_invoice"), eq(journalEntries.refDocId, id)));
+      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.sourceDocType, "purchase_invoice"), eq(journalEntries.sourceDocId, id)));
       for (const je of jes) related.push({ type: "journal", id: je.id, docNo: je.entryNo, date: je.entryDate, status: je.status || "approved", totalAmount: je.totalDebit || "0" });
 
     } else if (docType === "expense") {
@@ -3484,7 +3484,7 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
           related.push({ type: "purchase_debit_note", id: dn.id, docNo: dn.debitNoteNo, date: dn.debitNoteDate, status: dn.status, totalAmount: dn.totalAmount });
         }
       }
-      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.refDocType, "expense"), eq(journalEntries.refDocId, id)));
+      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.sourceDocType, "expense"), eq(journalEntries.sourceDocId, id)));
       for (const je of jes) related.push({ type: "journal", id: je.id, docNo: je.entryNo, date: je.entryDate, status: je.status || "approved", totalAmount: je.totalDebit || "0" });
     } else if (docType === "purchase_debit_note") {
       const [dn] = await db.select().from(purchaseDebitNotes).where(and(eq(purchaseDebitNotes.id, id), eq(purchaseDebitNotes.companyId, companyId)));
@@ -3497,7 +3497,7 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
         const [pi] = await db.select().from(purchaseInvoices).where(eq(purchaseInvoices.id, dn.refPurchaseInvoiceId));
         if (pi) related.push({ type: "purchase_invoice", id: pi.id, docNo: pi.apNo, date: pi.apDate, status: pi.status, totalAmount: pi.totalAmount });
       }
-      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.refDocType, "purchase_debit_note"), eq(journalEntries.refDocId, id)));
+      const jes = await db.select().from(journalEntries).where(and(eq(journalEntries.companyId, companyId), eq(journalEntries.sourceDocType, "purchase_debit_note"), eq(journalEntries.sourceDocId, id)));
       for (const je of jes) related.push({ type: "journal", id: je.id, docNo: je.entryNo, date: je.entryDate, status: je.status || "approved", totalAmount: je.totalDebit || "0" });
     }
 
