@@ -562,6 +562,7 @@ DEPLOY #57 — 2026-05-12
     git checkout origin/main -- client/src/pages/inventory/inventory-list.tsx
     npm run build
     pm2 restart etax-center
+  pm2: online 83.8mb ✅
 
 ----------------------------------------------------------------
 ================================================================
