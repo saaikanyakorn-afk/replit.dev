@@ -384,11 +384,6 @@ app.post("/api/products/import/preview", requireAuth, requireModule("inventory")
 
     const stockOkCount = hasWarehouseCol ? preview.filter(p => p.status !== "error" && p.data.warehouseName && Number(p.data.stockQty) > 0).length : 0;
 
-    const dupItems = preview.filter(p => p.status === "duplicate");
-    if (dupItems.length > 0) {
-      console.log(`[import-preview] duplicate rows (${dupItems.length}):`, dupItems.map(p => ({ row: p.row, code: p.data.code, wh: p.data.warehouseName, issues: p.issues })));
-    }
-
     res.json({
       headers,
       columnMapping,
