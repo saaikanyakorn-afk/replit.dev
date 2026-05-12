@@ -42,7 +42,22 @@ const geminiAi = process.env.AI_INTEGRATIONS_GEMINI_API_KEY
   : null;
 
 async function fetchPurchaseInvoiceItems(purchaseInvoiceId: number): Promise<any[]> {
-  const r = await db.execute(sql`SELECT *, warehouse_id AS "warehouseId" FROM purchase_invoice_items WHERE purchase_invoice_id = ${purchaseInvoiceId} ORDER BY id`);
+  const r = await db.execute(sql`
+    SELECT *,
+      product_id       AS "productId",
+      product_code     AS "productCode",
+      product_name     AS "productName",
+      unit_price       AS "unitPrice",
+      discount_type    AS "discountType",
+      vat_type         AS "vatType",
+      account_code     AS "accountCode",
+      account_name     AS "accountName",
+      warehouse_id     AS "warehouseId",
+      purchase_invoice_id AS "purchaseInvoiceId"
+    FROM purchase_invoice_items
+    WHERE purchase_invoice_id = ${purchaseInvoiceId}
+    ORDER BY id
+  `);
   return r.rows as any[];
 }
 
