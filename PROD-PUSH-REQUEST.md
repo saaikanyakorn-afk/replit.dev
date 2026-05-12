@@ -12,7 +12,7 @@
 ## 1. Git Commits ที่ต้อง Push
 
 ```
-DEV branch: b9e09278 → ea477f4a (21 commits)
+DEV branch: b9e09278 → 2a06079 (23+ commits)
 ```
 
 รายการ commits:
@@ -96,6 +96,8 @@ SELECT reserved_qty FROM products WHERE id = 5399;
 | Payment dropdown | 4 ฟอร์มมี dropdown hard-coded | ✅ แก้แล้ว |
 | Settings payment | แยก tab รับเงิน/จ่ายเงิน + บัญชี 2xxx | ✅ แก้แล้ว |
 | Settings payment | บันทึกวิธีจ่ายเงิน type='pay' ถูกต้อง | ✅ แก้แล้ว |
+| Payment dropdown (ทุกฟอร์ม) | ลบ hardcode เงินสด/โอน/เช็ค/ฯลฯ ออกจาก 13 ฟอร์ม ใช้ DB อย่างเดียว | ✅ แก้แล้ว |
+| branch default | ทุกเอกสาร (13 ฟอร์ม ขาย+ซื้อ) ตั้ง default สาขา = สำนักงานใหญ่ | ✅ แก้แล้ว |
 
 ---
 
