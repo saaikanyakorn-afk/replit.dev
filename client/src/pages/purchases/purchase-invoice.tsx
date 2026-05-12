@@ -139,6 +139,9 @@ function calcItemTotal(qty: string, unitPrice: string, discount: string): string
   return (subtotal - d).toFixed(2);
 }
 
+const isCreditPm = (name?: string | null) =>
+  !!name && (name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต("));
+
 const emptyItem = (): APItemForm => ({
   productCode: "",
   productName: "",
@@ -309,7 +312,7 @@ export default function PurchaseInvoice() {
         setForm(p => ({
           ...p,
           paymentMethod: defaultPm.name,
-          paymentStatus: defaultPm.name !== "เครดิต" ? "paid" : "unpaid",
+          paymentStatus: !isCreditPm(defaultPm.name) ? "paid" : "unpaid",
         }));
       }
     }
@@ -1181,7 +1184,7 @@ export default function PurchaseInvoice() {
                     </td>
                     <td className="px-3 pt-1.5 pb-1 border-r align-top bg-amber-50/70" colSpan={2}>
                       <div className="text-[10px] text-amber-600 font-semibold mb-0.5">วิธีชำระเงิน</div>
-                      <Select value={form.paymentMethod || ""} onValueChange={v => setForm(p => ({ ...p, paymentMethod: v, paymentStatus: v && v !== "เครดิต" ? "paid" : "unpaid" }))}>
+                      <Select value={form.paymentMethod || ""} onValueChange={v => setForm(p => ({ ...p, paymentMethod: v, paymentStatus: v && !isCreditPm(v) ? "paid" : "unpaid" }))}>
                         <SelectTrigger data-testid="select-payment-method" className="h-7 text-xs border-dashed">
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>

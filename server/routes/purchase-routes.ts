@@ -41,6 +41,9 @@ const geminiAi = process.env.AI_INTEGRATIONS_GEMINI_API_KEY
     })
   : null;
 
+const isCreditPm = (name?: string | null) =>
+  !!name && (name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต("));
+
 async function fetchPurchaseInvoiceItems(purchaseInvoiceId: number): Promise<any[]> {
   const r = await db.execute(sql`
     SELECT *,
@@ -918,7 +921,7 @@ export function registerPurchaseRoutes(app: Express) {
           totalAmount: body.totalAmount || "0",
           withholdingTax: body.withholdingTax || "0",
           status: body.status || "approved",
-          paymentStatus: body.paymentStatus || (body.paymentMethod && body.paymentMethod !== "เครดิต" ? "paid" : "unpaid"),
+          paymentStatus: body.paymentStatus || (body.paymentMethod && !isCreditPm(body.paymentMethod) ? "paid" : "unpaid"),
           priceMode: body.priceMode || "excluded",
           showInTaxReport: body.showInTaxReport !== undefined ? body.showInTaxReport : (items?.length > 0 && items.every((i: any) => i.vatType === "vat_non_deductible" || i.vatType === "exempt" || i.vatType === "vat0") && items.some((i: any) => i.vatType === "vat_non_deductible") ? false : true),
           docPrefix: prefix,
@@ -1031,7 +1034,7 @@ export function registerPurchaseRoutes(app: Express) {
             const acctMap = new Map(compAccts.map(a => [a.code, a]));
             const sub = parseFloat(result.subtotal || "0");
             const wht = parseFloat(result.withholdingTax || "0");
-            const isCreditPayment = result.paymentMethod === "credit";
+            const isCreditPayment = isCreditPm(result.paymentMethod);
 
             const deductibleItems = savedItems.filter((i: any) => i.vatType === "vat7");
             const nonDeductibleItems = savedItems.filter((i: any) => i.vatType === "vat_non_deductible");
@@ -1281,7 +1284,7 @@ export function registerPurchaseRoutes(app: Express) {
             const acctMap = new Map(compAccts.map(a => [a.code, a]));
             const sub = parseFloat(updated.subtotal || "0");
             const wht = parseFloat(updated.withholdingTax || "0");
-            const isCreditPayment = updated.paymentMethod === "credit";
+            const isCreditPayment = isCreditPm(updated.paymentMethod);
 
             const deductibleItems = savedItems.filter((i: any) => i.vatType === "vat7");
             const nonDeductibleItems = savedItems.filter((i: any) => i.vatType === "vat_non_deductible");
@@ -1351,11 +1354,9 @@ export function registerPurchaseRoutes(app: Express) {
         }
       }
 
-      console.log(`[PI-Stock-DEBUG] items type=${typeof items} isArray=${Array.isArray(items)} length=${Array.isArray(items)?items.length:'n/a'}`);
       if (items && Array.isArray(items)) {
         try {
           const [piCompany] = await db.select({ stockEntrySource: companies.stockEntrySource }).from(companies).where(eq(companies.id, existing.companyId));
-          console.log(`[PI-Stock-PATCH] id=${existing.id} stockEntrySource="${piCompany?.stockEntrySource}" items=${savedItems.length} productIds=[${savedItems.map((i:any)=>i.productId||'null').join(',')}]`);
           if (piCompany?.stockEntrySource === "purchase_invoice") {
             const piUpdateTriggers = await getInventoryTriggers(existing.companyId);
             // Reverse old warehouseStockLevels contributions before deleting movements

@@ -124,6 +124,9 @@ function AccountPickerDropdown({ value, displayValue, accounts, onChange, mode =
 }
 
 
+const isCreditPm = (name?: string | null) =>
+  !!name && (name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต("));
+
 const emptyItem = (): EXPItemForm => ({
   accountCode: "",
   accountName: "",
@@ -234,7 +237,7 @@ export default function Expense() {
         setForm(p => ({
           ...p,
           paymentMethod: defaultPm.name,
-          paymentStatus: defaultPm.name !== "เครดิต" ? "paid" : "unpaid",
+          paymentStatus: !isCreditPm(defaultPm.name) ? "paid" : "unpaid",
         }));
       }
     }
