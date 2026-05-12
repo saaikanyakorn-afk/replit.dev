@@ -913,7 +913,7 @@ export async function runInitialStockMovementBackfill(db: any) {
         NULL,
         '0',
         '0',
-        NOW()
+        '2026-04-01 00:00:00'
       FROM warehouse_stock_levels wsl
       LEFT JOIN warehouses w
         ON w.id = wsl.warehouse_id AND w.company_id = wsl.company_id

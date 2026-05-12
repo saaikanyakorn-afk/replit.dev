@@ -246,7 +246,7 @@ Backup location: `db/backups/YYYY-MM-DD_orphan_stock_movements_before_cleanup.sq
 - Source: `warehouse_stock_levels` WHERE quantity > 0 AND no existing initial movement for (company_id, product_id)
 - Notes pattern: `ตั้งต้นสต๊อก (ตั้งต้น) คลัง {warehouse_name}`
 - unit_cost = 0, total_cost = 0, reference_type = NULL, reference_id = NULL
-- created_at = NOW() at time of migration run (2026-05-12T08:05:59Z)
+- created_at = '2026-04-01 00:00:00' (วันเปิดบัญชีสต๊อก — กำหนดโดยพี่ทราย 2026-05-12)
 
 **Backup location:** Not required — additive INSERT only, no existing rows modified or deleted.
 
