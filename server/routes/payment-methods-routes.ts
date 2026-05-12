@@ -57,23 +57,18 @@ app.post("/api/payment-methods", requireAuth, async (req, res) => {
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
     if (!name || !accountCode) return res.status(400).json({ message: "กรุณาระบุชื่อและรหัสบัญชี" });
     if (isDefault) {
-      await db.update(paymentMethods).set({ isDefault: false }).where(eq(paymentMethods.companyId, companyId));
+      await db.execute(sql`UPDATE payment_methods SET is_default = false WHERE company_id = ${companyId}`);
     }
-    const [method] = await db.insert(paymentMethods).values({
-      companyId,
-      name,
-      nameTh: nameTh || null,
-      accountCode,
-      accountId: accountId ? Number(accountId) : null,
-      active: active !== false,
-      isDefault: isDefault || false,
-      sortOrder: sortOrder || 0,
-    }).returning();
-    if (!method?.id) return res.status(500).json({ message: "บันทึกไม่สำเร็จ กรุณาลองใหม่" });
-    const pmType = paymentType || "receive";
-    await db.execute(sql`UPDATE payment_methods SET bank_name = ${bankName || null}, bank_account_no = ${bankAccountNo || null}, payment_type = ${pmType} WHERE id = ${method.id}`);
-    const finalRow = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE id = ${method.id} LIMIT 1`);
-    res.status(201).json(finalRow.rows[0] ?? method);
+    const pmType = (paymentType === "pay" ? "pay" : "receive");
+    const inserted = await db.execute(sql`
+      INSERT INTO payment_methods (company_id, name, name_th, account_code, account_id, active, is_default, sort_order, bank_name, bank_account_no, payment_type)
+      VALUES (${companyId}, ${name}, ${nameTh || null}, ${accountCode}, ${accountId ? Number(accountId) : null}, ${active !== false}, ${isDefault || false}, ${sortOrder || 0}, ${bankName || null}, ${bankAccountNo || null}, ${pmType})
+      RETURNING id
+    `);
+    const newId = (inserted.rows[0] as any)?.id;
+    if (!newId) return res.status(500).json({ message: "บันทึกไม่สำเร็จ กรุณาลองใหม่" });
+    const finalRow = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE id = ${newId} LIMIT 1`);
+    res.status(201).json(finalRow.rows[0]);
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
