@@ -52,14 +52,22 @@ function ContactIcons() {
 function ScrollToTopButton() {
   const [show, setShow] = useState(false);
   useEffect(() => {
-    const onScroll = () => setShow(window.scrollY > 400);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const mainEl = document.querySelector("main");
+    const check = () => setShow((mainEl?.scrollTop ?? 0) > 300 || window.scrollY > 300);
+    window.addEventListener("scroll", check, { passive: true });
+    mainEl?.addEventListener("scroll", check, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", check);
+      mainEl?.removeEventListener("scroll", check);
+    };
   }, []);
   if (!show) return null;
   return (
     <button
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      onClick={() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+      }}
       className="w-10 h-10 rounded-full text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center opacity-90 hover:opacity-100"
       style={{ background: "#fb9678" }}
       data-testid="btn-scroll-to-top"
