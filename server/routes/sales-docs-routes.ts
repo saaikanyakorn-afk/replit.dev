@@ -1004,7 +1004,7 @@ app.post("/api/invoices", requireAuth, requireAnyModule("sales", "ecommerce"), a
     } catch (e: any) { console.error(`[Invoice] Auto journal error:`, e.message); }
     console.log(`[Invoice] t4 journal=${Date.now()-t0}ms`);
 
-    if (result.status === "approved" || result.status === "debtor") {
+    if (!["draft", "pending", "cancelled", "voided", "rejected"].includes(result.status)) {
       const deductItems = savedItems
         .filter((i: any) => i.productId && parseFloat(String(i.qty || "0")) > 0)
         .map((i: any) => ({ productId: i.productId, qty: parseFloat(String(i.qty)), warehouseId: i.warehouseId || null, unitPrice: String(i.unitPrice || "0"), productName: i.productName || i.description }));
@@ -2027,7 +2027,7 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
       });
     } catch (e) {}
 
-    if (result.status === "approved") {
+    if (!["draft", "pending", "cancelled", "voided", "rejected"].includes(result.status)) {
       const deductTiItems = savedItems
         .filter((i: any) => i.productId && parseFloat(String(i.qty || "0")) > 0)
         .map((i: any) => ({ productId: i.productId, qty: parseFloat(String(i.qty)), warehouseId: i.warehouseId || null, unitPrice: String(i.unitPrice || "0"), productName: i.productName || i.description }));
