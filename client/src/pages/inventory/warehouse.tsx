@@ -83,7 +83,7 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [viewMode, setViewMode] = useState<"table" | "cards">("cards");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [searchText, setSearchText] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [showAdjustDialog, setShowAdjustDialog] = useState(false);
