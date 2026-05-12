@@ -564,6 +564,14 @@ DEPLOY #57 — 2026-05-12
     pm2 restart etax-center
   pm2: online 83.8mb ✅
 
+DEPLOY #58 — 2026-05-12
+  Commit: 6636c2fab526 (GitHub Git Data API — blob→tree→commit→ref)
+  Files:
+    - server/routes/products-routes.ts → fix bad relative import paths ทำให้ /api/inventory-reports/stock-card ไม่ 400 อีกต่อไป
+    - server/routes/sales-docs-routes.ts → stock deduct + movement recording from sales docs
+  Reason: สต๊อกการ์ด production ไม่มีการเคลื่อนไหว — root cause = import path ผิดใน products-routes.ts
+  pm2: online 85.1mb ✅
+
 ----------------------------------------------------------------
 ================================================================
 E-TAX CENTER — SSH DEPLOY KEY BACKUP
