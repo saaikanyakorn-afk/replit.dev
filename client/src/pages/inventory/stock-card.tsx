@@ -39,16 +39,16 @@ const MOVEMENT_LABELS: Record<string, { label: string; color: string; bgColor: s
 };
 
 const REF_TYPE_LABELS: Record<string, { label: string; path: string }> = {
-  goods_receiving: { label: "GR", path: "/inventory/receiving/form" },
-  goods_requisition: { label: "GIQ", path: "/inventory/requisition/form" },
-  invoice: { label: "IV", path: "/sales/invoice/edit" },
-  tax_invoice: { label: "TIV", path: "/sales/tax-invoice/edit" },
-  purchase_order: { label: "PO", path: "/purchases/po/edit" },
-  purchase_invoice: { label: "AP", path: "/purchases/ap/edit" },
+  goods_receiving: { label: "GR", path: "/inventory/receiving" },
+  goods_requisition: { label: "GIQ", path: "/inventory/requisition" },
+  invoice: { label: "IV", path: "/sales/invoice" },
+  tax_invoice: { label: "TIV", path: "/sales/tax-invoice" },
+  purchase_order: { label: "PO", path: "/purchases/po" },
+  purchase_invoice: { label: "AP", path: "/purchases/ap" },
   bundle_deduct: { label: "BUNDLE", path: "" },
   bundle_offset: { label: "BUNDLE", path: "" },
   bom_consume: { label: "BOM", path: "" },
-  manufacturing_order: { label: "MO", path: "/inventory/manufacturing/form" },
+  manufacturing_order: { label: "MO", path: "/inventory/manufacturing" },
   mapping_convert: { label: "MAP", path: "" },
 };
 
@@ -231,7 +231,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
   function handleRefClick(refType: string | null, refId: number | null) {
     if (!refType || !refId) return;
     const info = REF_TYPE_LABELS[refType];
-    if (info && info.path) setLocation(`${info.path}/${refId}`);
+    if (info && info.path) setLocation(info.path);
   }
 
   const stockColor = getStockColor(currentQty);
