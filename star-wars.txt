@@ -553,6 +553,16 @@ DEPLOY #56 — 2026-05-12
 
 ⚠️ pm2 app name = etax-center (NOT pm2 restart all — server runs multiple apps)
 
+DEPLOY #57 — 2026-05-12
+  File: client/src/pages/inventory/inventory-list.tsx
+  SHA: a7f1dfe41cd9951cd308cec4130de5aa91a9e7cf
+  Reason: ENTRY #008 — deactivate/reactivate buttons missing on production — พี่ทรายแจ้ง
+  Server command:
+    git fetch origin
+    git checkout origin/main -- client/src/pages/inventory/inventory-list.tsx
+    npm run build
+    pm2 restart etax-center
+
 ----------------------------------------------------------------
 ================================================================
 E-TAX CENTER — SSH DEPLOY KEY BACKUP
