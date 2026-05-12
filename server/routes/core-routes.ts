@@ -3,7 +3,7 @@ import { registerIndexExtraRoutes } from "../index-extra";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, and, or, isNull, inArray , sql } from "drizzle-orm";
-import { users, companies, employees, firmClients, permissions, tenants, accounts, tenantSubscriptions, subscriptionPlans, insertUserSchema, journalLines } from "@shared/schema";
+import { users, companies, employees, firmClients, permissions, tenants, accounts, tenantSubscriptions, subscriptionPlans, insertUserSchema, journalLines, paymentMethods } from "@shared/schema";
 import { requireAuth, requireAdmin, requireRole } from "../route-middleware";
 import { hashPassword } from "../auth";
 import { z } from "zod";
@@ -938,7 +938,13 @@ app.patch("/api/companies/:id", requireAuth, async (req, res) => {
           const usedRows = await db.select({ accountId: journalLines.accountId })
             .from(journalLines)
             .where(inArray(journalLines.accountId, staleIds));
-          const usedAccountIds = new Set(usedRows.map(r => r.accountId));
+          const pmRows = await db.select({ accountId: paymentMethods.accountId })
+            .from(paymentMethods)
+            .where(inArray(paymentMethods.accountId, staleIds));
+          const usedAccountIds = new Set([
+            ...usedRows.map(r => r.accountId),
+            ...pmRows.map(r => r.accountId).filter(Boolean),
+          ]);
           const toDelete = staleAccounts.filter(a => !usedAccountIds.has(a.id));
           if (toDelete.length > 0) {
             await db.delete(accounts).where(inArray(accounts.id, toDelete.map(a => a.id)));
