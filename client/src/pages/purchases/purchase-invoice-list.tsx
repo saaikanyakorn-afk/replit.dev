@@ -497,9 +497,9 @@ export default function PurchaseInvoiceList() {
                                     <CheckCircle2 className="h-3.5 w-3.5" /> อนุมัติ
                                   </DropdownMenuItem>
                                 )}
-                                {ap.status === "approved" && (
-                                  <DropdownMenuItem onClick={() => statusMutation.mutate({ id: ap.id, status: "paid" })} className="flex gap-2 text-emerald-600">
-                                    <CheckCircle2 className="h-3.5 w-3.5" /> ชำระแล้ว
+                                {ap.status === "approved" && paymentStatus !== "paid" && (
+                                  <DropdownMenuItem onClick={() => navigate(`/finance/ap-billing?apId=${ap.id}`)} className="flex gap-2 text-emerald-600">
+                                    <CreditCard className="h-3.5 w-3.5" /> ชำระเงิน
                                   </DropdownMenuItem>
                                 )}
                                 {ap.status !== "cancelled" && ap.status !== "paid" && (
