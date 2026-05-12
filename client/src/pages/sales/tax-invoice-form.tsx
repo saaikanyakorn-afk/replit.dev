@@ -1296,24 +1296,11 @@ export default function TaxInvoiceForm() {
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(activePaymentMethods.length === 0 || form.paymentMethod === "เครดิต") && (
-                            <SelectItem value="เครดิต">เครดิต (ตั้งลูกหนี้)</SelectItem>
-                          )}
-                          {activePaymentMethods.length > 0 ? (
-                            activePaymentMethods.map((m: any) => (
-                              <SelectItem key={m.id} value={`pm_${m.id}`}>
-                                {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="เงินสด">เงินสด</SelectItem>
-                              <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                              <SelectItem value="เช็ค">เช็ค</SelectItem>
-                              <SelectItem value="บัตรเครดิต">บัตรเครดิต</SelectItem>
-                              <SelectItem value="พร้อมเพย์">พร้อมเพย์</SelectItem>
-                            </>
-                          )}
+                          {activePaymentMethods.map((m: any) => (
+                            <SelectItem key={m.id} value={`pm_${m.id}`}>
+                              {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </td>

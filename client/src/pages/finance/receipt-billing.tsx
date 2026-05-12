@@ -127,6 +127,7 @@ export default function ReceiptBilling() {
     },
     enabled: !!companyId,
   });
+  const activePaymentMethods = (paymentMethodsList || []).filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
 
   const batchPayment = useMutation({
     mutationFn: async (payload: any) => {
@@ -455,11 +456,7 @@ export default function ReceiptBilling() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                          <SelectItem value="เงินสด">เงินสด</SelectItem>
-                          <SelectItem value="เช็ค">เช็ค</SelectItem>
-                          <SelectItem value="บัตรเครดิต">บัตรเครดิต</SelectItem>
-                          {(paymentMethodsList || []).filter((m: any) => !["โอนเงิน","เงินสด","เช็ค","บัตรเครดิต"].includes(m.name)).map((m: any) => (
+                          {activePaymentMethods.map((m: any) => (
                             <SelectItem key={m.id} value={m.name}>{m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}</SelectItem>
                           ))}
                         </SelectContent>

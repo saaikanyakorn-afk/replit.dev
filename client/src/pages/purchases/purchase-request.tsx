@@ -172,6 +172,17 @@ export default function PurchaseRequest() {
     },
     enabled: !!companyId,
   });
+  const { data: paymentMethodsList = [] } = useQuery<any[]>({
+    queryKey: ["/api/payment-methods", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "pay");
   const { prefixOptions, defaultPrefix } = usePrefixOptions("purchase_request", docSettings);
   useEffect(() => {
     if (isNew && defaultPrefix && form.docPrefix !== defaultPrefix) {
@@ -697,11 +708,11 @@ export default function PurchaseRequest() {
                           <SelectValue placeholder="เลือก" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="เงินสด">เงินสด</SelectItem>
-                          <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                          <SelectItem value="เช็ค">เช็ค</SelectItem>
-                          <SelectItem value="บัตรเครดิต">บัตรเครดิต</SelectItem>
-                          <SelectItem value="พร้อมเพย์">พร้อมเพย์</SelectItem>
+                          {activePaymentMethods.map((m: any) => (
+                            <SelectItem key={m.id} value={m.name || m.nameTh}>
+                              {m.nameTh || m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </td>

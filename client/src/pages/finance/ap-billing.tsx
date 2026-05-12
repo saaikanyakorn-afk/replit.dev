@@ -84,6 +84,7 @@ export default function APBilling() {
     },
     enabled: !!companyId,
   });
+  const activePaymentMethods = (paymentMethodsList || []).filter((m: any) => m.active !== false && (m.paymentType || "receive") === "pay");
 
   const batchPayment = useMutation({
     mutationFn: async (payload: any) => {
@@ -599,11 +600,7 @@ export default function APBilling() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                    <SelectItem value="เงินสด">เงินสด</SelectItem>
-                    <SelectItem value="เช็ค">เช็ค</SelectItem>
-                    <SelectItem value="บัตรเครดิต">บัตรเครดิต</SelectItem>
-                    {paymentMethodsList?.map((pm: any) => (
+                    {activePaymentMethods.map((pm: any) => (
                       <SelectItem key={pm.id} value={pm.name}>{pm.name}{pm.bankName ? ` · ${pm.bankName}` : ""}{pm.bankAccountNo ? ` ${pm.bankAccountNo}` : ""}</SelectItem>
                     ))}
                   </SelectContent>

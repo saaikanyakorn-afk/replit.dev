@@ -1123,8 +1123,7 @@ export default function Expense() {
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
-                          {activePaymentMethods.length > 0 ? (
-                            activePaymentMethods.map((m: any) => {
+                          {activePaymentMethods.map((m: any) => {
                               const linkedAcc = m.accountCode ? accounts.find((a: any) => a.code === m.accountCode) : null;
                               const linkedName = linkedAcc ? (linkedAcc.nameTh || linkedAcc.name) : "";
                               return (
@@ -1132,16 +1131,7 @@ export default function Expense() {
                                   {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}{linkedName ? ` — ${linkedName}` : ""}
                                 </SelectItem>
                               );
-                            })
-                          ) : (
-                            <>
-                              <SelectItem value="เงินสด">เงินสด</SelectItem>
-                              <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                              <SelectItem value="เช็ค">เช็ค</SelectItem>
-                              <SelectItem value="บัตรเครดิต">บัตรเครดิต</SelectItem>
-                              <SelectItem value="พร้อมเพย์">พร้อมเพย์</SelectItem>
-                            </>
-                          )}
+                            })}
                         </SelectContent>
                       </Select>
                     </td>

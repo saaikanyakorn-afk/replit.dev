@@ -581,14 +581,6 @@ export default function DebitNoteForm() {
                                 {acctName(m)} ({m.accountCode})
                               </SelectItem>
                             ))
-                          ) : (
-                            <>
-                              <SelectItem value="cash">เงินสด</SelectItem>
-                              <SelectItem value="transfer">โอนเงิน</SelectItem>
-                              <SelectItem value="cheque">เช็ค</SelectItem>
-                              <SelectItem value="credit_card">บัตรเครดิต</SelectItem>
-                              <SelectItem value="other">อื่นๆ</SelectItem>
-                            </>
                           )}
                         </SelectContent>
                       </Select>

@@ -47,6 +47,17 @@ export default function EcommerceQuickInvoice() {
   const [items, setItems] = useState<LineItem[]>([emptyItem()]);
   const [showRecent, setShowRecent] = useState(false);
 
+  const { data: paymentMethodsList = [] } = useQuery<any[]>({
+    queryKey: ["/api/payment-methods", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return [];
+      const r = await fetch(`/api/payment-methods?companyId=${selectedCompanyId}`, { credentials: "include" });
+      return r.ok ? r.json() : [];
+    },
+    enabled: !!selectedCompanyId,
+  });
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
+
   const recentQuery = useQuery({
     queryKey: ["/api/ecommerce/quick-invoice/recent", selectedCompanyId],
     queryFn: () => fetch(`/api/ecommerce/quick-invoice/recent?companyId=${selectedCompanyId}`).then(r => r.json()),
@@ -169,11 +180,11 @@ export default function EcommerceQuickInvoice() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="เงินสด">เงินสด</SelectItem>
-                        <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                        <SelectItem value="บัตรเครดิต">บัตรเครดิต</SelectItem>
-                        <SelectItem value="PromptPay">PromptPay</SelectItem>
-                        <SelectItem value="เครดิต">เครดิต</SelectItem>
+                        {activePaymentMethods.map((m: any) => (
+                          <SelectItem key={m.id} value={m.name || m.nameTh}>
+                            {m.nameTh || m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
