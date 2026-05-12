@@ -1088,6 +1088,7 @@ export function registerPurchaseRoutes(app: Express) {
 
       try {
         const [piCompany] = await db.select({ stockEntrySource: companies.stockEntrySource }).from(companies).where(eq(companies.id, companyId));
+        console.log(`[PI-Stock] companyId=${companyId} stockEntrySource="${piCompany?.stockEntrySource}" items=${savedItems.length} productIds=[${savedItems.map((i:any)=>i.productId||'null').join(',')}]`);
         if (piCompany?.stockEntrySource === "purchase_invoice") {
           for (const item of savedItems) {
             if (!item.productId) continue;
