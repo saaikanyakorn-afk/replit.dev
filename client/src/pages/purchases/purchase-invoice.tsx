@@ -602,6 +602,7 @@ export default function PurchaseInvoice() {
       if (result?.journalResult?.skipped) {
         toast({ title: "ไม่ได้สร้างรายการบัญชี", description: result.journalResult.reason, variant: "destructive" });
       }
+      navigate("/purchases/invoice");
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });
