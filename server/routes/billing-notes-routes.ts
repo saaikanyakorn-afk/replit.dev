@@ -736,6 +736,24 @@ app.post("/api/finance/batch-payment-voucher", requireAuth, async (req, res) => 
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
+app.delete("/api/finance/payment-voucher/:id", requireAuth, async (req, res) => {
+  try {
+    const pvId = Number(req.params.id);
+    if (!pvId) return res.status(400).json({ message: "invalid id" });
+    const user = req.user as any;
+    const [pv] = await db.select().from(paymentVouchers).where(eq(paymentVouchers.id, pvId));
+    if (!pv) return res.status(404).json({ message: "ไม่พบใบสำคัญจ่าย" });
+    if (!(await verifyCompanyAccess(user, pv.companyId))) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
+    const linkedDocs = await db.select().from(paymentVoucherLinkedDocs).where(eq(paymentVoucherLinkedDocs.paymentVoucherId, pvId));
+    await db.delete(paymentVouchers).where(eq(paymentVouchers.id, pvId));
+    for (const ld of linkedDocs) {
+      if (ld.docType === "AP") await recomputeAPPaymentStatus("purchaseInvoice", ld.docId);
+      else if (ld.docType === "EXP") await recomputeAPPaymentStatus("expense", ld.docId);
+    }
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
 app.get("/api/firm-billing/status", requireAuth, requireModule("firm-mgmt"), async (req, res) => {
   try {
     const companyId = Number(req.query.companyId);

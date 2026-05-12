@@ -408,10 +408,21 @@ export default function PurchaseInvoiceList() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge data-testid={`badge-payment-${ap.id}`} className={`${ps.color} border text-xs py-0.5 px-2.5 font-normal h-6`}>
-                              <CreditCard className="h-3 w-3 mr-1" />
-                              {ps.label}
-                            </Badge>
+                            {paymentStatus === "paid" ? (
+                              <Badge data-testid={`badge-payment-${ap.id}`} className={`${ps.color} border text-xs py-0.5 px-2.5 font-normal h-6`}>
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                {ps.label}
+                              </Badge>
+                            ) : (
+                              <button
+                                data-testid={`button-pay-${ap.id}`}
+                                onClick={() => navigate(`/finance/ap-billing?apId=${ap.id}`)}
+                                className={`${ps.color} border text-xs py-0.5 px-2.5 font-normal h-6 rounded-full inline-flex items-center cursor-pointer hover:opacity-80 transition-opacity`}
+                              >
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                {ps.label}
+                              </button>
+                            )}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             <div className="text-sm font-normal">{fmt(ap.totalAmount)}</div>

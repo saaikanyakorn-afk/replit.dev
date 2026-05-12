@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { FileText, Search, DollarSign, Clock, AlertTriangle, CheckCircle, Users, CreditCard, Loader2, ListChecks, Receipt, ChevronDown, ChevronRight, Link2 } from "lucide-react";
+import { FileText, Search, DollarSign, Clock, AlertTriangle, CheckCircle, Users, CreditCard, Loader2, ListChecks, Receipt, ChevronDown, ChevronRight, Link2, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { formatDate } from "@/lib/format";
@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import ThaiDateInput from "@/components/thai-date-input";
 import JournalPreviewPanel, { type JournalLine } from "@/components/journal-preview-panel";
 import { toLocalDateStr } from "@/lib/utils";
+import { useSearch } from "wouter";
 
 import { useDateSettings } from "@/hooks/use-date-settings";
 function fmt(n: number) {
@@ -41,6 +42,7 @@ export default function APBilling() {
   const companyId = selectedCompany?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const searchStr = useSearch();
 
   const [search, setSearch] = useState("");
   const [journalOverrideLines, setJournalOverrideLines] = useState<JournalLine[] | null>(null);
@@ -53,6 +55,14 @@ export default function APBilling() {
   const [expandedPvs, setExpandedPvs] = useState<Set<number>>(new Set());
   const [activeTab, setActiveTab] = useState<"billing" | "history">("billing");
   const [batchWht, setBatchWht] = useState("");
+
+  const [singlePayDialog, setSinglePayDialog] = useState<{ open: boolean; doc: any | null }>({ open: false, doc: null });
+  const [singleMethod, setSingleMethod] = useState("โอนเงิน");
+  const [singleDate, setSingleDate] = useState(() => toLocalDateStr(new Date()));
+  const [singleNotes, setSingleNotes] = useState("");
+  const [singleWht, setSingleWht] = useState("");
+
+  const [deletingPvId, setDeletingPvId] = useState<number | null>(null);
 
   const { dateEra, dateFmt } = useDateSettings();
   const { data: docSettings } = useQuery<any>({
@@ -111,9 +121,27 @@ export default function APBilling() {
     onSuccess: () => {
       toast({ title: "บันทึกการจ่ายเงินสำเร็จ" });
       queryClient.invalidateQueries({ queryKey: ["/api/finance/ap-billing", companyId] });
+      setSinglePayDialog({ open: false, doc: null });
     },
     onError: (err: any) => {
       toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deletePv = useMutation({
+    mutationFn: async (pvId: number) => {
+      const r = await fetch(`/api/finance/payment-voucher/${pvId}`, { method: "DELETE", credentials: "include" });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.message || "ลบไม่สำเร็จ"); }
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "ลบใบสำคัญจ่ายสำเร็จ" });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/ap-billing", companyId] });
+      setDeletingPvId(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
+      setDeletingPvId(null);
     },
   });
 
@@ -186,7 +214,7 @@ export default function APBilling() {
 
   const openBatchDialog = () => {
     setBatchDate(toLocalDateStr(new Date()));
-    setBatchMethod("โอนเงิน");
+    setBatchMethod(activePaymentMethods[0]?.name || "โอนเงิน");
     setBatchNotes("");
     setBatchWht("");
     setBatchDialog(true);
@@ -213,7 +241,18 @@ export default function APBilling() {
     });
   };
 
-  const paySingle = (doc: any) => {
+  const openSinglePayDialog = (doc: any) => {
+    setSingleMethod(activePaymentMethods[0]?.name || "โอนเงิน");
+    setSingleDate(toLocalDateStr(new Date()));
+    setSingleNotes(`จ่ายเงิน ${doc.docNo}`);
+    setSingleWht("");
+    setSinglePayDialog({ open: true, doc });
+  };
+
+  const submitSinglePay = () => {
+    if (!singlePayDialog.doc) return;
+    const doc = singlePayDialog.doc;
+    const wht = parseFloat(singleWht) || 0;
     singlePay.mutate({
       companyId,
       documents: [{
@@ -224,9 +263,10 @@ export default function APBilling() {
         contactName: doc.contactName,
         vendorId: doc.vendorId || null,
       }],
-      paymentMethod: "โอนเงิน",
-      paymentDate: toLocalDateStr(new Date()),
-      notes: `จ่ายเงิน ${doc.docNo}`,
+      paymentMethod: singleMethod,
+      paymentDate: singleDate,
+      notes: singleNotes,
+      withholdingTax: String(wht),
     });
   };
 
@@ -235,6 +275,23 @@ export default function APBilling() {
     if (next.has(id)) next.delete(id); else next.add(id);
     setExpandedPvs(next);
   };
+
+  useEffect(() => {
+    if (!searchStr || !documents.length) return;
+    const params = new URLSearchParams(searchStr);
+    const apId = params.get("apId");
+    if (!apId) return;
+    const target = documents.find((d: any) => d.docType === "AP" && String(d.id) === apId);
+    if (target) {
+      const key = docKey(target);
+      setSelectedDocs(new Set([key]));
+      setActiveTab("billing");
+    }
+  }, [searchStr, documents]);
+
+  const singleDoc = singlePayDialog.doc;
+  const singleWhtAmt = parseFloat(singleWht) || 0;
+  const singleNetPay = singleDoc ? singleDoc.totalAmount - singleWhtAmt : 0;
 
   return (
     <Layout>
@@ -432,7 +489,7 @@ export default function APBilling() {
                                     size="sm"
                                     className="h-7 text-xs"
                                     style={{ background: "#03c9d7" }}
-                                    onClick={() => paySingle(doc)}
+                                    onClick={() => openSinglePayDialog(doc)}
                                     disabled={singlePay.isPending}
                                     data-testid={`button-pay-${doc.docType}-${doc.id}`}
                                   >
@@ -480,14 +537,15 @@ export default function APBilling() {
               <div className="divide-y">
                 {recentPVs.map((pv: any) => {
                   const isExpanded = expandedPvs.has(pv.id);
+                  const isDeleting = deletingPvId === pv.id;
                   return (
                     <div key={pv.id} data-testid={`pv-item-${pv.id}`}>
-                      <div
-                        className="px-4 py-3 hover:bg-gray-50/50 cursor-pointer transition-colors"
-                        onClick={() => togglePvExpand(pv.id)}
-                      >
+                      <div className="px-4 py-3 hover:bg-gray-50/50 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          <div
+                            className="flex items-center gap-2 flex-1 cursor-pointer"
+                            onClick={() => togglePvExpand(pv.id)}
+                          >
                             {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                             <Badge className="text-[9px] bg-cyan-100 text-cyan-700 border-0">PV</Badge>
                             <span className="text-sm font-medium text-gray-800">{pv.pvNo}</span>
@@ -503,6 +561,39 @@ export default function APBilling() {
                             <span className="text-xs text-muted-foreground">{formatDate(pv.pvDate, dateEra, dateFmt)}</span>
                             <Badge className="text-[9px] bg-blue-50 text-blue-600 border-0">{pv.paymentMethod || "โอนเงิน"}</Badge>
                             <span className="text-sm font-bold" style={{ color: "#03c9d7" }}>฿{fmt(pv.totalAmount)}</span>
+                            {isDeleting ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="h-6 text-[10px] px-2"
+                                  onClick={() => deletePv.mutate(pv.id)}
+                                  disabled={deletePv.isPending}
+                                  data-testid={`button-confirm-delete-pv-${pv.id}`}
+                                >
+                                  {deletePv.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "ยืนยันลบ"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 text-[10px] px-2"
+                                  onClick={() => setDeletingPvId(null)}
+                                  data-testid={`button-cancel-delete-pv-${pv.id}`}
+                                >
+                                  ยกเลิก
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                onClick={(e) => { e.stopPropagation(); setDeletingPvId(pv.id); }}
+                                data-testid={`button-delete-pv-${pv.id}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -544,7 +635,7 @@ export default function APBilling() {
       )}
 
       <Dialog open={batchDialog} onOpenChange={(o) => !o && setBatchDialog(false)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base">รวมจ่ายเงินหลายรายการ</DialogTitle>
           </DialogHeader>
@@ -669,8 +760,8 @@ export default function APBilling() {
               withholdingTax={batchWht || "0"}
               paymentMethod={batchMethod}
               linkedInvoiceId={selectedDocsList.length > 0 ? selectedDocsList[0].id : null}
-                            onLinesChange={setJournalOverrideLines}
-              />
+              onLinesChange={setJournalOverrideLines}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBatchDialog(false)}>ยกเลิก</Button>
@@ -682,6 +773,123 @@ export default function APBilling() {
             >
               {batchPayment.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ListChecks className="h-4 w-4 mr-1" />}
               ยืนยันรวมจ่ายเงิน ฿{fmt(whtAmount > 0 ? netPayAmount : selectedTotal)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={singlePayDialog.open} onOpenChange={(o) => !o && setSinglePayDialog({ open: false, doc: null })}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base">ชำระเงิน — {singleDoc?.docNo}</DialogTitle>
+          </DialogHeader>
+          {singleDoc && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ผู้ขาย</span>
+                  <span className="font-medium">{singleDoc.contactName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ยอดที่ต้องชำระ</span>
+                  <span className="font-bold text-base" style={{ color: "#03c9d7" }}>฿{fmt(singleDoc.totalAmount)}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">วิธีจ่ายเงิน</Label>
+                  <Select value={singleMethod} onValueChange={setSingleMethod}>
+                    <SelectTrigger className="mt-1" data-testid="select-single-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activePaymentMethods.map((pm: any) => (
+                        <SelectItem key={pm.id} value={pm.name}>{pm.name}{pm.bankName ? ` · ${pm.bankName}` : ""}{pm.bankAccountNo ? ` ${pm.bankAccountNo}` : ""}</SelectItem>
+                      ))}
+                      {activePaymentMethods.length === 0 && (
+                        <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">วันที่จ่ายเงิน</Label>
+                  <ThaiDateInput
+                    value={singleDate}
+                    onChange={setSingleDate}
+                    dateEra={dateEra}
+                    dateFmt={dateFmt}
+                    className="mt-1"
+                    data-testid="input-single-date"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">ภาษีหัก ณ ที่จ่าย (WHT)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={singleWht}
+                    onChange={(e) => setSingleWht(e.target.value)}
+                    placeholder="0.00"
+                    className="mt-1"
+                    data-testid="input-single-wht"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">หมายเหตุ</Label>
+                  <Input
+                    value={singleNotes}
+                    onChange={(e) => setSingleNotes(e.target.value)}
+                    className="mt-1"
+                    data-testid="input-single-notes"
+                  />
+                </div>
+              </div>
+
+              {singleWhtAmt > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-amber-700">ยอดรวม</span>
+                    <span className="font-medium">฿{fmt(singleDoc.totalAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-amber-700">หัก WHT</span>
+                    <span className="font-medium text-red-600">-฿{fmt(singleWhtAmt)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-amber-200 pt-1 mt-1">
+                    <span className="text-amber-800 font-bold">ยอดจ่ายสุทธิ</span>
+                    <span className="font-bold" style={{ color: "#03c9d7" }}>฿{fmt(singleNetPay)}</span>
+                  </div>
+                </div>
+              )}
+
+              <JournalPreviewPanel
+                companyId={companyId || null}
+                documentType="payment"
+                subtotal={String(singleDoc.totalAmount)}
+                vatAmount="0"
+                withholdingTax={singleWht || "0"}
+                paymentMethod={singleMethod}
+                linkedInvoiceId={singleDoc.id}
+                onLinesChange={() => {}}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSinglePayDialog({ open: false, doc: null })}>ยกเลิก</Button>
+            <Button
+              style={{ background: "#03c9d7" }}
+              disabled={singlePay.isPending}
+              onClick={submitSinglePay}
+              data-testid="button-confirm-single-pay"
+            >
+              {singlePay.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CreditCard className="h-4 w-4 mr-1" />}
+              ยืนยันชำระ ฿{fmt(singleWhtAmt > 0 ? singleNetPay : (singleDoc?.totalAmount || 0))}
             </Button>
           </DialogFooter>
         </DialogContent>
