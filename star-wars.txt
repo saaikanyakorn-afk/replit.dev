@@ -1,6 +1,7 @@
 CRITICAL — PROTECTED FILES SOURCE OF TRUTH:
 
-PROTECTED FILES: App.tsx, app.ts, server/index.ts, routes.ts, storage.ts, db.ts, shared/schema.ts
+PROTECTED FILES: App.tsx, app.ts, server/index.ts, routes.ts, db.ts, shared/schema.ts
+NOTE (2026-05-13 พี่ช้าง): storage.ts is NOT a protected file — can be pushed normally via GitHub API
 
 The ONLY source of truth for these files is the PRODUCTION SERVER (pm2 running process).
 NOT GitHub. NOT dev Replit.
@@ -383,6 +384,16 @@ WHAT DOES NOT WORK (tested 2026-05-04):
 - SSH key                          → libcrypto version mismatch in container
 ----------------------------------------------------------------
 DEPLOY LOG (latest first):
+
+[#65] 2026-05-13 — Fix setCompanyPrimary cross-tenant bug + primary company UI in Settings
+  Commits: 5f752ac6 (storage.ts), 2719c02c (core-routes.ts), 1c2b5d05 (company-info.tsx)
+  Fix: storage.ts setCompanyPrimary() — added tenant filter so clearing is_primary only affects same tenant
+       (previously wiped ALL tenants' is_primary globally — caused บริษัทเฟิร์ม id=4 to disappear from sidebar)
+  New: GET /api/companies/all-in-tenant — returns ALL active companies in tenant regardless of is_primary/firmClients
+  UI:  Settings → ข้อมูลบริษัท — card "บริษัทหลักของสำนักงาน" — admin can search & set primary company
+  Note: storage.ts confirmed NOT a protected file (พี่ช้าง 2026-05-13)
+  Server: git fetch origin && git checkout origin/main -- server/storage.ts server/routes/core-routes.ts client/src/pages/settings/company-info.tsx && npm run build && pm2 restart etax-center
+  Result: ✅ online 84.9mb — บริษัท อี แท็กซ์ เซ็นเตอร์ id=4 กลับมาแล้ว
 
 [#45] 2026-05-08 — ENTRY #005 default_vat_rate: ADD COLUMN to general_settings (migration)
   Commits: 14f966ef (schema-extra.ts), 4ce0e624 (doc-settings-routes.ts), d711e94b (schema-history.md)
