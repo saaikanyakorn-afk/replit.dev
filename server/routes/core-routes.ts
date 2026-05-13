@@ -842,6 +842,15 @@ app.post("/api/companies", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/api/companies/all-in-tenant", requireAuth, async (req, res) => {
+  const user = req.user as any;
+  if (!user.tenantId) return res.status(403).json({ message: "ไม่มี tenant" });
+  const result = await db.select().from(companies)
+    .where(and(eq(companies.active, true), eq(companies.tenantId, user.tenantId)))
+    .orderBy(desc(companies.isPrimary), companies.name);
+  res.json(result);
+});
+
 app.get("/api/companies/:id", requireAuth, async (req, res) => {
   const user = req.user as any;
   const id = Number(req.params.id);

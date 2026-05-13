@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Building2, Save, Loader2, Phone, Mail, Globe, MapPin, FileText, MessageCircle, ShieldCheck, Receipt, Package, BookOpen, CheckCircle2, AlertCircle } from "lucide-react";
+import { Building2, Save, Loader2, Phone, Mail, Globe, MapPin, FileText, MessageCircle, ShieldCheck, Receipt, Package, BookOpen, CheckCircle2, AlertCircle, Star } from "lucide-react";
 import { DatePicker, type DateFormat } from "@/components/ui/date-picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -118,6 +118,47 @@ export default function CompanyInfo() {
 
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [mergeResult, setMergeResult] = useState<{ added: number; existing: number } | null>(null);
+
+  const [primarySearch, setPrimarySearch] = useState("");
+  const [selectedPrimaryId, setSelectedPrimaryId] = useState<number | null>(null);
+  const [showPrimaryDropdown, setShowPrimaryDropdown] = useState(false);
+
+  const { data: allTenantCompanies = [] } = useQuery<any[]>({
+    queryKey: ["/api/companies/all-in-tenant"],
+    queryFn: async () => {
+      const r = await fetch("/api/companies/all-in-tenant", { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    staleTime: 30000,
+  });
+
+  const currentPrimary = allTenantCompanies.find((c: any) => c.isPrimary);
+  const filteredPrimaryCompanies = allTenantCompanies.filter((c: any) =>
+    primarySearch.trim() === "" ? false : c.name.toLowerCase().includes(primarySearch.toLowerCase())
+  );
+
+  const setPrimaryMutation = useMutation({
+    mutationFn: async (companyId: number) => {
+      const r = await fetch(`/api/companies/${companyId}/set-primary`, { method: "POST", credentials: "include" });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ message: "ไม่สำเร็จ" }));
+        throw new Error(err.message);
+      }
+      return r.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies/all-in-tenant"] });
+      setSelectedPrimaryId(null);
+      setPrimarySearch("");
+      setShowPrimaryDropdown(false);
+      toast({ title: "ตั้งบริษัทหลักสำเร็จ", description: `"${data?.name}" เป็นบริษัทหลักแล้ว`, variant: "success" as any });
+    },
+    onError: (err: any) => {
+      toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
+    },
+  });
 
   const CHART_TEMPLATES = [
     { key: "standard", label: "มาตรฐาน (ทั่วไป)", description: "384 บัญชี — เหมาะกับธุรกิจทุกประเภท" },
@@ -591,6 +632,67 @@ export default function CompanyInfo() {
             </Button>
           </CardContent>
         </Card>
+
+        {(permData?.role === "admin" || permData?.role === "super_admin") && allTenantCompanies.length > 0 && (
+          <Card className="border-amber-200 bg-amber-50/30">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Star className="h-4 w-4 text-amber-500" />
+                บริษัทหลักของสำนักงาน
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">บริษัทหลักจะแสดงที่ด้านบนสุดของ sidebar และเป็นค่าเริ่มต้นในการทำเอกสาร</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-white border text-sm">
+                <Star className={`h-4 w-4 flex-shrink-0 ${currentPrimary ? "text-amber-500 fill-amber-400" : "text-muted-foreground"}`} />
+                <span className="text-muted-foreground text-xs">ปัจจุบัน:</span>
+                {currentPrimary
+                  ? <span className="font-medium" data-testid="text-current-primary">{currentPrimary.name}</span>
+                  : <span className="text-destructive font-medium">ไม่มีบริษัทหลัก — กรุณาตั้งค่าใหม่</span>
+                }
+              </div>
+
+              <div className="relative">
+                <Input
+                  placeholder="ค้นหาชื่อบริษัทที่ต้องการตั้งเป็นหลัก..."
+                  value={selectedPrimaryId ? allTenantCompanies.find((c: any) => c.id === selectedPrimaryId)?.name || primarySearch : primarySearch}
+                  onChange={e => { setPrimarySearch(e.target.value); setSelectedPrimaryId(null); setShowPrimaryDropdown(true); }}
+                  onFocus={() => setShowPrimaryDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowPrimaryDropdown(false), 150)}
+                  data-testid="input-primary-search"
+                />
+                {showPrimaryDropdown && filteredPrimaryCompanies.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                    {filteredPrimaryCompanies.slice(0, 50).map((c: any) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={() => { setSelectedPrimaryId(c.id); setPrimarySearch(c.name); setShowPrimaryDropdown(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-amber-50 flex items-center gap-2 ${c.isPrimary ? "bg-amber-50/50 font-medium" : ""}`}
+                        data-testid={`option-primary-${c.id}`}
+                      >
+                        {c.isPrimary && <Star className="h-3 w-3 text-amber-500 fill-amber-400 flex-shrink-0" />}
+                        <span>{c.name}</span>
+                        {c.isPrimary && <span className="text-xs text-amber-600 ml-auto">(หลักปัจจุบัน)</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                disabled={!selectedPrimaryId || selectedPrimaryId === currentPrimary?.id || setPrimaryMutation.isPending}
+                onClick={() => selectedPrimaryId && setPrimaryMutation.mutate(selectedPrimaryId)}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                data-testid="button-set-primary-company"
+              >
+                {setPrimaryMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Star className="h-4 w-4 mr-2" />}
+                ตั้งเป็นบริษัทหลัก
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-4">

@@ -564,7 +564,10 @@ export class DatabaseStorage implements IStorage {
     await db.transaction(async (tx) => {
       const [target] = await tx.select().from(companies).where(eq(companies.id, id));
       if (!target) throw new Error("ไม่พบบริษัท");
-      await tx.update(companies).set({ isPrimary: false }).where(eq(companies.isPrimary, true));
+      const clearWhere = target.tenantId
+        ? and(eq(companies.isPrimary, true), eq(companies.tenantId, target.tenantId))
+        : eq(companies.isPrimary, true);
+      await tx.update(companies).set({ isPrimary: false }).where(clearWhere);
       await tx.update(companies).set({ isPrimary: true }).where(eq(companies.id, id));
     });
   }
