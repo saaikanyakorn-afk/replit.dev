@@ -615,6 +615,20 @@ DEPLOY #60 — 2026-05-12
     pm2 restart etax-center
 
 ----------------------------------------------------------------
+DEPLOY #64 — 2026-05-13 (https fix for quotation share URL + route-helpers.ts update)
+  Files:
+    - server/routes/sales-docs-routes.ts → share URL now uses https in production (req.protocol→https fix)
+    - server/route-helpers.ts → pushed to production (was outdated — DEPLOY #61 was pending)
+  Commits: 530255ff (sales-docs-routes.ts) / 4d6aad4c (route-helpers.ts)
+  Root cause: shareBaseUrl used req.protocol which returns "http" behind reverse proxy
+              → LINE share generated http://etaxerp.com/... → Apache 404 (not Express)
+  Fix: NODE_ENV=production → always use "https"  (same pattern as billing-notes-routes.ts line 974)
+  Build failure mid-deploy: sales-docs-routes.ts imported upsertWarehouseReservedQty
+              from route-helpers.ts which was outdated on production → esbuild fail
+              Lesson: check ALL local imports before pushing any server file
+  pm2: online 84.4mb ✅
+
+----------------------------------------------------------------
 DEPLOY #63 — 2026-05-13 (share page 404 fix — standalone HTML for all doc types)
   Files:
     - server/share-og.ts → added salesDocShareHandler (standalone HTML for humans, OG for bots)
