@@ -633,7 +633,7 @@ export default function CompanyInfo() {
           </CardContent>
         </Card>
 
-        {(permData?.role === "admin" || permData?.role === "super_admin") && allTenantCompanies.length > 0 && (
+        {allTenantCompanies.length > 0 && (
           <Card className="border-amber-200 bg-amber-50/30">
             <CardHeader className="pb-4">
               <CardTitle className="text-base flex items-center gap-2">
