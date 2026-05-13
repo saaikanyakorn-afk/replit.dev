@@ -558,7 +558,7 @@ git fetch origin && git checkout origin/main -- client/src/components/etax-send-
 
 ## 🔵 GITHUB-DEV PUSH RULE — MANDATORY AFTER EVERY CODE CHANGE
 
-**Kai must cherry-pick push changed files to `github-dev` immediately after every code change — NO authorization needed.**
+**Kai must cherry-pick push changed code files to `github-dev` immediately after every code change — NO authorization needed. "Changed files" means source code only (`.ts`, `.tsx`, `.js`, `.css`, etc.) — NOT documents, notes, logs, or `.local/` files.**
 
 **Why:**
 1. พี่ช้าง does not read the code — no comments on what/how Kai writes
