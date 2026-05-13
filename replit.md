@@ -1,5 +1,53 @@
 # E-Tax Center - Digital Accounting Platform
 
+---
+## 🔴 CURRENT TASK — READ THIS FIRST (updated 2026-05-13)
+
+TASK: Migrate 14 eq(products.active, true/false) WHERE-clause sites → innerJoin pattern
+Authorized by: พี่ช้าง
+Status: DEV CHANGES COMPLETE — waiting for พี่ทราย to verify dev
+
+WHAT WAS DONE (all 14 sites done on dev):
+  server/routes/commerce-intelligence.ts   — 2 sites
+  server/routes/price-calculator.ts        — 1 site
+  server/routes/ad-cost-routes.ts          — 1 site
+  server/routes/pos-routes.ts              — 2 sites
+  server/routes/ecommerce-routes.ts        — 2 sites
+  server/routes/notifications-routes.ts    — 1 site
+  server/routes/products-routes.ts         — 3 sites
+  server/storage.ts                        — 1 site (findDuplicateProducts)
+  Verification: grep -rn "eq(products.active" server/ → 0 results ✅
+
+WHAT NEXT AGENT MUST DO:
+  STEP 1 — Check if พี่ทราย has already replied with dev test results (look in chat history).
+            If not yet → show her the screen list below and wait.
+  STEP 2 — After พี่ทราย confirms dev passes → ask พี่ช้าง for authorization to push to GitHub.
+  STEP 3 — After พี่ช้าง authorizes → push the 8 files above to GitHub only.
+            Push method and token: ask พี่ช้าง or look in the known reference file.
+  STEP 4 — After GitHub push → ask พี่ช้าง for authorization for production server command.
+  STEP 5 — DO NOT push to production server without explicit authorization from พี่ช้าง.
+
+SCREENS พี่ทราย MUST VERIFY ON DEV (check data shows normally, no errors):
+  [A1] Products list — สินค้า active ยังขึ้นรายการครบ
+  [A2] Create/Edit product — กรอกรหัส/ชื่อที่มีอยู่แล้ว duplicate check ยังทำงาน
+  [B1] Notifications — list โหลดขึ้น ไม่ error
+  [C1] Commerce Intelligence dashboard — กราฟและตัวเลขสินค้ายังแสดง
+  [C2] Commerce Intelligence → Stock Risk / Low Stock alerts — รายการยังขึ้น
+  [D1] Price Calculator — dropdown สินค้าโหลดได้
+  [E1] Ad Cost — dropdown หรือรายการสินค้ายังแสดง
+  [F1] POS → ค้นหาสินค้า — พิมพ์ชื่อสินค้า ผลลัพธ์ยังออก
+  [F2] POS → Bundle products — list ยังแสดง
+  [G1] E-commerce → รายการสินค้า — ยังขึ้นปกติ
+  [G2] E-commerce → Low stock report — ยังโหลดได้
+
+พี่ทราย RESPONSE (fill in after she replies):
+  Date/time:
+  Results: [A1] [A2] [B1] [C1] [C2] [D1] [E1] [F1] [F2] [G1] [G2]
+  Overall: PASS / FAIL / PARTIAL
+  Notes:
+
+---
+
 ## Agent Identity
 - **Agent name: Kai** — The project owner identifies this agent by name. When asked "Who am I talking to?", always respond "This is Kai." This is used to verify session continuity during complex design work.
 
