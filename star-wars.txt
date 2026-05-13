@@ -604,6 +604,19 @@ DEPLOY #60 — 2026-05-12
     pm2 restart etax-center
 
 ----------------------------------------------------------------
+DEPLOY #63 — 2026-05-13 (share page 404 fix — standalone HTML for all doc types)
+  Files:
+    - server/share-og.ts → added salesDocShareHandler (standalone HTML for humans, OG for bots)
+    - server/static.ts → switched all share routes from shareOgHandler → salesDocShareHandler
+  Commits: 3b539ea7 (share-og.ts) / 41625b80 (static.ts)
+  Root cause: shareOgHandler called next() for humans → index.html → protected App.tsx → no share routes → 404
+  Fix pattern: same as billingNoteShareHandler / creditNoteShareHandler (already working)
+  Covers: invoice, tax-invoice, receipt, quote, order, wht-cert
+  PDF type mapping: quote→quotation, order→sales-order (matches TSX directPdfUrl)
+  pm2: online 83.5mb ✅
+  Also: fixed pre-existing syntax error in client/src/pages/purchases/debit-note-form.tsx (missing ternary ": null") — pushed to dev only
+
+----------------------------------------------------------------
 DEPLOY #62 — 2026-05-13 (LINE share Android redirect fix)
   Files:
     - client/src/lib/line-android-redirect.ts
