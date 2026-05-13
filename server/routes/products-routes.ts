@@ -1717,6 +1717,42 @@ app.post("/api/product-stock/reset-inactive", requireAuth, requireModule("invent
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
+// ============ Purge ลบสินค้า inactive ออกจาก DB จริงๆ (cascade) ============
+app.post("/api/product-stock/purge-inactive", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const { allowed } = await checkDocOwnership(companyId, req.user as any);
+    if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
+    const inactiveProducts = await db.select({ id: products.id }).from(products)
+      .where(and(eq(products.companyId, companyId), eq(products.active, false)));
+    if (inactiveProducts.length === 0)
+      return res.json({ message: "ไม่มีสินค้าที่ปิดใช้งาน", deletedProducts: 0 });
+    const inactiveIds = inactiveProducts.map(p => p.id);
+    const userName = (req.user as any)?.username || (req.user as any)?.name || "ไม่ระบุ";
+    let deletedMovements = 0, deletedWsl = 0, deletedPs = 0, deletedProducts = 0;
+    await db.transaction(async (tx) => {
+      const r1 = await tx.delete(stockMovements)
+        .where(and(eq(stockMovements.companyId, companyId), inArray(stockMovements.productId, inactiveIds)));
+      deletedMovements = r1.rowCount || 0;
+      const r2 = await tx.delete(warehouseStockLevels)
+        .where(and(eq(warehouseStockLevels.companyId, companyId), inArray(warehouseStockLevels.productId, inactiveIds)));
+      deletedWsl = r2.rowCount || 0;
+      const r3 = await tx.delete(productStock)
+        .where(and(eq(productStock.companyId, companyId), inArray(productStock.productId, inactiveIds)));
+      deletedPs = r3.rowCount || 0;
+      const r4 = await tx.delete(products)
+        .where(and(eq(products.companyId, companyId), eq(products.active, false)));
+      deletedProducts = r4.rowCount || 0;
+    });
+    console.log(`[purge-inactive] companyId=${companyId} by=${userName} products=${deletedProducts} movements=${deletedMovements} wsl=${deletedWsl} ps=${deletedPs}`);
+    res.json({
+      message: `ลบสินค้าที่ปิดแล้วสำเร็จ — สินค้า ${deletedProducts} รายการ, stock movements ${deletedMovements}, warehouse levels ${deletedWsl} โดย ${userName}`,
+      deletedProducts, deletedMovements, deletedWsl, deletedPs,
+    });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
 // ============ Stock Movement — ดูประวัติ Import (จัดกลุ่มตามวันที่) — MUST be before /:id ============
 app.get("/api/stock-movements/import-batches", requireAuth, requireModule("inventory"), async (req, res) => {
   try {

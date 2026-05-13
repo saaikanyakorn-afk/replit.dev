@@ -161,6 +161,28 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
 
   // ============ Reset Inactive Stock ============
   const [showResetInactiveConfirm, setShowResetInactiveConfirm] = useState(false);
+  const [showPurgeInactiveConfirm, setShowPurgeInactiveConfirm] = useState(false);
+
+  const purgeInactiveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/product-stock/purge-inactive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ companyId }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "เกิดข้อผิดพลาด"); }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      setShowPurgeInactiveConfirm(false);
+      toast({ title: "ลบสำเร็จ", description: data?.message || "", variant: "success" as any });
+    },
+    onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
+  });
 
   const resetInactiveMutation = useMutation({
     mutationFn: async () => {
@@ -517,6 +539,15 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
               >
                 <XCircle className="h-4 w-4 mr-1" />
                 Reset ยอดสินค้าที่ปิดแล้ว
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-white/60 border-red-800 text-red-900 hover:bg-red-100 h-9 font-semibold"
+                onClick={() => setShowPurgeInactiveConfirm(true)}
+                data-testid="button-purge-inactive-stock"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                ลบสินค้าที่ปิดแล้วออกถาวร
               </Button>
             </div>
           </div>
@@ -1214,6 +1245,39 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
             </Dialog>
           </TabsContent>
         </Tabs>
+
+        {/* Dialog ยืนยัน Purge ลบสินค้าที่ปิดแล้วออกจาก DB จริงๆ */}
+        <Dialog open={showPurgeInactiveConfirm} onOpenChange={(o) => { if (!o) setShowPurgeInactiveConfirm(false); }}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-800">
+                <Trash2 className="h-4 w-4" /> ลบสินค้าที่ปิดแล้วออกถาวร
+              </DialogTitle>
+              <DialogDescription>
+                ระบบจะ<strong>ลบถาวร</strong>จาก DB ทุกอย่างที่เกี่ยวกับสินค้า inactive ทั้งหมด:<br />
+                • สินค้า (products)<br />
+                • ยอดสต๊อก (product_stock)<br />
+                • ยอดคลัง (warehouse_stock_levels)<br />
+                • ประวัติการเคลื่อนไหว (stock_movements)<br /><br />
+                <span className="text-red-700 font-semibold">ลบแล้วย้อนกลับไม่ได้เด็ดขาด</span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" size="sm" onClick={() => setShowPurgeInactiveConfirm(false)} data-testid="button-purge-inactive-no">
+                ยกเลิก
+              </Button>
+              <Button
+                size="sm"
+                className="bg-red-800 hover:bg-red-900 text-white"
+                disabled={purgeInactiveMutation.isPending}
+                onClick={() => purgeInactiveMutation.mutate()}
+                data-testid="button-purge-inactive-confirm"
+              >
+                {purgeInactiveMutation.isPending ? "กำลังลบ..." : "ยืนยัน ลบถาวร"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog ยืนยัน Reset ยอดสินค้าที่ปิดใช้งาน */}
         <Dialog open={showResetInactiveConfirm} onOpenChange={(o) => { if (!o) setShowResetInactiveConfirm(false); }}>
