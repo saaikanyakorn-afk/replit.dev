@@ -2,11 +2,9 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzle-orm";
-import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, productStock, branches, insertProductSchema } from "@shared/schema";
+import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
-// import { runInitialStockMovementBackfill } from "@shared/schema-extra"; // ❌ CANCELLED 2026-05-12 — approach changed: user inputs วันที่เริ่มต้นสต๊อก at import time
-import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { parsePagination, paginatedResponse } from "./pagination";
 import * as XLSX from "xlsx";
@@ -86,7 +84,7 @@ app.delete("/api/product-categories/:id", requireAuth, async (req, res) => {
     const catResult = await db.execute(sql`SELECT * FROM product_categories WHERE id = ${id}`);
     if (catResult.rows.length === 0) return res.status(404).json({ message: "ไม่พบหมวดหมู่" });
     const cat = catResult.rows[0] as any;
-    const usedCount = await db.select({ c: count() }).from(products).innerJoin(activeProducts, eq(activeProducts.id, products.id)).where(and(eq(products.companyId, cat.company_id), eq(products.category, cat.code)));
+    const usedCount = await db.select({ c: count() }).from(products).where(and(eq(products.companyId, cat.company_id), eq(products.category, cat.code), eq(products.active, true)));
     if (Number(usedCount[0]?.c) > 0) {
       return res.status(400).json({ message: `หมวดหมู่นี้มีสินค้าใช้อยู่ ${usedCount[0].c} รายการ ไม่สามารถลบได้` });
     }
@@ -407,14 +405,10 @@ app.post("/api/products/import/preview", requireAuth, requireModule("inventory")
 
 app.post("/api/products/import/execute", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
-    const { companyId, products: productList, updateProducts, stockEntries, stockOpenDate } = req.body;
+    const { companyId, products: productList, updateProducts, stockEntries } = req.body;
     if (!companyId || !productList || !Array.isArray(productList)) {
       return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
     }
-    if (Array.isArray(stockEntries) && stockEntries.length > 0 && !stockOpenDate) {
-      return res.status(400).json({ message: "กรุณากำหนดวันที่เริ่มต้นสต๊อกก่อนนำเข้า" });
-    }
-    const stockOpenDateObj = stockOpenDate ? new Date(stockOpenDate + "T00:00:00") : new Date();
 
     // ── ONE-TIME CLEANUP: ENTRY #006 (2026-05-09) ──
     // Removes orphan stock_movements (movement_type='initial', no reference doc) that silently
@@ -547,18 +541,21 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
         // บันทึก stock_movement สำหรับ initial stock ที่ตั้งจาก Excel import
         const delta = qty - prevQty;
         if (delta !== 0) {
-          await db.insert(stockMovements).values({
-            companyId,
-            productId,
-            movementType: "initial",
-            quantity: String(delta),
-            notes: `ตั้งต้นสต๊อก (นำเข้า Excel) คลัง ${entry.warehouseName || warehouseId}`,
-            referenceType: null,
-            referenceId: null,
-            unitCost: "0",
-            totalCost: "0",
-            createdAt: stockOpenDateObj,
-          });
+          try {
+            await db.insert(stockMovements).values({
+              companyId,
+              productId,
+              movementType: "initial",
+              quantity: String(delta),
+              notes: `ตั้งต้นสต๊อก (นำเข้า Excel) คลัง ${entry.warehouseName || warehouseId}`,
+              referenceType: null,
+              referenceId: null,
+              unitCost: "0",
+              totalCost: "0",
+            });
+          } catch (mvErr: any) {
+            console.error(`[ProductImport] stock_movement insert failed pid=${productId}:`, mvErr.message);
+          }
         }
         stockSetCount++;
       }
@@ -1654,248 +1651,19 @@ app.post("/api/product-stock/sync-from-warehouse", requireAuth, requireModule("i
     const levels = await db.select({
       productId: warehouseStockLevels.productId,
       quantity: warehouseStockLevels.quantity,
-      reservedQty: warehouseStockLevels.reservedQty,
     }).from(warehouseStockLevels)
       .where(eq(warehouseStockLevels.companyId, companyId));
     const totals = new Map<number, number>();
-    const reservedTotals = new Map<number, number>();
     for (const l of levels) {
       const pid = l.productId;
       totals.set(pid, (totals.get(pid) || 0) + Number(l.quantity || 0));
-      reservedTotals.set(pid, (reservedTotals.get(pid) || 0) + Number(l.reservedQty || 0));
     }
     let synced = 0;
     for (const [pid, total] of totals) {
-      const reserved = reservedTotals.get(pid) || 0;
-      const existing = await db.select().from(productStock)
-        .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
-      if (existing.length > 0) {
-        await db.update(productStock)
-          .set({ quantity: String(total), reservedQty: String(reserved), updatedAt: new Date() })
-          .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
-      } else {
-        await db.insert(productStock).values({ companyId, productId: pid, quantity: String(total), reservedQty: String(reserved) });
-      }
+      await storage.upsertProductStock(companyId, pid, String(total));
       synced++;
     }
-    res.json({ message: `sync สำเร็จ ${synced} รายการ (ยอดคงเหลือ + ยอดจอง)`, synced });
-  } catch (err: any) { res.status(400).json({ message: err.message }); }
-});
-
-// ============ Reset ยอดสต๊อก สำหรับสินค้าที่ปิดใช้งาน (inactive) ============
-app.post("/api/product-stock/reset-inactive", requireAuth, requireModule("inventory"), async (req, res) => {
-  try {
-    const companyId = Number(req.body.companyId);
-    if (!companyId) return res.status(400).json({ message: "companyId required" });
-    const { allowed } = await checkDocOwnership(companyId, req.user as any);
-    if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
-    // หาสินค้าที่ inactive
-    const inactiveProducts = await db.select({ id: products.id })
-      .from(products)
-      .innerJoin(inactiveProductsTable, eq(inactiveProductsTable.id, products.id))
-      .where(eq(products.companyId, companyId));
-    if (inactiveProducts.length === 0) {
-      return res.json({ message: "ไม่มีสินค้าที่ปิดใช้งาน", resetCount: 0 });
-    }
-    const inactiveIds = inactiveProducts.map(p => p.id);
-    const userName = (req.user as any)?.username || (req.user as any)?.name || "ไม่ระบุ";
-    let resetCount = 0;
-    await db.transaction(async (tx) => {
-      // Reset warehouse_stock_levels → 0
-      const wslResult = await tx.update(warehouseStockLevels)
-        .set({ quantity: "0", reservedQty: "0", updatedAt: new Date() })
-        .where(and(eq(warehouseStockLevels.companyId, companyId), inArray(warehouseStockLevels.productId, inactiveIds)));
-      resetCount = wslResult.rowCount || 0;
-      // Reset product_stock → 0
-      await tx.update(productStock)
-        .set({ quantity: "0", reservedQty: "0", updatedAt: new Date() })
-        .where(and(eq(productStock.companyId, companyId), inArray(productStock.productId, inactiveIds)));
-    });
-    res.json({
-      message: `Reset ยอดสต๊อกสำเร็จ — สินค้า inactive ${inactiveIds.length} รายการ, warehouse levels ${resetCount} rows โดย ${userName}`,
-      inactiveProducts: inactiveIds.length,
-      resetCount,
-    });
-  } catch (err: any) { res.status(400).json({ message: err.message }); }
-});
-
-// ============ Purge ลบสินค้า inactive ออกจาก DB จริงๆ (cascade) ============
-app.post("/api/product-stock/purge-inactive", requireAuth, requireModule("inventory"), async (req, res) => {
-  try {
-    const companyId = Number(req.body.companyId);
-    if (!companyId) return res.status(400).json({ message: "companyId required" });
-    const { allowed } = await checkDocOwnership(companyId, req.user as any);
-    if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
-    const inactiveProducts = await db.select({ id: products.id }).from(products)
-      .innerJoin(inactiveProductsTable, eq(inactiveProductsTable.id, products.id))
-      .where(eq(products.companyId, companyId));
-    if (inactiveProducts.length === 0)
-      return res.json({ message: "ไม่มีสินค้าที่ปิดใช้งาน", deletedProducts: 0 });
-    const inactiveIds = inactiveProducts.map(p => p.id);
-    const userName = (req.user as any)?.username || (req.user as any)?.name || "ไม่ระบุ";
-    let deletedMovements = 0, deletedWsl = 0, deletedPs = 0, deletedProducts = 0;
-    await db.transaction(async (tx) => {
-      const r1 = await tx.delete(stockMovements)
-        .where(and(eq(stockMovements.companyId, companyId), inArray(stockMovements.productId, inactiveIds)));
-      deletedMovements = r1.rowCount || 0;
-      const r2 = await tx.delete(warehouseStockLevels)
-        .where(and(eq(warehouseStockLevels.companyId, companyId), inArray(warehouseStockLevels.productId, inactiveIds)));
-      deletedWsl = r2.rowCount || 0;
-      const r3 = await tx.delete(productStock)
-        .where(and(eq(productStock.companyId, companyId), inArray(productStock.productId, inactiveIds)));
-      deletedPs = r3.rowCount || 0;
-      const r4 = await tx.delete(products)
-        .where(and(eq(products.companyId, companyId), inArray(products.id, db.select({ id: inactiveProductsTable.id }).from(inactiveProductsTable))));
-      deletedProducts = r4.rowCount || 0;
-    });
-    console.log(`[purge-inactive] companyId=${companyId} by=${userName} products=${deletedProducts} movements=${deletedMovements} wsl=${deletedWsl} ps=${deletedPs}`);
-    res.json({
-      message: `ลบสินค้าที่ปิดแล้วสำเร็จ — สินค้า ${deletedProducts} รายการ, stock movements ${deletedMovements}, warehouse levels ${deletedWsl} โดย ${userName}`,
-      deletedProducts, deletedMovements, deletedWsl, deletedPs,
-    });
-  } catch (err: any) { res.status(400).json({ message: err.message }); }
-});
-
-// ============ Stock Movement — ดูประวัติ Import (จัดกลุ่มตามวันที่) — MUST be before /:id ============
-app.get("/api/stock-movements/import-batches", requireAuth, requireModule("inventory"), async (req, res) => {
-  try {
-    const companyId = Number(req.query.companyId);
-    if (!companyId) return res.status(400).json({ message: "companyId required" });
-    const rows = await db.select({
-      id: stockMovements.id,
-      productId: stockMovements.productId,
-      quantity: stockMovements.quantity,
-      unitCost: stockMovements.unitCost,
-      totalCost: stockMovements.totalCost,
-      notes: stockMovements.notes,
-      createdAt: stockMovements.createdAt,
-    }).from(stockMovements)
-      .where(and(
-        eq(stockMovements.companyId, companyId),
-        eq(stockMovements.movementType, "initial"),
-        sql`${stockMovements.referenceType} IS NULL`,
-      ))
-      .orderBy(desc(stockMovements.createdAt));
-    // Group by date
-    const batchMap = new Map<string, { batchDate: string; movementCount: number; productCount: number; totalQty: number; movements: any[] }>();
-    for (const r of rows) {
-      const d = r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : "unknown";
-      if (!batchMap.has(d)) batchMap.set(d, { batchDate: d, movementCount: 0, productCount: 0, totalQty: 0, movements: [] });
-      const b = batchMap.get(d)!;
-      b.movementCount++;
-      b.totalQty += Number(r.quantity);
-      b.movements.push(r);
-    }
-    const batches = Array.from(batchMap.values()).map(b => ({
-      batchDate: b.batchDate,
-      movementCount: b.movementCount,
-      productCount: new Set(b.movements.map((m: any) => m.productId)).size,
-      totalQty: b.totalQty,
-    }));
-    res.json(batches);
-  } catch (err: any) { res.status(400).json({ message: err.message }); }
-});
-
-// ============ Stock Movement — ยกเลิก Import ทั้งชุด ============
-app.delete("/api/stock-movements/cancel-import-batch", requireAuth, requireModule("inventory"), async (req, res) => {
-  try {
-    const { companyId, batchDate } = req.body;
-    if (!companyId || !batchDate) return res.status(400).json({ message: "companyId และ batchDate required" });
-    const { allowed } = await checkDocOwnership(companyId, req.user as any);
-    if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
-    const dateStart = new Date(batchDate + "T00:00:00.000Z");
-    const dateEnd = new Date(batchDate + "T23:59:59.999Z");
-    // หา movements ที่จะลบ
-    const toDelete = await db.select().from(stockMovements).where(and(
-      eq(stockMovements.companyId, companyId),
-      eq(stockMovements.movementType, "initial"),
-      sql`${stockMovements.referenceType} IS NULL`,
-      sql`DATE(${stockMovements.createdAt}) = DATE(${batchDate})`,
-    ));
-    if (toDelete.length === 0) return res.status(404).json({ message: "ไม่พบรายการ Import ในวันที่นี้" });
-    const affectedProductIds = [...new Set(toDelete.map(m => m.productId))];
-    await db.transaction(async (tx) => {
-      // ลบ movements
-      await tx.delete(stockMovements).where(and(
-        eq(stockMovements.companyId, companyId),
-        eq(stockMovements.movementType, "initial"),
-        sql`${stockMovements.referenceType} IS NULL`,
-        sql`DATE(${stockMovements.createdAt}) = DATE(${batchDate})`,
-      ));
-      // Reset warehouseStockLevels = 0 สำหรับ products ที่ไม่มี movement เหลือ
-      for (const pid of affectedProductIds) {
-        const remaining = await tx.select({ qty: stockMovements.quantity })
-          .from(stockMovements)
-          .where(and(eq(stockMovements.companyId, companyId), eq(stockMovements.productId, pid)));
-        const newQty = remaining.reduce((s, r) => s + Number(r.qty), 0);
-        // Reset warehouse_stock_levels
-        await tx.update(warehouseStockLevels)
-          .set({ quantity: String(Math.max(0, newQty)), updatedAt: new Date() })
-          .where(and(eq(warehouseStockLevels.companyId, companyId), eq(warehouseStockLevels.productId, pid)));
-        // Update product_stock
-        const ps = await tx.select().from(productStock)
-          .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
-        if (ps.length > 0) {
-          await tx.update(productStock)
-            .set({ quantity: String(Math.max(0, newQty)), updatedAt: new Date() })
-            .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
-        }
-      }
-    });
-    res.json({ message: `ยกเลิก Import สำเร็จ — ลบ ${toDelete.length} รายการ, ${affectedProductIds.length} สินค้า`, deletedCount: toDelete.length, affectedProducts: affectedProductIds.length });
-  } catch (err: any) { res.status(400).json({ message: err.message }); }
-});
-
-// ============ Stock Movement — แก้ต้นทุน (ต่อรายการ) ============
-app.patch("/api/stock-movements/:id", requireAuth, requireModule("inventory"), async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const { unitCost } = req.body;
-    if (!id || unitCost === undefined || unitCost === null) return res.status(400).json({ message: "id และ unitCost required" });
-    const [movement] = await db.select().from(stockMovements).where(eq(stockMovements.id, id));
-    if (!movement) return res.status(404).json({ message: "ไม่พบรายการ" });
-    const { allowed } = await checkDocOwnership(movement.companyId, req.user as any);
-    if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
-    const newUnitCost = Number(unitCost);
-    const newTotalCost = Math.abs(Number(movement.quantity)) * newUnitCost;
-    const userName = (req.user as any)?.username || (req.user as any)?.name || "ไม่ระบุ";
-    const editNote = `[แก้ต้นทุน ${new Date().toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit", year: "numeric" })} โดย ${userName}]`;
-    const updatedNotes = movement.notes ? `${movement.notes} ${editNote}` : editNote;
-    await db.update(stockMovements).set({
-      unitCost: String(newUnitCost),
-      totalCost: String(newTotalCost),
-      notes: updatedNotes,
-    }).where(eq(stockMovements.id, id));
-    const [updated] = await db.select().from(stockMovements).where(eq(stockMovements.id, id));
-    res.json(updated);
-  } catch (err: any) { res.status(400).json({ message: err.message }); }
-});
-
-// ============ Stock Movement — ลบทีละรายการ (เฉพาะ initial ที่ไม่มีเอกสาร) ============
-app.delete("/api/stock-movements/:id", requireAuth, requireModule("inventory"), async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ message: "id required" });
-    const [movement] = await db.select().from(stockMovements).where(eq(stockMovements.id, id));
-    if (!movement) return res.status(404).json({ message: "ไม่พบรายการ" });
-    const { allowed } = await checkDocOwnership(movement.companyId, req.user as any);
-    if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
-    if (movement.movementType !== "initial" || movement.referenceType !== null) {
-      return res.status(400).json({ message: "ลบได้เฉพาะรายการ 'ยอดเปิด' ที่ไม่มีเอกสารอ้างอิงเท่านั้น" });
-    }
-    await db.delete(stockMovements).where(eq(stockMovements.id, id));
-    const remaining = await db.select({ qty: stockMovements.quantity })
-      .from(stockMovements)
-      .where(and(eq(stockMovements.companyId, movement.companyId), eq(stockMovements.productId, movement.productId)));
-    const newQty = remaining.reduce((s, r) => s + Number(r.qty), 0);
-    const existing = await db.select().from(productStock)
-      .where(and(eq(productStock.companyId, movement.companyId), eq(productStock.productId, movement.productId)));
-    if (existing.length > 0) {
-      await db.update(productStock)
-        .set({ quantity: String(newQty), updatedAt: new Date() })
-        .where(and(eq(productStock.companyId, movement.companyId), eq(productStock.productId, movement.productId)));
-    }
-    res.json({ message: "ลบรายการสำเร็จ", deletedId: id, newQty });
+    res.json({ message: `sync สำเร็จ ${synced} รายการ`, synced });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 

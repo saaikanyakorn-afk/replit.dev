@@ -1,7 +1,6 @@
 import type { Express } from "express";
 import { db } from "../db";
 import { eq, and, sql, desc, inArray } from "drizzle-orm";
-import { activeProducts } from "@shared/schema-extra";
 import {
   platformFeeConfigs,
   products,
@@ -253,8 +252,10 @@ export function registerPriceCalculatorRoutes(app: Express) {
           active: products.active,
         })
         .from(products)
-        .innerJoin(activeProducts, eq(activeProducts.id, products.id))
-        .where(eq(products.companyId, companyId));
+        .where(and(
+          eq(products.companyId, companyId),
+          eq(products.active, true),
+        ));
 
       const configs = await db
         .select()
