@@ -159,6 +159,29 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
     },
   });
 
+  // ============ Reset Inactive Stock ============
+  const [showResetInactiveConfirm, setShowResetInactiveConfirm] = useState(false);
+
+  const resetInactiveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/product-stock/reset-inactive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ companyId }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "เกิดข้อผิดพลาด"); }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      setShowResetInactiveConfirm(false);
+      toast({ title: "Reset สำเร็จ", description: data?.message || "", variant: "success" as any });
+    },
+    onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
+  });
+
   // ============ Import Batches ============
   const [cancelBatchDate, setCancelBatchDate] = useState<string | null>(null);
 
@@ -485,6 +508,15 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
               >
                 <RefreshCw className={`h-4 w-4 mr-1 ${syncStockMutation.isPending ? "animate-spin" : ""}`} />
                 Sync ยอดคงเหลือ
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-white/60 border-red-300 text-red-700 hover:bg-red-50 h-9"
+                onClick={() => setShowResetInactiveConfirm(true)}
+                data-testid="button-reset-inactive-stock"
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                Reset ยอดสินค้าที่ปิดแล้ว
               </Button>
             </div>
           </div>
@@ -1182,6 +1214,36 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
             </Dialog>
           </TabsContent>
         </Tabs>
+
+        {/* Dialog ยืนยัน Reset ยอดสินค้าที่ปิดใช้งาน */}
+        <Dialog open={showResetInactiveConfirm} onOpenChange={(o) => { if (!o) setShowResetInactiveConfirm(false); }}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <XCircle className="h-4 w-4" /> ยืนยัน Reset ยอดสต๊อก
+              </DialogTitle>
+              <DialogDescription>
+                ระบบจะ reset ยอดคงเหลือและยอดจองของ<strong>สินค้าที่ปิดใช้งานทั้งหมด</strong> เป็น 0<br />
+                ทั้งใน warehouse_stock_levels และ product_stock<br />
+                <span className="text-red-600 font-medium">ไม่สามารถย้อนกลับได้</span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" size="sm" onClick={() => setShowResetInactiveConfirm(false)} data-testid="button-reset-inactive-no">
+                ยกเลิก
+              </Button>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={resetInactiveMutation.isPending}
+                onClick={() => resetInactiveMutation.mutate()}
+                data-testid="button-reset-inactive-confirm"
+              >
+                {resetInactiveMutation.isPending ? "กำลัง Reset..." : "ยืนยัน Reset"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showWarehouseDialog} onOpenChange={(open) => { if (!open) { setShowWarehouseDialog(false); resetWhForm(); } }}>
           <DialogContent className="max-h-[90vh] overflow-y-auto max-w-md">

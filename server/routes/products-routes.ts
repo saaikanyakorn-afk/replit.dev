@@ -1670,14 +1670,50 @@ app.post("/api/product-stock/sync-from-warehouse", requireAuth, requireModule("i
         .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
       if (existing.length > 0) {
         await db.update(productStock)
-          .set({ currentQty: String(total), reservedQty: String(reserved), updatedAt: new Date() })
+          .set({ quantity: String(total), reservedQty: String(reserved), updatedAt: new Date() })
           .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
       } else {
-        await db.insert(productStock).values({ companyId, productId: pid, currentQty: String(total), reservedQty: String(reserved) });
+        await db.insert(productStock).values({ companyId, productId: pid, quantity: String(total), reservedQty: String(reserved) });
       }
       synced++;
     }
     res.json({ message: `sync สำเร็จ ${synced} รายการ (ยอดคงเหลือ + ยอดจอง)`, synced });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+// ============ Reset ยอดสต๊อก สำหรับสินค้าที่ปิดใช้งาน (inactive) ============
+app.post("/api/product-stock/reset-inactive", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const { allowed } = await checkDocOwnership(companyId, req.user as any);
+    if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
+    // หาสินค้าที่ inactive
+    const inactiveProducts = await db.select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.companyId, companyId), eq(products.active, false)));
+    if (inactiveProducts.length === 0) {
+      return res.json({ message: "ไม่มีสินค้าที่ปิดใช้งาน", resetCount: 0 });
+    }
+    const inactiveIds = inactiveProducts.map(p => p.id);
+    const userName = (req.user as any)?.username || (req.user as any)?.name || "ไม่ระบุ";
+    let resetCount = 0;
+    await db.transaction(async (tx) => {
+      // Reset warehouse_stock_levels → 0
+      const wslResult = await tx.update(warehouseStockLevels)
+        .set({ quantity: "0", reservedQty: "0", updatedAt: new Date() })
+        .where(and(eq(warehouseStockLevels.companyId, companyId), inArray(warehouseStockLevels.productId, inactiveIds)));
+      resetCount = wslResult.rowCount || 0;
+      // Reset product_stock → 0
+      await tx.update(productStock)
+        .set({ quantity: "0", reservedQty: "0", updatedAt: new Date() })
+        .where(and(eq(productStock.companyId, companyId), inArray(productStock.productId, inactiveIds)));
+    });
+    res.json({
+      message: `Reset ยอดสต๊อกสำเร็จ — สินค้า inactive ${inactiveIds.length} รายการ, warehouse levels ${resetCount} rows โดย ${userName}`,
+      inactiveProducts: inactiveIds.length,
+      resetCount,
+    });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
@@ -1762,7 +1798,7 @@ app.delete("/api/stock-movements/cancel-import-batch", requireAuth, requireModul
           .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
         if (ps.length > 0) {
           await tx.update(productStock)
-            .set({ currentQty: String(Math.max(0, newQty)), updatedAt: new Date() })
+            .set({ quantity: String(Math.max(0, newQty)), updatedAt: new Date() })
             .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, pid)));
         }
       }
@@ -1817,7 +1853,7 @@ app.delete("/api/stock-movements/:id", requireAuth, requireModule("inventory"), 
       .where(and(eq(productStock.companyId, movement.companyId), eq(productStock.productId, movement.productId)));
     if (existing.length > 0) {
       await db.update(productStock)
-        .set({ currentQty: String(newQty), updatedAt: new Date() })
+        .set({ quantity: String(newQty), updatedAt: new Date() })
         .where(and(eq(productStock.companyId, movement.companyId), eq(productStock.productId, movement.productId)));
     }
     res.json({ message: "ลบรายการสำเร็จ", deletedId: id, newQty });
