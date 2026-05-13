@@ -266,3 +266,114 @@ Backup location: `db/backups/YYYY-MM-DD_orphan_stock_movements_before_cleanup.sq
 - Approach changed: user inputs วันที่เริ่มต้นสต๊อก via date picker in Excel import dialog
 - `runInitialStockMovementBackfill` commented out from schema-extra.ts — never deployed to production
 - Replacement: `stockOpenDate` field added to `/api/products/import/execute` — initial movement uses user-supplied date as `created_at`
+
+---
+
+## INVESTIGATION SESSION — 2026-05-13 — Production DB Full State Audit
+
+**Conducted by:** Kai | **Authorized by:** พี่ช้าง (Technical Authority)
+
+**Purpose:** พี่ช้าง requested a complete separation of all 346 pending dev commits into
+List 1 (DB changes) and List 2 (code-only changes), with verified production DB state.
+
+---
+
+### Production DB — Verified State (all queries run directly against deep-main.hopto.org)
+
+**Columns confirmed present on production:**
+
+| Table | Columns | Verified |
+|-------|---------|---------|
+| `sales_credit_notes` | `original_invoice_amount`, `correct_invoice_amount` | ✅ 2026-05-13 |
+| `sales_credit_notes` | `share_token` | ✅ 2026-05-13 — FLAG `ADD_SHARE_TOKEN_TO_SALES_CREDIT_NOTES_2026-04-30` = done |
+| `sales_credit_notes` | `return_to_stock`, `return_warehouse_id` | ✅ 2026-05-13 |
+| `payment_methods` | `bank_name`, `bank_account_no` | ✅ 2026-05-13 — FLAG `ADD_BANK_INFO_TO_PAYMENT_METHODS_2026-04-29` = done |
+| `firm_clients` | `target_db_machine_id` | ✅ 2026-05-13 |
+| `line_documents` | `read_at` | ✅ 2026-05-13 |
+
+**Tables confirmed present on production:**
+
+| Table | Row count | Notes |
+|-------|-----------|-------|
+| `active_products` | 2,603 | FLAG `PRODUCT_SPLIT_MIGRATION_20260510` = done_2026-05-11T13:35:09.281Z ✅ |
+| `inactive_products` | 5 | |
+| `backup_active_products_20260510` | exists | Backup table — awaiting พี่ช้าง review before clearing |
+| `backup_inactive_products_20260510` | exists | Backup table — awaiting พี่ช้าง review before clearing |
+
+**Migration flags confirmed in `system_config` on production:**
+
+| Flag | Value |
+|------|-------|
+| `PRODUCT_SPLIT_MIGRATION_20260510` | `done_2026-05-11T13:35:09.281Z` |
+| `ADD_SHARE_TOKEN_TO_SALES_CREDIT_NOTES_2026-04-30` | `done` |
+| `ADD_BANK_INFO_TO_PAYMENT_METHODS_2026-04-29` | `done` |
+
+**Conclusion:** List 1 (DB changes) = ZERO pending. All structure and content changes
+already on production. No migration needs to run before code deployment.
+
+---
+
+### Discrepancy Found — products vs split tables
+
+- `products` total: **2,680**
+- `active_products` + `inactive_products`: **2,608** (2,603 + 5)
+- **Gap: 72 products** in neither split table
+
+**Root cause:** The previous agent ran `runProductSplitMigration` on dev only, with FLAG set to
+`done_2026-05-11T13:35:09.281Z`. On production, however, the migration ran while the code had
+already been manipulated (cheated) on dev — meaning production data may have been half-baked.
+
+**Decision (พี่ช้าง + พี่ทราย, 2026-05-13):** พี่ทราย will delete all product data on production
+and re-import fresh from Excel. No backfill migration needed — delete + re-import is the
+chosen remedy.
+
+---
+
+### Critical Finding — Product Split Migration Was Only Half Done
+
+**What was built correctly:**
+- `active_products` and `inactive_products` tables with `ON DELETE CASCADE` referencing `products.id`
+- `syncProductSplit()` in `server/storage.ts` — correctly moves rows between tables on every create/update/delete
+- `bulk-permanent-delete` endpoint — true hard delete, cascades automatically
+
+**What was NOT completed:**
+- The `products.active` boolean column is still the **real source of truth** for the entire backend
+- **92 places** across `server/routes/` still query `products.active` directly:
+  - `commerce-intelligence.ts`, `price-calculator.ts`, `ad-cost-routes.ts`
+  - `pos-routes.ts`, `ecommerce-routes.ts`, `notifications-routes.ts`
+  - `products-routes.ts`, `storage.ts`, and more
+- Because of this, `storage.deleteProduct()` still does `UPDATE products SET active = false` (soft delete)
+  before calling `syncProductSplit()` — the `active` column cannot be dropped until all 92 sites are migrated
+
+**Consequence:** The single delete button in the UI is still a **soft delete** (marks `active = false`,
+moves to `inactive_products`). Only `bulk-permanent-delete` is a true hard delete.
+
+**What พี่ทราย was worried about:** In the past, "delete" didn't really delete. This is still true
+for the single delete button. The new code only truly hard-deletes via the bulk permanent delete path.
+
+---
+
+### ⏳ PENDING FUTURE TASK — Migrate 92 query sites off `products.active`
+
+**Task:** Replace all 92 occurrences of `eq(products.active, true/false)` across `server/routes/`
+with queries against `active_products` / `inactive_products` tables.
+
+**Files confirmed containing `products.active` queries (grep 2026-05-13):**
+- `server/routes/commerce-intelligence.ts`
+- `server/routes/price-calculator.ts`
+- `server/routes/ad-cost-routes.ts`
+- `server/routes/pos-routes.ts`
+- `server/routes/ecommerce-routes.ts`
+- `server/routes/notifications-routes.ts`
+- `server/routes/products-routes.ts`
+- `server/storage.ts`
+- (and others — full count: 92 occurrences)
+
+**When this task is complete:**
+- `products.active` column becomes redundant and can be removed from `products` table
+- `storage.deleteProduct()` should be changed to a true hard delete (matching bulk-permanent-delete)
+- Single delete button in UI will truly delete, not soft-delete
+- No more dual-maintenance of `products.active` + split tables
+
+**Who authorized this note:** พี่ช้าง — 2026-05-13
+**Priority:** Scheduled for a future sprint — do NOT begin without พี่ช้าง approval

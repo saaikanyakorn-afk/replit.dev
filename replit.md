@@ -296,6 +296,51 @@ No procedure in this file self-authorizes any action on production. Every action
 
 ---
 
+## ⏳ FUTURE TASK — Migrate 92 `products.active` query sites to split tables
+
+**Added by:** Kai | **Authorized by:** พี่ช้าง | **Date noted:** 2026-05-13
+
+### Background
+The `active_products` / `inactive_products` split table architecture was created (ENTRY #007,
+2026-05-11) but was only **half completed**. The tables exist and `syncProductSplit()` keeps
+them in sync, but **92 places in the backend still query `products.active` directly** instead
+of using the split tables.
+
+Because of this, `storage.deleteProduct()` still does a soft delete (`UPDATE products SET active = false`)
+before calling `syncProductSplit()`. The single delete button in the UI is still a soft delete.
+Only `POST /api/products/bulk-permanent-delete` is a true hard delete.
+
+### What needs to be done
+Replace all 92 occurrences of `eq(products.active, true/false)` across `server/routes/` and
+`server/storage.ts` with queries against `active_products` / `inactive_products`.
+
+**Files confirmed containing these queries (grep 2026-05-13):**
+- `server/routes/commerce-intelligence.ts`
+- `server/routes/price-calculator.ts`
+- `server/routes/ad-cost-routes.ts`
+- `server/routes/pos-routes.ts`
+- `server/routes/ecommerce-routes.ts`
+- `server/routes/notifications-routes.ts`
+- `server/routes/products-routes.ts`
+- `server/storage.ts`
+- (92 total occurrences — re-grep before starting to get current count)
+
+### When this task is complete
+- `products.active` column becomes redundant → can be removed from `products` table via migration
+- `storage.deleteProduct()` becomes a true hard delete
+- Single delete button in UI truly deletes (no more soft delete anywhere)
+- No more dual-maintenance of `products.active` column + split tables
+
+### Rules for this task
+- Grep FIRST before touching anything — get the exact current count and file list
+- Do NOT begin without พี่ช้าง explicit approval
+- After migrating all sites, the removal of `products.active` column is a DB change (List 1)
+  that must follow the full 10-step migration checklist in this file
+
+**Full investigation notes:** `db/schema-history.md` → section "INVESTIGATION SESSION — 2026-05-13"
+
+---
+
 ## Overview
 The E-Tax Center is a multi-tenant digital accounting platform designed to revolutionize accounting processes for Thai accounting firms. It integrates with major e-commerce platforms (Shopee, Lazada, TikTok Shop) to automate order retrieval, tax invoice generation, and service fee calculation. The platform provides comprehensive client and human resources management (attendance, overtime, payroll), robust financial document processing, and advanced e-commerce functionalities, aiming to be a holistic solution for managing financial operations and expanding digital commerce services for its clients. Its vision is to be an all-in-one solution for managing clients' financial operations and expanding digital commerce service offerings.
 
