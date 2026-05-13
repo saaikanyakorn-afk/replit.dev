@@ -467,6 +467,47 @@ export async function creditNoteShareHandler(req: Request, res: Response, next: 
   sendShareDocHtml(res, { pdfUrl, ogImage, title, desc, fullUrl });
 }
 
+export async function salesDocShareHandler(req: Request, res: Response, next: NextFunction) {
+  const token = req.params.token;
+  const docType = req.params.docType || "invoice";
+  const ua = req.headers["user-agent"] || "";
+  const host = req.get("host") || "";
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const baseUrl = `${proto}://${host}`;
+  const fullUrl = baseUrl + req.originalUrl;
+
+  if (BOT_RE.test(ua)) {
+    return shareOgHandler(req, res, next);
+  }
+
+  const PDF_TYPE: Record<string, string> = {
+    quote: "quotation",
+    order: "sales-order",
+  };
+  const pdfType = PDF_TYPE[docType] || docType;
+  const pdfUrl = `/api/share/${pdfType}/${token}/pdf`;
+  const ogImage = `${baseUrl}/api/og-image/${docType}/${token}.png`;
+  const labelTh = DOC_TYPE_LABELS_TH[docType] || "เอกสาร";
+
+  let docNo = "";
+  let customerName = "";
+  let companyName = "E-Tax Center";
+  let totalAmount = "";
+
+  try {
+    const info = await lookupDoc(docType, token);
+    docNo = info.docNo;
+    customerName = info.customerName;
+    companyName = info.companyName;
+    totalAmount = info.fmtTotal;
+  } catch {}
+
+  const titleRaw = docNo ? `${labelTh} ${docNo}` : labelTh;
+  const title = escHtml(titleRaw);
+  const desc = escHtml(`${companyName}${customerName ? ` → ${customerName}` : ""}${totalAmount ? ` | ยอด ฿${totalAmount}` : ""}`);
+  sendShareDocHtml(res, { pdfUrl, ogImage, title, desc, fullUrl });
+}
+
 export async function contractOgHandler(req: Request, res: Response, next: NextFunction) {
   const ua = req.headers["user-agent"] || "";
   if (!BOT_RE.test(ua)) return next();

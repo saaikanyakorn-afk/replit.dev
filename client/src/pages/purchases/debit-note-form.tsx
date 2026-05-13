@@ -582,7 +582,7 @@ export default function DebitNoteForm() {
                                 {acctName(m)} ({m.accountCode})
                               </SelectItem>
                             ))
-                          )}
+                          ) : null}
                         </SelectContent>
                       </Select>
                     </td>
