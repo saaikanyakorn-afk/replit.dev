@@ -732,9 +732,10 @@ app.post("/api/quotations/:id/send-email", requireAuth, requireAnyModule("sales"
       await db.update(quotations).set({ shareToken }).where(eq(quotations.id, qo.id));
     }
 
-    const host = req.get("host") || "";
-    let shareBaseUrl = `${req.protocol}://${host}`;
-    if (!host.includes(".replit.app") && process.env.REPL_ID) {
+    const host = req.get("x-forwarded-host") || req.get("host") || "";
+    const proto = process.env.NODE_ENV === "production" ? "https" : (req.get("x-forwarded-proto") || req.protocol);
+    let shareBaseUrl = `${proto}://${host}`;
+    if (!host.includes(".replit.app") && process.env.REPL_ID && process.env.NODE_ENV !== "production") {
       shareBaseUrl = `https://${process.env.REPL_ID}.replit.app`;
     }
     const shareUrl = `${shareBaseUrl}/share/quote/${shareToken}`;
