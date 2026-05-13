@@ -2,9 +2,9 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq } from "drizzle-orm";
-import { generalSettings, documentSettings } from "@shared/schema";
+import { generalSettings, documentSettings, invoices, taxInvoices, purchaseInvoices, expenses } from "@shared/schema";
 import { requireAuth, requireAdmin, requireRole } from "../route-middleware";
-import { getInventoryTriggers } from "../route-helpers";
+import { getInventoryTriggers, recomputePaymentStatus, recomputeAPPaymentStatus } from "../route-helpers";
 import { z } from "zod";
 import { runStampUrlMigration } from "../schema-extra";
 // DATA FIX DONE 2026-05-07 — runDropBotApiKeyMigration hook removed after verified. See server/schema-extra.ts history.
@@ -263,6 +263,28 @@ app.get("/api/settings/exchange-rate", requireAuth, requireRole("super_admin"), 
     });
   } catch (e: any) {
     res.status(500).json({ message: e.message });
+  }
+});
+
+app.post("/api/settings/recompute-payment-status", requireAuth, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "กรุณาระบุ companyId" });
+    const [ivRows, tivRows, apRows, expRows] = await Promise.all([
+      db.select({ id: invoices.id }).from(invoices).where(eq(invoices.companyId, companyId)),
+      db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.companyId, companyId)),
+      db.select({ id: purchaseInvoices.id }).from(purchaseInvoices).where(eq(purchaseInvoices.companyId, companyId)),
+      db.select({ id: expenses.id }).from(expenses).where(eq(expenses.companyId, companyId)),
+    ]);
+    let updated = 0;
+    const errors: string[] = [];
+    for (const r of ivRows) { try { await recomputePaymentStatus("invoice", r.id); updated++; } catch (e: any) { errors.push(`IV#${r.id}: ${e.message}`); } }
+    for (const r of tivRows) { try { await recomputePaymentStatus("taxInvoice", r.id); updated++; } catch (e: any) { errors.push(`TIV#${r.id}: ${e.message}`); } }
+    for (const r of apRows) { try { await recomputeAPPaymentStatus("purchaseInvoice", r.id); updated++; } catch (e: any) { errors.push(`AP#${r.id}: ${e.message}`); } }
+    for (const r of expRows) { try { await recomputeAPPaymentStatus("expense", r.id); updated++; } catch (e: any) { errors.push(`EXP#${r.id}: ${e.message}`); } }
+    res.json({ updated, errors });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
   }
 });
 

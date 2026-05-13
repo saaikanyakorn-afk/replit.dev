@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Sliders, Save, Loader2, Bell, Globe, Clock, Shield, PenTool, Upload, X } from "lucide-react";
+import { Sliders, Save, Loader2, Bell, Globe, Clock, Shield, PenTool, Upload, X, RefreshCw } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -351,7 +351,71 @@ export default function GeneralSettings() {
             })}
           </CardContent>
         </Card>
+
+        <RecomputeCard companyId={selectedCompanyId} />
       </div>
     </Layout>
+  );
+}
+
+function RecomputeCard({ companyId }: { companyId: number | null | undefined }) {
+  const { toast } = useToast();
+  const [result, setResult] = useState<{ updated: number; errors: string[] } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleRecompute() {
+    if (!companyId) return;
+    if (!confirm("ระบบจะคำนวณสถานะชำระเงินใหม่สำหรับเอกสารทุกฉบับในบริษัทนี้\n\nดำเนินการต่อ?")) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const r = await fetch(`/api/settings/recompute-payment-status?companyId=${companyId}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message || "เกิดข้อผิดพลาด");
+      setResult(data);
+      toast({ title: "คำนวณสถานะชำระใหม่สำเร็จ", description: `อัปเดต ${data.updated} เอกสาร`, variant: "success" as any });
+    } catch (e: any) {
+      toast({ title: "เกิดข้อผิดพลาด", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <RefreshCw className="h-5 w-5" style={{ color: "var(--theme-primary)" }} />
+          คำนวณสถานะชำระเงินใหม่
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          ใช้เมื่อพบว่าสถานะเอกสาร (IV / TIV / AP / EXP) ยังแสดงผิดอยู่ เช่น แสดง "ชำระเกิน" หรือ "ค้างชำระ" ทั้งที่ชำระครบแล้ว
+          ระบบจะคำนวณสถานะชำระใหม่จากข้อมูลจริงทุกฉบับในบริษัทนี้
+        </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={handleRecompute}
+            disabled={loading || !companyId}
+            data-testid="button-recompute-payment-status"
+            className="gap-2"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {loading ? "กำลังคำนวณ..." : "คำนวณสถานะใหม่"}
+          </Button>
+          {result && (
+            <span className="text-sm text-green-600 font-medium">
+              อัปเดต {result.updated} เอกสาร
+              {result.errors.length > 0 && <span className="text-red-500 ml-2">({result.errors.length} error)</span>}
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
