@@ -397,6 +397,98 @@ WHAT DOES NOT WORK (tested 2026-05-04):
 - GITHUB_PAT_PRODUCTION env var    → intentionally wrong (trap)
 - SSH key                          → libcrypto version mismatch in container
 ----------------------------------------------------------------
+CURRENT TASK HANDOFF — (update this section whenever agent switches or task is in-flight)
+Last updated: 2026-05-13 by Kai
+
+TASK: Migrate 14 eq(products.active, true/false) WHERE-clause sites → innerJoin pattern
+Authorized by: พี่ช้าง
+Status: DEV CHANGES COMPLETE — waiting for พี่ทราย to verify dev before GitHub push
+
+WHAT WAS DONE (all 14 sites, all done on dev):
+  Files changed:
+    server/routes/commerce-intelligence.ts   — 2 sites (line ~140, ~615)
+    server/routes/price-calculator.ts        — 1 site (line ~257)
+    server/routes/ad-cost-routes.ts          — 1 site (line ~314)
+    server/routes/pos-routes.ts              — 2 sites (line ~730, ~775)
+    server/routes/ecommerce-routes.ts        — 2 sites (line ~5816, ~5838)
+    server/routes/notifications-routes.ts    — 1 site (line ~87)
+    server/routes/products-routes.ts         — 3 sites (line ~88, ~1694, ~1728)
+    server/storage.ts                        — 1 site (findDuplicateProducts, line ~1757)
+  Pattern applied:
+    BEFORE: .where(and(..., eq(products.active, true), ...))
+    AFTER:  .innerJoin(activeProducts, eq(activeProducts.id, products.id))
+            .where(and(...))   ← active filter removed from WHERE
+
+  Imports added to each file:
+    import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
+
+VERIFICATION DONE:
+  grep -rn "eq(products.active" server/ → 0 results ✅
+  All 14 sites confirmed replaced.
+
+WHAT NEXT AGENT MUST DO:
+  STEP 1 — Wait for พี่ทราย to confirm the screens below pass on dev.
+  STEP 2 — After พี่ทราย confirms → push ONLY these files to GitHub (NOT to production server yet):
+    server/routes/commerce-intelligence.ts
+    server/routes/price-calculator.ts
+    server/routes/ad-cost-routes.ts
+    server/routes/pos-routes.ts
+    server/routes/ecommerce-routes.ts
+    server/routes/notifications-routes.ts
+    server/routes/products-routes.ts
+    server/storage.ts
+  STEP 3 — After GitHub push confirmed → ask พี่ช้าง for production deploy authorization.
+  STEP 4 — DO NOT push tonight (พี่ช้าง's instruction: no server command tonight).
+
+  !! PUSH METHOD: GitHub API PUT per file via code_execution only. Token from git remote. See HOW TO PUSH section above.
+  !! PROTECTED FILE RULE: None of these 8 files are protected. All can be pushed normally.
+  !! IMPORT CHECK RULE: Before pushing — grep imports in each file, verify every non-node-module import is already on GitHub at correct version.
+
+SCREENS พี่ทราย MUST VERIFY ON DEV (open each, check data still shows normally):
+
+  Block A — สินค้า (Products)
+  [A1] หน้ารายการสินค้า (Products list) — ดูว่าสินค้า active ยังขึ้นรายการครบ
+  [A2] หน้าสร้าง/แก้ไขสินค้า — กรอกรหัสหรือชื่อที่มีอยู่แล้ว ดูว่า duplicate check ยังทำงาน (ไม่ให้สร้างซ้ำ)
+
+  Block B — Notifications
+  [B1] ระบบแจ้งเตือน (Notifications) — ดูว่ายังมี notification list โหลด ไม่ error
+
+  Block C — Commerce Intelligence
+  [C1] หน้า Commerce Intelligence dashboard หลัก — ดูกราฟและตัวเลขสินค้า ยังแสดงปกติ
+  [C2] Stock Risk / Low Stock alerts ใน Commerce Intelligence — ดูรายการสินค้า low stock
+
+  Block D — Price Calculator
+  [D1] หน้า Price Calculator — เปิดหน้า dropdown สินค้ายังโหลดขึ้นมา
+
+  Block E — Ad Cost / Marketing
+  [E1] หน้า Ad Cost — เปิดหน้า dropdown หรือรายการสินค้ายังแสดง
+
+  Block F — POS
+  [F1] POS → ค้นหาสินค้า — พิมพ์ชื่อสินค้า ดูว่าผลลัพธ์ยังออก
+  [F2] POS → Bundle products — เปิดหน้า bundle list ยังแสดง
+
+  Block G — E-commerce
+  [G1] E-commerce → รายการสินค้า — ดูว่าสินค้าขึ้นรายการปกติ
+  [G2] E-commerce → Low stock report — เปิดหน้า ดูว่ายังโหลด
+
+พี่ทราย RESPONSE GOES HERE (fill this in after her reply):
+  Date/time:
+  Result per block:
+    [A1]: 
+    [A2]: 
+    [B1]: 
+    [C1]: 
+    [C2]: 
+    [D1]: 
+    [E1]: 
+    [F1]: 
+    [F2]: 
+    [G1]: 
+    [G2]: 
+  Overall: PASS / FAIL / PARTIAL
+  Notes:
+
+----------------------------------------------------------------
 DEPLOY LOG (latest first):
 
 [#65] 2026-05-13 — Fix setCompanyPrimary cross-tenant bug + primary company UI in Settings
