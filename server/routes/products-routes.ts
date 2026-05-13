@@ -1685,7 +1685,6 @@ app.post("/api/product-stock/sync-from-warehouse", requireAuth, requireModule("i
 app.post("/api/product-stock/reset-inactive", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
     const companyId = Number(req.body.companyId);
-    console.log(`[reset-inactive] body=`, req.body, `companyId resolved=`, companyId);
     if (!companyId) return res.status(400).json({ message: "companyId required" });
     const { allowed } = await checkDocOwnership(companyId, req.user as any);
     if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
