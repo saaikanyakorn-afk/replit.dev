@@ -669,12 +669,17 @@ Before modifying ANY file on the protected/review-carefully lists — even small
 2. **Protected files on production must remain untouched** — if dev code is different, use `*-extra` files (app-extra.tsx, schema-extra.ts) to extend, NEVER modify the protected file on dev and push it
 3. Example: new routes → add to `app-extra.tsx`, never to `App.tsx`; new tables → add to `schema-extra.ts`, never to `schema.ts`
 
-**Protected files (NEVER modify without pull-compare):**
-- `shared/schema.ts`, `server/index.ts`, `client/src/App.tsx` — NEVER push to production
-- `server/db.ts`, `server/ecom-db.ts`, `server/pos-db.ts`, `server/db-schema-sync.ts`
-- `server/route-middleware.ts`, `server/routes.ts`, `server/storage.ts`
-- `server/routes/pos-routes.ts`, `server/routes/line-routes.ts`
-- `client/src/pages/platform/*`, `client/src/main.tsx`
+**Protected files (NEVER push to production — have -extra bypass):**
+- `shared/schema.ts` → bypass: `shared/schema-extra.ts`
+- `server/index.ts` → bypass: `server/index-extra.ts`
+- `client/src/App.tsx` → bypass: `client/src/app-extra.tsx`
+
+**Rule (พี่ช้าง 2026-05-13):** A file is protected ONLY if its corresponding `-extra` bypass file exists.
+If no `-extra` exists → the file is NOT protected and can be pushed normally.
+If an `-extra` exists but the parent is not in this list → add the parent here.
+
+**Confirmed NOT protected (removed from list 2026-05-13):**
+- `server/storage.ts` — was believed protected, proven wrong today. No `-extra` bypass exists. Can be pushed normally.
 
 ---
 

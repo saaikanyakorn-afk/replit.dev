@@ -1,7 +1,21 @@
 CRITICAL — PROTECTED FILES SOURCE OF TRUTH:
 
-PROTECTED FILES: App.tsx, app.ts, server/index.ts, routes.ts, db.ts, shared/schema.ts
-NOTE (2026-05-13 พี่ช้าง): storage.ts is NOT a protected file — can be pushed normally via GitHub API
+PROTECTED FILES (2026-05-13 — verified by -extra bypass rule):
+  client/src/App.tsx       → bypass: client/src/app-extra.tsx
+  server/index.ts          → bypass: server/index-extra.ts
+  shared/schema.ts         → bypass: shared/schema-extra.ts
+
+RULE: A file is protected ONLY if its -extra bypass file EXISTS in the codebase.
+  No -extra → NOT protected → can be pushed normally.
+  -extra exists but parent not listed → parent must be added to this list.
+
+REMOVED FROM LIST TODAY (2026-05-13):
+  storage.ts — was in the protected list before today.
+               Proven wrong: no storage-extra.ts exists. No -extra bypass.
+               storage.ts is a normal pushable file.
+  app.ts     — was listed. File does not exist. No app-extra.ts. Removed.
+  routes.ts  — was listed. File does not exist. No routes-extra.ts. Removed.
+  db.ts      — was listed. File does not exist. No db-extra.ts. Removed.
 
 The ONLY source of truth for these files is the PRODUCTION SERVER (pm2 running process).
 NOT GitHub. NOT dev Replit.

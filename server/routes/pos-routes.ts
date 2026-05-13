@@ -3,6 +3,7 @@ import { db } from "../db";
 import { posDb } from "../pos-db";
 import { storage } from "../storage";
 import { eq, and, desc, asc, sql, count, ilike, inArray, or, isNull } from "drizzle-orm";
+import { activeProducts } from "@shared/schema-extra";
 import { posSessions, posTransactions, posTransactionItems, products, productBundles, companies, taxInvoices, taxInvoiceItems, documentSettings, branches, warehouses, warehouseStockLevels, paymentMethods, users, commissionRules, commissionRecords, employees } from "@shared/schema";
 import { requireAuth, requireModule , checkDocOwnership} from "../route-middleware";
 import { getNextDocNo, createAutoJournalEntry, deductStockBundleAware, getInventoryTriggers } from "../route-helpers";
@@ -727,7 +728,7 @@ export function registerPosRoutes(app: Express) {
       const search = rawSearch.replace(/^\*+|\*+$/g, "").trim();
       if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
 
-      let conditions = [eq(products.companyId, companyId), eq(products.active, true)];
+      let conditions = [eq(products.companyId, companyId)];
       if (search) {
         conditions.push(
           or(
@@ -739,6 +740,7 @@ export function registerPosRoutes(app: Express) {
       }
 
       const result = await posDb.select().from(products)
+        .innerJoin(activeProducts, eq(activeProducts.id, products.id))
         .where(and(...conditions))
         .orderBy(asc(products.name));
       res.json(result);
@@ -772,7 +774,8 @@ export function registerPosRoutes(app: Express) {
       const allBundles = await posDb.select({ bundleProductId: productBundles.bundleProductId })
         .from(productBundles)
         .innerJoin(products, eq(products.id, productBundles.bundleProductId))
-        .where(and(eq(products.companyId, companyId), eq(products.active, true)));
+        .innerJoin(activeProducts, eq(activeProducts.id, products.id))
+        .where(eq(products.companyId, companyId));
       const ids = [...new Set(allBundles.map(b => b.bundleProductId))];
       res.json(ids);
     } catch (err: any) { res.status(500).json({ message: err.message }); }

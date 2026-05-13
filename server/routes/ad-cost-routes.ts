@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { ecomDb } from "../ecom-db";
 import { eq, desc, and, gte, lte, count, sum , sql } from "drizzle-orm";
+import { activeProducts } from "@shared/schema-extra";
 import { companies, ecommerceOrders, activityLogs, products, adCampaigns, adSpendEntries, ecommerceConnections, ecommerceProductMappings } from "@shared/schema";
 import { requireAuth, requireModule, checkDocOwnership } from "../route-middleware";
 import { logActivity } from "../route-helpers";
@@ -309,10 +310,8 @@ app.get("/api/ecommerce/clone/products", requireAuth, requireModule("ecommerce")
       productUnit: products.unit,
       productVatType: products.vatType,
     }).from(products)
-      .where(and(
-        eq(products.companyId, companyId),
-        eq(products.active, true),
-      ))
+      .innerJoin(activeProducts, eq(activeProducts.id, products.id))
+      .where(eq(products.companyId, companyId))
       .orderBy(products.name);
 
     res.json({ mappedProducts, allProducts: unmappedProducts });

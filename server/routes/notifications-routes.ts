@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { ecomDb } from "../ecom-db";
 import { eq, desc, and, or, gte, count , sql } from "drizzle-orm";
+import { activeProducts } from "@shared/schema-extra";
 import { notifications, products, productStock, ecommerceReturns, ecommerceOrders, invoices, taxInvoices, purchaseInvoices, expenses, budgets, accounts, receipts, receiptLinkedDocs, contacts, paymentVouchers, paymentVoucherLinkedDocs } from "@shared/schema";
 import { requireAuth, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, recomputePaymentStatus } from "../route-helpers";
@@ -78,13 +79,13 @@ app.get("/api/notifications/generate", requireAuth, async (req, res) => {
       lowStockThreshold: products.lowStockThreshold,
       quantity: productStock.quantity,
     }).from(products)
+      .innerJoin(activeProducts, eq(activeProducts.id, products.id))
       .innerJoin(productStock, and(
         eq(productStock.productId, products.id),
         eq(productStock.companyId, companyId)
       ))
       .where(and(
         eq(products.companyId, companyId),
-        eq(products.active, true),
         sql`${products.lowStockThreshold} > 0`,
         sql`CAST(${productStock.quantity} AS numeric) < ${products.lowStockThreshold}`
       ));
