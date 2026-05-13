@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, Edit3, Printer, Download, Loader2, FileText, ExternalLink } from "lucide-react";
-import { isAndroid, isIOS, isLineIOS, redirectToChrome } from "@/lib/line-android-redirect";
+import { isAndroid, isIOS, isLineAndroid, isLineIOS } from "@/lib/line-android-redirect";
 
 export default function QuotationShare() {
   const { token } = useParams<{ token: string }>();
@@ -24,11 +24,11 @@ export default function QuotationShare() {
   const android = isAndroid();
   const ios = isIOS();
   const lineIOS = isLineIOS();
+  const lineAndroid = isLineAndroid();
   const mobile = android || ios;
   const directPdfUrl = `/api/share/quotation/${token}/pdf`;
 
   useEffect(() => {
-    redirectToChrome();
     (async () => {
       try {
         const infoRes = await fetch(`/api/share/quote/${token}`);
@@ -125,12 +125,19 @@ export default function QuotationShare() {
           <FileText className="h-20 w-20 text-slate-400" />
           <div className="text-center">
             <div className="text-white text-lg font-medium mb-1">{docNo}</div>
-            <div className="text-slate-400 text-sm">กดปุ่มด้านล่างเพื่อเปิดไฟล์ PDF</div>
+            <div className="text-slate-400 text-sm mb-2">กดปุ่มด้านล่างเพื่อเปิดหรือดาวน์โหลด PDF</div>
+            {lineAndroid && <div className="text-slate-500 text-xs">หากเปิดไม่ได้ ให้กด ··· แล้วเลือก "เปิดใน Chrome"</div>}
           </div>
-          <Button size="lg" onClick={handleDownload} disabled={downloading} className="bg-green-700 hover:bg-green-800 text-white gap-2 px-8 py-3 text-base" data-testid="button-download-pdf-android">
-            {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
-            {downloading ? "กำลังโหลด..." : "เปิด PDF"}
-          </Button>
+          <a
+            href={directPdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-8 py-3 rounded-lg text-base font-semibold"
+            data-testid="button-open-pdf-android"
+          >
+            <ExternalLink className="h-5 w-5" />
+            เปิด PDF
+          </a>
         </div>
       ) : ios ? (
         <div className="flex flex-col items-center justify-center gap-6 p-8 bg-slate-700">
