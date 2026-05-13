@@ -2,7 +2,7 @@ import { eq, and, desc, sql, inArray, count, ne, or, ilike, gte, lte, asc, isNul
 import { db } from "./db";
 import { posDb } from "./pos-db";
 import { ecomDb } from "./ecom-db";
-import { employeeCounters, type EmployeeCounter, type InsertEmployeeCounter, subscriptionPaymentOrders, type SubscriptionPaymentOrder, type InsertSubscriptionPaymentOrder } from "@shared/schema-extra";
+import { activeProducts, employeeCounters, type EmployeeCounter, type InsertEmployeeCounter, subscriptionPaymentOrders, type SubscriptionPaymentOrder, type InsertSubscriptionPaymentOrder } from "@shared/schema-extra";
 import {
   tenants, users, companies, employees, attendanceRecords, otRecords, leaveRequests, firmClients, firmClientTeam, accounts, journalEntries, journalLines, rolePermissions, userSubPermissions,
   accountingFormulas, accountingFormulaLines, documentSettings, contacts, products, contactSettings,
@@ -1751,7 +1751,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async findDuplicateProducts(companyId: number, opts: { code?: string; name?: string; excludeId?: number }): Promise<Product[]> {
-    const conditions = [eq(products.companyId, companyId), eq(products.active, true)];
+    const conditions = [eq(products.companyId, companyId)];
     if (opts.excludeId) conditions.push(ne(products.id, opts.excludeId));
 
     const matchConditions: any[] = [];
@@ -1764,7 +1764,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (matchConditions.length === 0) return [];
-    return db.select().from(products).where(and(...conditions, or(...matchConditions))).limit(10);
+    return db.select().from(products).innerJoin(activeProducts, eq(activeProducts.id, products.id)).where(and(...conditions, or(...matchConditions))).limit(10);
   }
 
   async bulkCreateContacts(contactList: InsertContact[]): Promise<Contact[]> {

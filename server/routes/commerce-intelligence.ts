@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { db } from "../db";
 import { ecomDb } from "../ecom-db";
 import { eq, and, sql, gte, lte, desc, asc, inArray } from "drizzle-orm";
+import { activeProducts } from "@shared/schema-extra";
 import {
   ecommerceOrders,
   ecommerceOrderItems,
@@ -131,13 +132,13 @@ export function registerCommerceIntelligenceRoutes(app: Express) {
           lowStockThreshold: products.lowStockThreshold,
           currentStock: sql<string>`COALESCE(CAST(${productStock.quantity} AS numeric), 0)`,
         }).from(products)
+          .innerJoin(activeProducts, eq(activeProducts.id, products.id))
           .leftJoin(productStock, and(
             eq(productStock.productId, products.id),
             eq(productStock.companyId, products.companyId)
           ))
           .where(and(
             eq(products.companyId, filters.companyId),
-            eq(products.active, true),
             sql`COALESCE(CAST(${productStock.quantity} AS numeric), 0) <= COALESCE(${products.lowStockThreshold}, 0)`,
             sql`COALESCE(${products.lowStockThreshold}, 0) > 0`
           ))
@@ -608,13 +609,13 @@ export function registerCommerceIntelligenceRoutes(app: Express) {
           lowStockThreshold: products.lowStockThreshold,
           currentStock: sql<string>`COALESCE(CAST(${productStock.quantity} AS numeric), 0)`,
         }).from(products)
+          .innerJoin(activeProducts, eq(activeProducts.id, products.id))
           .leftJoin(productStock, and(
             eq(productStock.productId, products.id),
             eq(productStock.companyId, products.companyId)
           ))
           .where(and(
             eq(products.companyId, filters.companyId),
-            eq(products.active, true),
             sql`COALESCE(CAST(${productStock.quantity} AS numeric), 0) <= COALESCE(${products.lowStockThreshold}, 0)`,
             sql`COALESCE(${products.lowStockThreshold}, 0) > 0`
           ))

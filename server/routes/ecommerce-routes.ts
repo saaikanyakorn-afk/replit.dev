@@ -3,6 +3,7 @@ import { db } from "../db";
 import { ecomDb } from "../ecom-db";
 import { storage } from "../storage";
 import { eq, desc, and, or, isNull, asc, ilike, inArray, notInArray, gte, lte, count, sum , sql } from "drizzle-orm";
+import { activeProducts } from "@shared/schema-extra";
 import { companies, ecommerceOrders, productStock, products, ecommerceReturns, taxInvoices, taxInvoiceItems, accounts, journalEntries, journalLines, ecommerceOrderItems, workBoards, workBoardColumns, workBoardItems, firmFolders, receipts, oauthStates, syncLogs, facebookChatOrders, chatOrderKeywords, chatOrders, productBundles, ecommerceReturnItems, salesCreditNotes, salesCreditNoteItems, paymentMethods, facebookPages, platformChatThreads, ecommerceConnections, ecommerceProductMappings, deliveryNotes, stockTransfers, warehouses, warehouseStockLevels, fulfillmentBatches, fulfillmentItems, ecommerceTeamMembers, users } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo, getNextJournalEntryNo, createAutoJournalEntry, generateTivFromEcommerceOrder, PLATFORM_DOC_PREFIX, PLATFORM_DISPLAY_NAME, logActivity, checkClosedPeriod, upsertWarehouseStockLevel, deductStockBundleAware, getInventoryTriggers } from "../route-helpers";
@@ -5811,9 +5812,9 @@ app.get("/api/ecommerce/low-stock", requireAuth, requireModule("ecommerce"), asy
       currentStock: sql<number>`COALESCE((SELECT SUM(CAST(${warehouseStockLevels.quantity} AS numeric)) FROM ${warehouseStockLevels} WHERE ${warehouseStockLevels.productId} = ${products.id}), 0)`,
     })
       .from(products)
+      .innerJoin(activeProducts, eq(activeProducts.id, products.id))
       .where(and(
         eq(products.companyId, companyId),
-        eq(products.active, true),
         sql`${products.lowStockThreshold} > 0`,
         sql`COALESCE((SELECT SUM(CAST(${warehouseStockLevels.quantity} AS numeric)) FROM ${warehouseStockLevels} WHERE ${warehouseStockLevels.productId} = ${products.id}), 0) < ${products.lowStockThreshold}`
       ))
@@ -5835,7 +5836,8 @@ app.get("/api/ecommerce/stock-summary", requireAuth, requireModule("ecommerce"),
       currentStock: sql<number>`COALESCE((SELECT SUM(CAST(${warehouseStockLevels.quantity} AS numeric)) FROM ${warehouseStockLevels} WHERE ${warehouseStockLevels.productId} = ${products.id}), 0)`,
     })
       .from(products)
-      .where(and(eq(products.companyId, companyId), eq(products.active, true)))
+      .innerJoin(activeProducts, eq(activeProducts.id, products.id))
+      .where(eq(products.companyId, companyId))
       .orderBy(products.name);
     const lowStockCount = allProducts.filter(p => (p.lowStockThreshold || 0) > 0 && Number(p.currentStock) < (p.lowStockThreshold || 0)).length;
     const outOfStockCount = allProducts.filter(p => Number(p.currentStock) <= 0).length;

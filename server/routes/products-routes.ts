@@ -6,6 +6,7 @@ import { products, productBundles, documentImportBatches, stockMovements, promot
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
 // import { runInitialStockMovementBackfill } from "@shared/schema-extra"; // ❌ CANCELLED 2026-05-12 — approach changed: user inputs วันที่เริ่มต้นสต๊อก at import time
+import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { parsePagination, paginatedResponse } from "./pagination";
 import * as XLSX from "xlsx";
@@ -85,7 +86,7 @@ app.delete("/api/product-categories/:id", requireAuth, async (req, res) => {
     const catResult = await db.execute(sql`SELECT * FROM product_categories WHERE id = ${id}`);
     if (catResult.rows.length === 0) return res.status(404).json({ message: "ไม่พบหมวดหมู่" });
     const cat = catResult.rows[0] as any;
-    const usedCount = await db.select({ c: count() }).from(products).where(and(eq(products.companyId, cat.company_id), eq(products.category, cat.code), eq(products.active, true)));
+    const usedCount = await db.select({ c: count() }).from(products).innerJoin(activeProducts, eq(activeProducts.id, products.id)).where(and(eq(products.companyId, cat.company_id), eq(products.category, cat.code)));
     if (Number(usedCount[0]?.c) > 0) {
       return res.status(400).json({ message: `หมวดหมู่นี้มีสินค้าใช้อยู่ ${usedCount[0].c} รายการ ไม่สามารถลบได้` });
     }
@@ -1691,7 +1692,8 @@ app.post("/api/product-stock/reset-inactive", requireAuth, requireModule("invent
     // หาสินค้าที่ inactive
     const inactiveProducts = await db.select({ id: products.id })
       .from(products)
-      .where(and(eq(products.companyId, companyId), eq(products.active, false)));
+      .innerJoin(inactiveProductsTable, eq(inactiveProductsTable.id, products.id))
+      .where(eq(products.companyId, companyId));
     if (inactiveProducts.length === 0) {
       return res.json({ message: "ไม่มีสินค้าที่ปิดใช้งาน", resetCount: 0 });
     }
@@ -1725,7 +1727,8 @@ app.post("/api/product-stock/purge-inactive", requireAuth, requireModule("invent
     const { allowed } = await checkDocOwnership(companyId, req.user as any);
     if (!allowed) return res.status(403).json({ message: "ไม่มีสิทธิ์" });
     const inactiveProducts = await db.select({ id: products.id }).from(products)
-      .where(and(eq(products.companyId, companyId), eq(products.active, false)));
+      .innerJoin(inactiveProductsTable, eq(inactiveProductsTable.id, products.id))
+      .where(eq(products.companyId, companyId));
     if (inactiveProducts.length === 0)
       return res.json({ message: "ไม่มีสินค้าที่ปิดใช้งาน", deletedProducts: 0 });
     const inactiveIds = inactiveProducts.map(p => p.id);
@@ -1742,7 +1745,7 @@ app.post("/api/product-stock/purge-inactive", requireAuth, requireModule("invent
         .where(and(eq(productStock.companyId, companyId), inArray(productStock.productId, inactiveIds)));
       deletedPs = r3.rowCount || 0;
       const r4 = await tx.delete(products)
-        .where(and(eq(products.companyId, companyId), eq(products.active, false)));
+        .where(and(eq(products.companyId, companyId), inArray(products.id, db.select({ id: inactiveProductsTable.id }).from(inactiveProductsTable))));
       deletedProducts = r4.rowCount || 0;
     });
     console.log(`[purge-inactive] companyId=${companyId} by=${userName} products=${deletedProducts} movements=${deletedMovements} wsl=${deletedWsl} ps=${deletedPs}`);
