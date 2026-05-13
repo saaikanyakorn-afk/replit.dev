@@ -332,6 +332,17 @@ HOW KAI VIOLATED THIS TODAY (2026-05-05, credit-note share):
     Which means it cannot verify. Which means it cannot safely migrate.
     Which means it should not be touching production in the first place.
 
+  On import dependency checking (2026-05-13 — same mistake repeated):
+    Pushed sales-docs-routes.ts with a 1-line fix without checking its imports first.
+    sales-docs-routes.ts imports upsertWarehouseReservedQty from route-helpers.ts.
+    route-helpers.ts existed on production but was outdated (DEPLOY #61 was never pushed).
+    Production build failed. Had to push route-helpers.ts separately to fix it.
+    THE RULE: before pushing ANY server file, grep its import lines.
+    For each import that is not a node_module or @shared/ — verify that file is
+    already on production GitHub at the CORRECT version. If not → push it first.
+    This is the same lesson as pdf-wht-cert (2026-05-05). It will keep happening
+    unless the import check becomes automatic before every push.
+
   On this file itself:
     พี่ช้าง said this file is an "interesting book to read."
     He's right. It's a record of pain turned into procedure.
