@@ -28,7 +28,7 @@ HOW TO PUSH TO PRODUCTION REPO (etaxcenter) — CORRECT METHOD:
 1. Get token from .git/config (NOT from env vars — GITHUB_PAT_PRODUCTION is a trap):
    const prodUrl = execSync('git remote get-url github-production', { encoding: 'utf8' }).trim();
    const token = prodUrl.match(/x-access-token:(.+)@github\.com/)[1];
-   Verify suffix ends with: kkRTt
+   Verify suffix ends with: UnnR7
 
 2. Push ONE file only via GitHub API PUT — NEVER git push main:
    GET  https://api.github.com/repos/saaikanyakorn-afk/etaxcenter/contents/<filepath>  → get SHA
