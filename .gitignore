@@ -24,3 +24,6 @@ logs/
 
 # Deploy package (may contain secrets)
 deploy-package/
+
+# Dev-only files — never push to any remote
+star-wars.txt
