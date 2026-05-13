@@ -269,9 +269,9 @@ export async function shareOgHandler(req: Request, res: Response, next: NextFunc
 }
 
 function sendShareDocHtml(res: Response, opts: {
-  pdfUrl: string; ogImage: string; title: string; desc: string; fullUrl: string;
+  pdfUrl: string; ogImage: string; title: string; desc: string; fullUrl: string; debug?: string;
 }) {
-  const { pdfUrl, ogImage, title, desc, fullUrl } = opts;
+  const { pdfUrl, ogImage, title, desc, fullUrl, debug } = opts;
   res.status(200).set({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }).end(
 `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -369,6 +369,7 @@ function doPrint(){
   f.contentWindow.print();
 }
 </script>
+${debug ? `<div style="position:fixed;bottom:0;left:0;right:0;background:#1e3a5f;color:#93c5fd;font-size:11px;padding:6px 10px;font-family:monospace;z-index:9999;word-break:break-all;">🔍 ${escHtml(debug)}</div>` : ""}
 </body></html>`);
 }
 
@@ -505,7 +506,8 @@ export async function salesDocShareHandler(req: Request, res: Response, next: Ne
   const titleRaw = docNo ? `${labelTh} ${docNo}` : labelTh;
   const title = escHtml(titleRaw);
   const desc = escHtml(`${companyName}${customerName ? ` → ${customerName}` : ""}${totalAmount ? ` | ยอด ฿${totalAmount}` : ""}`);
-  sendShareDocHtml(res, { pdfUrl, ogImage, title, desc, fullUrl });
+  const debugInfo = `handler=salesDocShareHandler docType=${docType} proto=${proto} host=${host} fwd=${req.headers["x-forwarded-proto"]||"-"} token=${token?.slice(0,8)}`;
+  sendShareDocHtml(res, { pdfUrl, ogImage, title, desc, fullUrl, debug: debugInfo });
 }
 
 export async function contractOgHandler(req: Request, res: Response, next: NextFunction) {
