@@ -604,6 +604,20 @@ DEPLOY #60 — 2026-05-12
     pm2 restart etax-center
 
 ----------------------------------------------------------------
+DEPLOY #62 — 2026-05-13 (LINE share Android redirect fix)
+  Files:
+    - client/src/lib/line-android-redirect.ts
+    - client/src/pages/sales/invoice-share.tsx
+    - client/src/pages/sales/tax-invoice-share.tsx
+    - client/src/pages/sales/receipt-share.tsx
+    - client/src/pages/sales/quotation-share.tsx
+    - client/src/pages/sales/sales-order-share.tsx
+  Commits: 0f4ba0ff / f5a7f6b8 / e5701552 / 5dbf355d / 56f3b799 / 5d10a2f9
+  Reason: LINE share on Android — redirect fix via line-android-redirect.ts
+  Method: GitHub API PUT (6 individual files)
+  pm2: online 85.0mb ✅
+
+----------------------------------------------------------------
 DEPLOY #61 — SO Stock Reservation System (2026-05-12)
   Implemented by: Kai (dev Replit)
   Files changed:
