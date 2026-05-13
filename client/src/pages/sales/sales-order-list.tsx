@@ -179,8 +179,8 @@ export default function SalesOrderList() {
   function getPaymentStatus(order: any): string {
     const total = parseFloat(String(order.totalAmount || 0));
     const paidAmount = parseFloat(String(order.paidAmount || 0));
-    if (total > 0 && paidAmount > total) return "overpaid";
     if (order.paymentStatus === "paid" || order.status === "paid") return "paid";
+    if (total > 0 && paidAmount > total) return "overpaid";
     const isOverdue = order.dueDate && new Date(order.dueDate) < new Date(new Date().toDateString());
     if (order.paymentStatus === "partial" || order.status === "partially_paid") return isOverdue ? "partial_overdue" : "partial";
     return isOverdue ? "overdue" : "unpaid";

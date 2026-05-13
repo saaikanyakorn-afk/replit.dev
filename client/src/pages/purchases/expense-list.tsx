@@ -274,8 +274,8 @@ export default function ExpenseList() {
   function getPaymentStatus(exp: any): string {
     const total = parseFloat(String(exp.totalAmount || 0));
     const paidAmount = parseFloat(String(exp.paidAmount || 0));
-    if (total > 0 && paidAmount > total) return "overpaid";
     if (exp.paymentStatus === "paid" || exp.status === "paid") return "paid";
+    if (total > 0 && paidAmount > total) return "overpaid";
     const isOverdue = exp.dueDate && new Date(exp.dueDate) < new Date(new Date().toDateString());
     if (exp.paymentStatus === "partial" || exp.status === "partially_paid") return isOverdue ? "partial_overdue" : "partial";
     if (exp.paymentStatus === "unpaid" || exp.paymentStatus === "new" || !exp.paymentStatus) return isOverdue ? "overdue" : "unpaid";

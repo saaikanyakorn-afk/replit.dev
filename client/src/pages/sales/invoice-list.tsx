@@ -212,8 +212,8 @@ export default function InvoiceList() {
     const grossTotal = (subtotal + vatAmt) > 0 ? subtotal + vatAmt : total;
     const paidAmount = parseFloat(String(inv.paidAmount || 0));
     if (grossTotal > 0 && paidAmount >= grossTotal) return "paid";
-    if (total > 0 && paidAmount > total) return "overpaid";
     if (inv.paymentStatus === "paid" || inv.status === "paid") return "paid";
+    if (total > 0 && paidAmount > total) return "overpaid";
     if (inv.status === "partially_paid" || inv.paymentStatus === "partial") {
       const isOverdue = inv.dueDate && new Date(inv.dueDate) < new Date(new Date().toDateString());
       return isOverdue ? "partial_overdue" : "partial";

@@ -170,8 +170,8 @@ export default function PurchaseInvoiceList() {
   function getPaymentStatus(ap: any): string {
     const total = parseFloat(String(ap.totalAmount || 0));
     const paidAmount = parseFloat(String(ap.paidAmount || 0));
-    if (total > 0 && paidAmount > total) return "overpaid";
     if (ap.paymentStatus === "paid" || ap.status === "paid") return "paid";
+    if (total > 0 && paidAmount > total) return "overpaid";
     const isOverdue = ap.dueDate && new Date(ap.dueDate) < new Date(new Date().toDateString());
     if (ap.paymentStatus === "partial" || ap.status === "partially_paid") return isOverdue ? "partial_overdue" : "partial";
     if (ap.paymentStatus === "unpaid" || ap.paymentStatus === "new" || !ap.paymentStatus) return isOverdue ? "overdue" : "unpaid";
