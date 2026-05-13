@@ -20,7 +20,8 @@ import {
   CheckCircle2, TrendingUp, TrendingDown, FileDown, FileUp, RefreshCw,
   ChevronDown, Eye, BarChart3, BoxIcon, LayoutGrid, List, X,
   DollarSign, Tag, Layers, ArrowRight, Download, Upload,
-  Building2, MapPin, Phone, User, Star, Pencil, Trash2, ArrowLeftRight
+  Building2, MapPin, Phone, User, Star, Pencil, Trash2, ArrowLeftRight,
+  FileText, XCircle
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -156,6 +157,40 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
     onError: (err: any) => {
       toast({ title: "ไม่สามารถลบได้", description: err.message, variant: "destructive" });
     },
+  });
+
+  // ============ Import Batches ============
+  const [cancelBatchDate, setCancelBatchDate] = useState<string | null>(null);
+
+  const { data: importBatches = [], refetch: refetchBatches } = useQuery({
+    queryKey: ["/api/stock-movements/import-batches", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await fetch(`/api/stock-movements/import-batches?companyId=${companyId}`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const cancelBatchMutation = useMutation({
+    mutationFn: async (batchDate: string) => {
+      const res = await fetch("/api/stock-movements/cancel-import-batch", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ companyId, batchDate }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "เกิดข้อผิดพลาด"); }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stock-movements/import-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      setCancelBatchDate(null);
+      toast({ title: "ยกเลิก Import สำเร็จ", description: data?.message || "", variant: "success" as any });
+    },
+    onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });
 
   const resetWhForm = () => {
@@ -539,6 +574,9 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
               </TabsTrigger>
               <TabsTrigger value="warehouses" className="gap-1" data-testid="tab-warehouses">
                 <Building2 className="h-3.5 w-3.5" /> จัดการคลัง
+              </TabsTrigger>
+              <TabsTrigger value="import-history" className="gap-1" data-testid="tab-import-history">
+                <FileText className="h-3.5 w-3.5" /> ประวัติ Import
               </TabsTrigger>
             </TabsList>
             {activeTab === "overview" && (
@@ -1053,6 +1091,95 @@ export default function WarehousePage(props: { Wrapper?: React.ComponentType<{ c
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ============ ประวัติ Import ============ */}
+          <TabsContent value="import-history">
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-orange-500" />
+                    ประวัติ Import ยอดเปิด (จัดกลุ่มตามวันที่)
+                  </CardTitle>
+                  <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => refetchBatches()} data-testid="button-refresh-batches">
+                    <RotateCcw className="h-3.5 w-3.5" /> รีเฟรช
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {importBatches.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 text-muted-foreground py-16">
+                    <FileText className="h-12 w-12 text-slate-300" />
+                    <p className="font-medium text-sm" data-testid="text-no-import-batches">ยังไม่มีประวัติ Import ยอดเปิด</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow className="hover:bg-transparent h-10">
+                        <TableHead className="w-10 text-center">#</TableHead>
+                        <TableHead className="w-36">วันที่ Import</TableHead>
+                        <TableHead className="text-right w-28">จำนวนรายการ</TableHead>
+                        <TableHead className="text-right w-28">จำนวนสินค้า</TableHead>
+                        <TableHead className="text-right w-28">รวม Qty</TableHead>
+                        <TableHead className="w-36 text-center">จัดการ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(importBatches as any[]).map((batch: any, idx: number) => (
+                        <TableRow key={batch.batchDate} className="hover:bg-orange-50/30" data-testid={`row-import-batch-${batch.batchDate}`}>
+                          <TableCell className="text-center text-xs text-muted-foreground">{idx + 1}</TableCell>
+                          <TableCell className="text-sm font-medium">{batch.batchDate}</TableCell>
+                          <TableCell className="text-right text-sm">{batch.movementCount} รายการ</TableCell>
+                          <TableCell className="text-right text-sm">{batch.productCount} สินค้า</TableCell>
+                          <TableCell className="text-right text-sm font-mono">{Number(batch.totalQty).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs border-red-300 text-red-600 hover:bg-red-50"
+                              onClick={() => setCancelBatchDate(batch.batchDate)}
+                              data-testid={`button-cancel-batch-${batch.batchDate}`}
+                            >
+                              <XCircle className="h-3 w-3 mr-1" /> ยกเลิก Batch นี้
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Dialog ยืนยันยกเลิก batch */}
+            <Dialog open={!!cancelBatchDate} onOpenChange={(o) => { if (!o) setCancelBatchDate(null); }}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-red-600">
+                    <XCircle className="h-4 w-4" /> ยืนยันยกเลิก Import
+                  </DialogTitle>
+                  <DialogDescription>
+                    ยกเลิก Import ของวันที่ <strong>{cancelBatchDate}</strong><br />
+                    รายการยอดเปิดทั้งหมดในวันนั้นจะถูกลบ และระบบจะรีเซ็ตยอดคงเหลือสินค้าที่เกี่ยวข้อง
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" size="sm" onClick={() => setCancelBatchDate(null)} data-testid="button-cancel-batch-no">
+                    ไม่ยกเลิก
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    disabled={cancelBatchMutation.isPending}
+                    onClick={() => { if (cancelBatchDate) cancelBatchMutation.mutate(cancelBatchDate); }}
+                    data-testid="button-confirm-cancel-batch"
+                  >
+                    {cancelBatchMutation.isPending ? "กำลังยกเลิก..." : "ยืนยัน ยกเลิก Import"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
 

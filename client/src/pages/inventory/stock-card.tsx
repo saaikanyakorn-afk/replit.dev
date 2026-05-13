@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -16,8 +16,10 @@ import ThaiDateInput from "@/components/thai-date-input";
 import { useDateSettings } from "@/hooks/use-date-settings";
 import {
   Package, ArrowLeft, ArrowDownToLine, ArrowUpFromLine, History,
-  Printer, Download, Search, RotateCcw, Tag, Filter, FileText, ExternalLink, Calculator
+  Printer, Download, Search, RotateCcw, Tag, Filter, FileText, ExternalLink, Calculator,
+  Pencil, Trash2
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import type { Product, ProductStock } from "@shared/schema";
 import { toLocalDateStr } from "@/lib/utils";
 
@@ -91,6 +93,47 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
   const [appliedStartDate, setAppliedStartDate] = useState("");
   const [appliedEndDate, setAppliedEndDate] = useState("");
   const [appliedMethod, setAppliedMethod] = useState<string>("");
+  const [editMovement, setEditMovement] = useState<{ id: number; unitCost: string; qty: number } | null>(null);
+  const [editUnitCost, setEditUnitCost] = useState("");
+  const [deleteMovementId, setDeleteMovementId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  const editCostMutation = useMutation({
+    mutationFn: async ({ id, unitCost }: { id: number; unitCost: string }) => {
+      const res = await fetch(`/api/stock-movements/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ unitCost: Number(unitCost) }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "เกิดข้อผิดพลาด"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
+      setEditMovement(null);
+      toast({ title: "แก้ไขต้นทุนสำเร็จ", variant: "success" as any });
+    },
+    onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteMovementMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/stock-movements/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "เกิดข้อผิดพลาด"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      setDeleteMovementId(null);
+      toast({ title: "ลบรายการสำเร็จ", description: "กด Sync ยอดคงเหลือเพื่ออัพเดทยอดต่อคลังด้วย", variant: "success" as any });
+    },
+    onError: (err: any) => toast({ title: "ไม่สามารถลบได้", description: err.message, variant: "destructive" }),
+  });
 
   useEffect(() => {
     if (urlProductId && urlProductId !== selectedProductId) {
@@ -481,6 +524,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                           <TableHead className="text-xs text-right text-blue-600 font-medium w-[65px]">จำนวน</TableHead>
                           <TableHead className="text-xs text-right text-blue-600 font-medium w-[85px]">ราคา/หน่วย</TableHead>
                           <TableHead className="text-xs text-right text-blue-600 font-medium w-[85px]">มูลค่า</TableHead>
+                          <TableHead className="w-[60px]"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -501,6 +545,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                             <TableCell className={`text-xs text-right font-bold tabular-nums ${costingData.balanceBF.value < 0 ? "text-red-600" : "text-blue-700"}`} data-testid="text-bf-value">
                               {costingData.balanceBF.value < 0 ? `-${formatCurrency(Math.abs(costingData.balanceBF.value))}` : formatCurrency(costingData.balanceBF.value)}
                             </TableCell>
+                            <TableCell></TableCell>
                           </TableRow>
                         )}
                         {movementsWithCost.map((m: any, i: number) => {
@@ -594,6 +639,28 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                               <TableCell className={`text-xs text-right bg-blue-50/30 tabular-nums font-medium ${m.runningValue < 0 ? "text-red-600" : ""}`}>
                                 {m.runningValue < 0 ? `-${formatCurrency(Math.abs(m.runningValue))}` : formatCurrency(m.runningValue)}
                               </TableCell>
+                              <TableCell className="text-center">
+                                {m.movementType === "initial" && !m.referenceType && (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      className="p-1 rounded hover:bg-blue-50 text-blue-500 hover:text-blue-700"
+                                      title="แก้ไขต้นทุน"
+                                      data-testid={`button-edit-cost-${m.id}`}
+                                      onClick={() => { setEditMovement({ id: m.id, unitCost: String(m.unitCost || 0), qty: Math.abs(qty) }); setEditUnitCost(String(m.unitCost || 0)); }}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"
+                                      title="ลบรายการนี้"
+                                      data-testid={`button-delete-movement-${m.id}`}
+                                      onClick={() => setDeleteMovementId(m.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -606,6 +673,64 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
           </>
         )}
       </div>
+
+      {/* Dialog แก้ไขต้นทุน */}
+      <Dialog open={!!editMovement} onOpenChange={(o) => { if (!o) setEditMovement(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Pencil className="h-4 w-4 text-blue-500" /> แก้ไขราคาต้นทุน</DialogTitle>
+            <DialogDescription>รายการยอดเปิด — จำนวน {editMovement?.qty ?? 0} หน่วย<br/>ระบบจะบันทึก log ว่าใครแก้และเมื่อไหร่</DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-2">
+            <label className="text-sm font-medium">ราคาต้นทุน / หน่วย (บาท)</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={editUnitCost}
+              onChange={(e) => setEditUnitCost(e.target.value)}
+              placeholder="0.00"
+              data-testid="input-edit-unit-cost"
+              autoFocus
+            />
+            {editMovement && Number(editUnitCost) > 0 && (
+              <p className="text-xs text-muted-foreground">ต้นทุนรวม = {(editMovement.qty * Number(editUnitCost)).toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท</p>
+            )}
+          </div>
+          <DialogFooter>
+            <button className="px-4 py-2 rounded text-sm border hover:bg-slate-50" onClick={() => setEditMovement(null)}>ยกเลิก</button>
+            <button
+              className="px-4 py-2 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              disabled={editCostMutation.isPending || !editUnitCost}
+              data-testid="button-confirm-edit-cost"
+              onClick={() => { if (editMovement) editCostMutation.mutate({ id: editMovement.id, unitCost: editUnitCost }); }}
+            >
+              {editCostMutation.isPending ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog ยืนยันลบรายการ */}
+      <Dialog open={!!deleteMovementId} onOpenChange={(o) => { if (!o) setDeleteMovementId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600"><Trash2 className="h-4 w-4" /> ยืนยันการลบ</DialogTitle>
+            <DialogDescription>รายการยอดเปิดนี้จะถูกลบออกจากประวัติสต๊อก และจะปรับยอดคงเหลือสินค้านี้ให้ลดลงตามจำนวนที่ลบ กด Sync ยอดคงเหลือเพื่ออัพเดทยอดต่อคลังด้วย</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button className="px-4 py-2 rounded text-sm border hover:bg-slate-50" onClick={() => setDeleteMovementId(null)}>ยกเลิก</button>
+            <button
+              className="px-4 py-2 rounded text-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              disabled={deleteMovementMutation.isPending}
+              data-testid="button-confirm-delete-movement"
+              onClick={() => { if (deleteMovementId) deleteMovementMutation.mutate(deleteMovementId); }}
+            >
+              {deleteMovementMutation.isPending ? "กำลังลบ..." : "ลบรายการ"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </LayoutComponent>
   );
 }
