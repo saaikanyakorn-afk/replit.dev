@@ -2413,3 +2413,10 @@ That is the only thing that actually works.
 - **Resend (Email Service):** Sends e-Tax Invoice emails with PDF/A-3 attachments, document sharing, and HR payslips.
 - **OpenAI Vision API:** Powers AI-based slip verification for Facebook Chat Orders.
 - **Google Gemini AI:** Dual AI document extraction — sends documents to both OpenAI GPT-4o and Gemini 2.5 Flash in parallel, scores results by completeness (vendor name, tax ID, items, amounts), and automatically picks the better result. Frontend shows which AI was chosen (🤖 badge). Falls back to whichever AI is available if only one is configured.
+
+---
+
+## Mandatory reading order at the start of every session
+1. This file (`replit.md`) — top to bottom, fully. No skipping, no grepping.
+2. `.local/handoff-active.md` — the single source of truth for all unfinished work.
+3. `db/schema-history.md` — check for any 🔄 Migration active entries before touching anything.
