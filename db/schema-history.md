@@ -108,7 +108,7 @@ following the TERTIARY USE procedure so index.ts is no longer touched for column
 
 **Reason:** VAT rate configurable at company level. Previously hardcoded 7% everywhere. Companies can now set their own default VAT rate (7% / 0%) per company in general settings.
 
-**Status:** 🔄 Migration active — awaiting deploy + verify + comment-out
+**Status:** ✅ COMPLETE — Flag confirmed on production `done_2026-05-08T01:13:32.161Z`. Column verified. `runDefaultVatRateMigration()` call removed from `doc-settings-routes.ts`. Loop closed 2026-05-13.
 
 ---
 
