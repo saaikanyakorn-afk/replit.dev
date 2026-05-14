@@ -36,6 +36,18 @@ Verification: `grep -rn "eq(products.active" server/` → **0 results** ✅
 
 ---
 
+## ADDITIONAL BUG FIXED (2026-05-14 — found during พี่ทราย dev test)
+
+**Bug:** สต๊อกการ์ดแสดงวันที่ผิด — นำเข้า Excel เลือกวันที่ 1 เมษา แต่บันทึกเป็นวันนี้แทน
+**Root cause:** `server/routes/products-routes.ts` — POST `/api/products/import/execute`
+  - Frontend ส่ง `stockOpenDate` ใน request body ✅
+  - Backend ไม่ได้ destructure `stockOpenDate` ออกมา ❌ → stock_movement insert ใช้ `defaultNow()` แทน
+**Fix:** เพิ่ม `stockOpenDate` ใน destructuring (line 409) + ส่ง `createdAt: new Date(stockOpenDate)` ใน stock_movement insert (line 559)
+**File:** `server/routes/products-routes.ts` — เพิ่มเข้า list ที่ต้อง push GitHub (ไฟล์นี้อยู่ใน list เดิมอยู่แล้ว)
+**Status:** แก้บน dev แล้ว — รอพี่ทรายยืนยันว่าถูกต้อง
+
+---
+
 ## WHAT NEXT AGENT MUST DO
 
 **STEP 1** — Check if พี่ทราย has replied with dev test results (look in chat history).

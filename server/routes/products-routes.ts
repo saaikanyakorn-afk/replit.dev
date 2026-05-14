@@ -406,7 +406,7 @@ app.post("/api/products/import/preview", requireAuth, requireModule("inventory")
 
 app.post("/api/products/import/execute", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
-    const { companyId, products: productList, updateProducts, stockEntries } = req.body;
+    const { companyId, products: productList, updateProducts, stockEntries, stockOpenDate } = req.body;
     if (!companyId || !productList || !Array.isArray(productList)) {
       return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
     }
@@ -553,6 +553,7 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
               referenceId: null,
               unitCost: "0",
               totalCost: "0",
+              ...(stockOpenDate ? { createdAt: new Date(stockOpenDate) } : {}),
             });
           } catch (mvErr: any) {
             console.error(`[ProductImport] stock_movement insert failed pid=${productId}:`, mvErr.message);
