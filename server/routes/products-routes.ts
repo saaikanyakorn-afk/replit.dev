@@ -782,8 +782,8 @@ app.post("/api/products/bulk-permanent-delete", requireAuth, requireModule("inve
     if (!companyId || !Array.isArray(productIds) || productIds.length === 0) {
       return res.status(400).json({ message: "กรุณาระบุ companyId และ productIds" });
     }
-    if (productIds.length > 500) {
-      return res.status(400).json({ message: "ลบได้ครั้งละไม่เกิน 500 รายการ" });
+    if (productIds.length > 1000) {
+      return res.status(400).json({ message: "ลบได้ครั้งละไม่เกิน 1000 รายการ" });
     }
     { const ac = await checkDocOwnership(companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
 
