@@ -2,7 +2,7 @@ import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Pencil, RefreshCw, Upload, Plus } from "lucide-react";
+import { Package, Pencil, RefreshCw, Upload, Plus, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { useLocation } from "wouter";
@@ -16,6 +16,19 @@ export default function BundleManagement(props: { Wrapper?: React.ComponentType<
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (productId: number) => {
+      const r = await fetch(`/api/products/${productId}`, { method: "DELETE", credentials: "include" });
+      if (!r.ok) throw new Error((await r.json()).message);
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "ลบชุดสินค้าสำเร็จ", variant: "success" as any });
+    },
+    onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
+  });
 
   const recalcMutation = useMutation({
     mutationFn: async () => {
@@ -127,9 +140,25 @@ export default function BundleManagement(props: { Wrapper?: React.ComponentType<
                       <TableCell>{product.unit}</TableCell>
                       <TableCell className="text-right">{Number(product.price).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" data-testid={`button-edit-bundle-${product.id}`} onClick={() => navigate(`${basePath}/bundles/edit/${product.id}`)}>
-                          <Pencil className="h-4 w-4 mr-1" /> แก้ไขชุดสินค้า
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="outline" size="sm" data-testid={`button-edit-bundle-${product.id}`} onClick={() => navigate(`${basePath}/bundles/edit/${product.id}`)}>
+                            <Pencil className="h-4 w-4 mr-1" /> แก้ไขชุดสินค้า
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            data-testid={`button-delete-bundle-${product.id}`}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => {
+                              if (confirm(`ลบชุดสินค้า "${product.name}" ออกจากระบบ?`)) {
+                                deleteMutation.mutate(product.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" /> ลบ
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
