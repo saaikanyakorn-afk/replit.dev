@@ -554,7 +554,9 @@ export default function TaxInvoiceList() {
                                 transfer_done: { label: "โอนแล้ว", cls: "bg-emerald-50 text-emerald-600 border-emerald-200" },
                                 completed: { label: "เสร็จสิ้น", cls: "bg-emerald-50 text-emerald-600 border-emerald-200" },
                               };
-                              const effectiveStatus = inv.hasBillingNote && !["paid", "transfer_done", "completed", "cash", "credit_card", "cheque_done", "cancel", "cancelled"].includes(inv.status) ? "billing_note" : inv.status;
+                              const effectiveStatus = isCashMethod(inv.paymentMethod)
+                                ? "cash"
+                                : (inv.hasBillingNote && !["paid", "transfer_done", "completed", "cash", "credit_card", "cheque_done", "cancel", "cancelled"].includes(inv.status) ? "billing_note" : inv.status);
                               const a = approvalMap[effectiveStatus] || { label: "-", cls: "bg-slate-50 text-slate-500 border-slate-200" };
                               return (
                                 <>
