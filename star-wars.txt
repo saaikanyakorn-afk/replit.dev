@@ -399,6 +399,17 @@ WHAT DOES NOT WORK (tested 2026-05-04):
 ----------------------------------------------------------------
 DEPLOY LOG (latest first):
 
+[#66] 2026-05-15 — Product import: cost from Excel, delete batch truly deletes, duplicate badge fallback, bundle delete, pagination 1000, innerJoin migration
+  Files: server/routes/products-routes.ts, server/routes/import-batch-routes.ts, server/routes/commerce-intelligence.ts, server/routes/price-calculator.ts, server/routes/ad-cost-routes.ts, server/routes/pos-routes.ts, server/routes/ecommerce-routes.ts, server/routes/notifications-routes.ts, server/storage.ts, client/src/pages/inventory/product-import-export.tsx, client/src/pages/inventory/inventory-list.tsx, client/src/pages/inventory/bundle-management.tsx, client/src/lib/queryClient.ts (13 files)
+  Fix: unitCost hardcoded "0" on import → now uses entry.cost from Excel
+  Fix: delete import batch deactivated instead of deleting → now clears initial stock_movements + warehouse_stock_levels before FK check
+  Fix: duplicate badge disappeared after stat split → added fallback for old response format
+  Fix: innerJoin migration (eq products.active → innerJoin activeProducts) across 8 server files
+  New: bundle delete button (Trash2), bulk permanent delete limit 1000, pagination option 1000
+  Note: build failed first attempt — queryClient.ts missing downloadFile export, pushed separately
+  Server: git fetch origin && git checkout origin/main -- server/routes/products-routes.ts server/routes/import-batch-routes.ts server/routes/commerce-intelligence.ts server/routes/price-calculator.ts server/routes/ad-cost-routes.ts server/routes/pos-routes.ts server/routes/ecommerce-routes.ts server/routes/notifications-routes.ts server/storage.ts client/src/pages/inventory/product-import-export.tsx client/src/pages/inventory/inventory-list.tsx client/src/pages/inventory/bundle-management.tsx client/src/lib/queryClient.ts && npm run build && pm2 restart etax-center
+  Result: ✅ online 84.4mb
+
 [#65] 2026-05-13 — Fix setCompanyPrimary cross-tenant bug + primary company UI in Settings
   Commits: 5f752ac6 (storage.ts), 2719c02c (core-routes.ts), 1c2b5d05 (company-info.tsx)
   Fix: storage.ts setCompanyPrimary() — added tenant filter so clearing is_primary only affects same tenant
