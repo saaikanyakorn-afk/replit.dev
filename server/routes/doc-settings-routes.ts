@@ -3,7 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { eq } from "drizzle-orm";
 import { generalSettings, documentSettings, invoices, taxInvoices, purchaseInvoices, expenses } from "@shared/schema";
-import { requireAuth, requireAdmin, requireRole } from "../route-middleware";
+import { requireAuth, requireAdmin, requireRole, requireModule } from "../route-middleware";
 import { getInventoryTriggers, recomputePaymentStatus, recomputeAPPaymentStatus } from "../route-helpers";
 import { z } from "zod";
 import { runStampUrlMigration } from "../schema-extra";
@@ -57,7 +57,7 @@ app.put("/api/settings/general", requireAuth, async (req, res) => {
   }
 });
 
-app.get("/api/settings/inventory-triggers", requireAuth, async (req, res) => {
+app.get("/api/settings/inventory-triggers", requireAuth, requireModule("app-extra"), async (req, res) => {
   try {
     const companyId = Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุ companyId" });
@@ -66,7 +66,7 @@ app.get("/api/settings/inventory-triggers", requireAuth, async (req, res) => {
   } catch (e: any) { res.status(500).json({ message: e.message }); }
 });
 
-app.put("/api/settings/inventory-triggers", requireAuth, requireRole("admin", "super_admin"), async (req, res) => {
+app.put("/api/settings/inventory-triggers", requireAuth, requireModule("app-extra"), requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const companyId = Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุ companyId" });

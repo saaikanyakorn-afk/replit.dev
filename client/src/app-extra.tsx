@@ -29,6 +29,8 @@ const BillingNoteShare = lazy(() => import("@/pages/finance/billing-note-share")
 // [exchange-rate] /settings/exchange-rate — super_admin BOT API key management
 // Cannot be added to App.tsx (production source of truth). Registered here.
 const ExchangeRateSettings = lazy(() => import("@/pages/settings/exchange-rate-settings"));
+// [inventory-triggers] /settings/inventory-triggers — app-extra module required
+const InventoryTriggersPage = lazy(() => import("@/pages/settings/inventory-triggers"));
 
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
@@ -65,6 +67,11 @@ function matchBillingNoteShare(location: string): string | null {
 // [exchange-rate] Exact match for /settings/exchange-rate
 function matchExchangeRate(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/settings/exchange-rate";
+}
+
+// [inventory-triggers] Exact match for /settings/inventory-triggers
+function matchInventoryTriggers(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/settings/inventory-triggers";
 }
 
 export default function AppExtra() {
@@ -109,6 +116,7 @@ export default function AppExtra() {
   const whtShareToken = matchWhtCertShare(location);
   const bnShareToken = matchBillingNoteShare(location);
   const isExchangeRate = matchExchangeRate(location);
+  const isInventoryTriggers = matchInventoryTriggers(location);
 
   if (pdfId) {
     return (
@@ -156,6 +164,17 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <ExchangeRateSettings platformMode={true} />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [inventory-triggers] Render inventory trigger settings — app-extra module required
+  if (isInventoryTriggers) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <InventoryTriggersPage />
         </Suspense>
       </FullPageOverlay>
     );
