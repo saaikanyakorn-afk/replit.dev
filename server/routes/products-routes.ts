@@ -395,6 +395,8 @@ app.post("/api/products/import/preview", requireAuth, requireModule("inventory")
       stats: {
         ok: preview.filter(p => p.status === "ok").length,
         duplicate: preview.filter(p => p.status === "duplicate").length,
+        duplicateInFile: preview.filter(p => p.status === "duplicate" && p.issues.some((i: string) => i.includes("ซ้ำในไฟล์"))).length,
+        duplicateInSystem: preview.filter(p => p.status === "duplicate" && p.issues.some((i: string) => i.includes("มีในระบบแล้ว"))).length,
         error: preview.filter(p => p.status === "error").length,
         stockEntries: stockOkCount,
       },
