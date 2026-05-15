@@ -230,7 +230,7 @@ export default function GoodsRequisitionList(props: { Wrapper?: React.ComponentT
                               {giq.giqNo || `-`}
                             </button>
                           </TableCell>
-                          <TableCell className="text-sm">{formatDate(giq.giqDate || giq.date, dateEra, dateFormat)}</TableCell>
+                          <TableCell className="text-sm">{formatDate(giq.giqDate || giq.date, dateEra, dateFmt)}</TableCell>
                           <TableCell className="text-sm">{giq.departmentName || giq.requestedBy || "-"}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{giq.purpose || "-"}</TableCell>
                           <TableCell className="text-right tabular-nums text-sm">{fmt(giq.totalAmount)}</TableCell>
@@ -321,22 +321,20 @@ export default function GoodsRequisitionList(props: { Wrapper?: React.ComponentT
                                     </DropdownMenuItem>
                                   </>
                                 )}
-                                {giq.status === "draft" && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      data-testid={`action-delete-${giq.id}`}
-                                      onClick={() => {
-                                        if (confirm("ยืนยันลบใบเบิกสินค้านี้?")) {
-                                          deleteMutation.mutate(giq.id);
-                                        }
-                                      }}
-                                      className="flex gap-2 text-red-500"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" /> ลบ
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    data-testid={`action-delete-${giq.id}`}
+                                    onClick={() => {
+                                      if (confirm("ยืนยันลบใบเบิกสินค้านี้?")) {
+                                        deleteMutation.mutate(giq.id);
+                                      }
+                                    }}
+                                    className="flex gap-2 text-red-500"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" /> ลบ
+                                  </DropdownMenuItem>
+                                </>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

@@ -2372,7 +2372,6 @@ app.delete("/api/goods-requisitions/:id", requireAuth, requireModule("inventory"
     const id = Number(req.params.id);
     const [giq] = await db.select().from(goodsRequisitions).where(eq(goodsRequisitions.id, id));
     if (!giq) return res.status(404).json({ message: "ไม่พบใบเบิกสินค้า" });
-    if (giq.status === "approved") return res.status(400).json({ message: "ไม่สามารถลบใบเบิกที่อนุมัติแล้ว" });
     await db.transaction(async (tx) => {
       await deleteStockMovementsForDoc(tx, "goods_requisition", id);
       await tx.delete(goodsRequisitionItems).where(eq(goodsRequisitionItems.goodsRequisitionId, id));
