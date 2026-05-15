@@ -1251,6 +1251,19 @@ export async function recomputePaymentStatus(docType: "taxInvoice" | "invoice", 
   const docStatus = (doc as any).status || "";
   if (newPaymentStatus === "paid" && !["cancelled", "voided", "cancel"].includes(docStatus)) {
     updateFields.status = "paid";
+    if (docType === "taxInvoice") {
+      const allLinked = [...linkedReceipts];
+      if (allLinked.length > 0) {
+        const rcPm = allLinked[allLinked.length - 1].paymentMethod;
+        if (rcPm) updateFields.paymentMethod = rcPm;
+      } else if (linkedDocs.length > 0) {
+        const batchRcId = linkedDocs[linkedDocs.length - 1].receiptId;
+        if (batchRcId) {
+          const [batchRc] = await db.select({ paymentMethod: receipts.paymentMethod }).from(receipts).where(eq(receipts.id, batchRcId));
+          if (batchRc?.paymentMethod) updateFields.paymentMethod = batchRc.paymentMethod;
+        }
+      }
+    }
   } else if (newPaymentStatus !== "paid" && docStatus === "paid") {
     updateFields.status = "debtor";
   }

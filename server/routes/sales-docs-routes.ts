@@ -1226,7 +1226,7 @@ app.post("/api/invoices/recompute-payment-statuses", requireAuth, requireRole("a
     const tivRows = await db.execute(sql`
       SELECT DISTINCT invoice_id AS id FROM tax_invoices
       WHERE invoice_id IS NOT NULL
-        AND status IN ('cash', 'approved')
+        AND status IN ('cash', 'approved', 'debtor')
         ${companyId ? sql`AND company_id = ${companyId}` : sql``}
     `);
     const invoiceIds = ((tivRows as any).rows || []).map((r: any) => Number(r.id)).filter(Boolean);
@@ -1235,6 +1235,8 @@ app.post("/api/invoices/recompute-payment-statuses", requireAuth, requireRole("a
     for (const id of invoiceIds) {
       try {
         await recomputePaymentStatus("invoice", id);
+        const tivs = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.invoiceId, id));
+        for (const tiv of tivs) await recomputePaymentStatus("taxInvoice", tiv.id);
         updated++;
       } catch (e: any) {
         console.error(`[recompute-payment-statuses] invoice#${id} failed:`, e.message);
@@ -2769,7 +2771,11 @@ app.post("/api/receipts", requireAuth, requireAnyModule("sales", "ecommerce"), a
     const savedItems = await fetchReceiptItems(result.id);
 
     if (result.taxInvoiceId) await recomputePaymentStatus("taxInvoice", result.taxInvoiceId);
-    if (result.invoiceId) await recomputePaymentStatus("invoice", result.invoiceId);
+    if (result.invoiceId) {
+      await recomputePaymentStatus("invoice", result.invoiceId);
+      const tivs = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.invoiceId, result.invoiceId));
+      for (const tiv of tivs) await recomputePaymentStatus("taxInvoice", tiv.id);
+    }
 
     let journalResult = null;
     try {
@@ -2873,9 +2879,15 @@ app.patch("/api/receipts/:id", requireAuth, requireAnyModule("sales", "ecommerce
     }
     if (existing.invoiceId && existing.invoiceId !== updated.invoiceId) {
       await recomputePaymentStatus("invoice", existing.invoiceId);
+      const oldTivs = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.invoiceId, existing.invoiceId));
+      for (const tiv of oldTivs) await recomputePaymentStatus("taxInvoice", tiv.id);
     }
     if (updated.taxInvoiceId) await recomputePaymentStatus("taxInvoice", updated.taxInvoiceId);
-    if (updated.invoiceId) await recomputePaymentStatus("invoice", updated.invoiceId);
+    if (updated.invoiceId) {
+      await recomputePaymentStatus("invoice", updated.invoiceId);
+      const tivs = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.invoiceId, updated.invoiceId));
+      for (const tiv of tivs) await recomputePaymentStatus("taxInvoice", tiv.id);
+    }
 
     let journalResult = null;
     const statusChanged = body.status && body.status !== existing.status;
@@ -2932,7 +2944,11 @@ app.delete("/api/receipts/:id", requireAuth, requireAnyModule("sales", "ecommerc
     });
     // recompute จาก taxInvoiceId/invoiceId field ตรง
     if (existing.taxInvoiceId) await recomputePaymentStatus("taxInvoice", existing.taxInvoiceId);
-    if (existing.invoiceId) await recomputePaymentStatus("invoice", existing.invoiceId);
+    if (existing.invoiceId) {
+      await recomputePaymentStatus("invoice", existing.invoiceId);
+      const tivs = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.invoiceId, existing.invoiceId));
+      for (const tiv of tivs) await recomputePaymentStatus("taxInvoice", tiv.id);
+    }
     // recompute จาก receipt_linked_docs (billing note receipts)
     for (const ld of linkedDocs) {
       try {
@@ -2970,7 +2986,11 @@ app.post("/api/receipts/bulk-delete", requireAuth, requireAnyModule("sales", "ec
           try { await recomputePaymentStatus("taxInvoice", existing.taxInvoiceId); } catch (e: any) { console.error(`[RC-DELETE] recomputePaymentStatus taxInvoice#${existing.taxInvoiceId} failed:`, e.message); }
         }
         if (existing.invoiceId) {
-          try { await recomputePaymentStatus("invoice", existing.invoiceId); } catch (e: any) { console.error(`[RC-DELETE] recomputePaymentStatus invoice#${existing.invoiceId} failed:`, e.message); }
+          try {
+            await recomputePaymentStatus("invoice", existing.invoiceId);
+            const tivs = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.invoiceId, existing.invoiceId));
+            for (const tiv of tivs) await recomputePaymentStatus("taxInvoice", tiv.id);
+          } catch (e: any) { console.error(`[RC-BULK-DELETE] recomputePaymentStatus invoice#${existing.invoiceId} failed:`, e.message); }
         }
         for (const ld of linkedDocs) {
           try {
