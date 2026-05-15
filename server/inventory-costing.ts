@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { stockMovements, products, productStock, taxInvoiceItems, taxInvoices, invoiceItems, invoices, goodsReceivings, goodsRequisitions } from "@shared/schema";
+import { stockMovements, products, productStock, taxInvoiceItems, taxInvoices, invoiceItems, invoices, goodsReceivings, goodsRequisitions, purchaseOrders, purchaseInvoices, manufacturingOrders } from "@shared/schema";
 import { eq, and, asc, lte, gte, desc, sql, inArray } from "drizzle-orm";
 
 export type CostingMethod = "moving_average" | "fifo" | "specific";
@@ -22,6 +22,7 @@ export interface MovementWithCost {
   notes: string | null;
   createdAt: Date | null;
   documentDate?: string | null;
+  docNo?: string | null;
   runningQty: number;
   runningValue: number;
   runningUnitCost: number;
@@ -294,13 +295,17 @@ async function enrichMovements(
   const invRefIds = Array.from(new Set(refsWithId.filter(m => m.referenceType === "invoice").map(m => m.referenceId!)));
   const grRefIds = Array.from(new Set(refsWithId.filter(m => m.referenceType === "goods_receiving").map(m => m.referenceId!)));
   const giqRefIds = Array.from(new Set(refsWithId.filter(m => m.referenceType === "goods_requisition").map(m => m.referenceId!)));
+  const poRefIds = Array.from(new Set(refsWithId.filter(m => m.referenceType === "purchase_order").map(m => m.referenceId!)));
+  const apRefIds = Array.from(new Set(refsWithId.filter(m => m.referenceType === "purchase_invoice").map(m => m.referenceId!)));
+  const moRefIds = Array.from(new Set(refsWithId.filter(m => m.referenceType === "manufacturing_order").map(m => m.referenceId!)));
 
   const sellPriceMap = new Map<string, number>();
   const docDateMap = new Map<string, string>();
+  const docNoMap = new Map<string, string>();
 
   if (tivRefIds.length > 0) {
     const [tivDocs, tivItems] = await Promise.all([
-      db.select({ id: taxInvoices.id, date: taxInvoices.taxInvoiceDate }).from(taxInvoices).where(inArray(taxInvoices.id, tivRefIds)),
+      db.select({ id: taxInvoices.id, date: taxInvoices.taxInvoiceDate, taxInvoiceNo: taxInvoices.taxInvoiceNo }).from(taxInvoices).where(inArray(taxInvoices.id, tivRefIds)),
       db.select({
         taxInvoiceId: taxInvoiceItems.taxInvoiceId,
         unitPrice: taxInvoiceItems.unitPrice,
@@ -312,6 +317,7 @@ async function enrichMovements(
 
     for (const doc of tivDocs) {
       if (doc.date) docDateMap.set(`tax_invoice_${doc.id}`, String(doc.date).slice(0, 10));
+      if (doc.taxInvoiceNo) docNoMap.set(`tax_invoice_${doc.id}`, doc.taxInvoiceNo);
     }
 
     for (const docId of tivRefIds) {
@@ -341,6 +347,7 @@ async function enrichMovements(
 
     for (const doc of invDocs) {
       if (doc.date) docDateMap.set(`invoice_${doc.id}`, String(doc.date).slice(0, 10));
+      if (doc.invoiceNo) docNoMap.set(`invoice_${doc.id}`, doc.invoiceNo);
     }
 
     for (const docId of invRefIds) {
@@ -357,22 +364,46 @@ async function enrichMovements(
   }
 
   if (grRefIds.length > 0) {
-    const grDocs = await db.select({ id: goodsReceivings.id, date: goodsReceivings.grDate }).from(goodsReceivings).where(inArray(goodsReceivings.id, grRefIds));
+    const grDocs = await db.select({ id: goodsReceivings.id, date: goodsReceivings.grDate, grNo: goodsReceivings.grNo }).from(goodsReceivings).where(inArray(goodsReceivings.id, grRefIds));
     for (const doc of grDocs) {
       if (doc.date) docDateMap.set(`goods_receiving_${doc.id}`, String(doc.date).slice(0, 10));
+      if (doc.grNo) docNoMap.set(`goods_receiving_${doc.id}`, doc.grNo);
     }
   }
 
   if (giqRefIds.length > 0) {
-    const giqDocs = await db.select({ id: goodsRequisitions.id, date: goodsRequisitions.giqDate }).from(goodsRequisitions).where(inArray(goodsRequisitions.id, giqRefIds));
+    const giqDocs = await db.select({ id: goodsRequisitions.id, date: goodsRequisitions.giqDate, giqNo: goodsRequisitions.giqNo }).from(goodsRequisitions).where(inArray(goodsRequisitions.id, giqRefIds));
     for (const doc of giqDocs) {
       if (doc.date) docDateMap.set(`goods_requisition_${doc.id}`, String(doc.date).slice(0, 10));
+      if (doc.giqNo) docNoMap.set(`goods_requisition_${doc.id}`, doc.giqNo);
+    }
+  }
+
+  if (poRefIds.length > 0) {
+    const poDocs = await db.select({ id: purchaseOrders.id, poNo: purchaseOrders.poNo }).from(purchaseOrders).where(inArray(purchaseOrders.id, poRefIds));
+    for (const doc of poDocs) {
+      if (doc.poNo) docNoMap.set(`purchase_order_${doc.id}`, doc.poNo);
+    }
+  }
+
+  if (apRefIds.length > 0) {
+    const apDocs = await db.select({ id: purchaseInvoices.id, apNo: purchaseInvoices.apNo }).from(purchaseInvoices).where(inArray(purchaseInvoices.id, apRefIds));
+    for (const doc of apDocs) {
+      if (doc.apNo) docNoMap.set(`purchase_invoice_${doc.id}`, doc.apNo);
+    }
+  }
+
+  if (moRefIds.length > 0) {
+    const moDocs = await db.select({ id: manufacturingOrders.id, orderNo: manufacturingOrders.orderNo }).from(manufacturingOrders).where(inArray(manufacturingOrders.id, moRefIds));
+    for (const doc of moDocs) {
+      if (doc.orderNo) docNoMap.set(`manufacturing_order_${doc.id}`, doc.orderNo);
     }
   }
 
   return movements.map(m => {
     const key = m.referenceType && m.referenceId ? `${m.referenceType}_${m.referenceId}` : null;
     let documentDate: string | null = key ? (docDateMap.get(key) || null) : null;
+    const docNo: string | null = key ? (docNoMap.get(key) || null) : null;
 
     if (!documentDate && m.referenceNo) {
       const parsed = parseDateFromRefNo(m.referenceNo);
@@ -380,7 +411,7 @@ async function enrichMovements(
     }
 
     if (m.quantity >= 0 || !key) {
-      return { ...m, documentDate };
+      return { ...m, documentDate, docNo };
     }
 
     const absQty = Math.abs(m.quantity);
@@ -397,7 +428,7 @@ async function enrichMovements(
     }
     const sellPrice = absQty > 0 && totalSell > 0 ? totalSell / absQty : 0;
     const grossProfit = totalSell > 0 ? totalSell - totalCost : 0;
-    return { ...m, unitCost, totalCost, sellPrice, totalSell, grossProfit, documentDate };
+    return { ...m, unitCost, totalCost, sellPrice, totalSell, grossProfit, documentDate, docNo };
   });
 }
 
