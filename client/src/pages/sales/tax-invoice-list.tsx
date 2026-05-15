@@ -126,6 +126,24 @@ export default function TaxInvoiceList() {
     enabled: !!companyId,
   });
 
+  const { data: paymentMethodsList = [] } = useQuery<any[]>({
+    queryKey: ["/api/payment-methods", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const isCashMethod = (pm: string) => {
+    if (!pm) return false;
+    if (pm === "เงินสด") return true;
+    const found = paymentMethodsList.find((m: any) => m.accountCode === pm);
+    return !!(found && (found.name === "เงินสด" || found.nameTh === "เงินสด"));
+  };
+
   const { data: etaxSettings } = useQuery({
     queryKey: ["/api/etax/settings", companyId],
     queryFn: async () => {
@@ -446,14 +464,14 @@ export default function TaxInvoiceList() {
                               <span className="font-semibold text-slate-800">{inv.customerName}</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-                              {inv.paymentMethod === "เครดิต" ? (
-                                <span className="text-purple-600">Credit[TIV]</span>
-                              ) : (() => {
+                              {!inv.paymentMethod ? null : isCashMethod(inv.paymentMethod) ? (() => {
                                 const ref = inv.refDoc || inv.referenceNo;
                                 const refPrefix = ref ? ref.replace(/\d.*$/, "").toUpperCase() : null;
                                 const label = refPrefix ? `Cash[${refPrefix}-TIV]` : "Cash[TIV]";
-                                return inv.paymentMethod ? <span className="text-green-600">{label}</span> : null;
-                              })()}
+                                return <span className="text-green-600">{label}</span>;
+                              })() : (
+                                <span className="text-purple-600">Credit[TIV]</span>
+                              )}
                               {inv.customerAddress && (
                                 <span className="flex items-center gap-0.5 text-blue-500 cursor-pointer hover:underline" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.customerAddress)}`, '_blank')}>
                                   <ExternalLink className="h-3 w-3" /> ดูแผนที่
