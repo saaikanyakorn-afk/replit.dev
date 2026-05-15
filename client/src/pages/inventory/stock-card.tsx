@@ -271,11 +271,12 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
     toast({ title: "ส่งออกสำเร็จ", description: `ส่งออก ${movementsWithCost.length} รายการ`, variant: "success" as any });
   };
 
-  function handleRefClick(refType: string | null, refId: number | null) {
+  function handleRefClick(refType: string | null, refId: number | null, refNo?: string | null) {
     if (!refType || !refId) return;
     const info = REF_TYPE_LABELS[refType];
-    if (!info) return;
-    setLocation(info.path);
+    if (!info || !info.path) return;
+    const search = refNo ? `?search=${encodeURIComponent(refNo)}` : '';
+    setLocation(`${info.path}${search}`);
   }
 
   const stockColor = getStockColor(currentQty);
@@ -573,7 +574,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                                   canClick ? (
                                     <button
                                       className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-medium"
-                                      onClick={() => handleRefClick(m.referenceType, m.referenceId)}
+                                      onClick={() => handleRefClick(m.referenceType, m.referenceId, m.referenceNo)}
                                       data-testid={`link-ref-${m.id}`}
                                     >
                                       <FileText className="h-3 w-3" />
