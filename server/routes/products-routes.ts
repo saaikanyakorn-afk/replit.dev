@@ -2527,7 +2527,6 @@ app.delete("/api/inventory/stock-transfers/:id", requireAuth, requireModule("inv
     const id = Number(req.params.id);
     const [transfer] = await db.select().from(stockTransfers).where(eq(stockTransfers.id, id));
     if (!transfer) return res.status(404).json({ message: "ไม่พบรายการ" });
-    if (transfer.status !== "draft") return res.status(400).json({ message: "ไม่สามารถลบรายการที่ดำเนินการแล้ว" });
     await db.delete(stockTransferItems).where(eq(stockTransferItems.transferId, id));
     await db.delete(stockTransfers).where(eq(stockTransfers.id, id));
     res.json({ success: true });

@@ -405,15 +405,13 @@ export default function StockTransfer(props: { Wrapper?: React.ComponentType<{ c
                             <Eye className="h-4 w-4" />
                           </Button>
                           {tf.status === "draft" && (
-                            <>
-                              <Button variant="ghost" size="sm" className="text-green-600" onClick={() => setApproveId(tf.id)} data-testid={`btn-approve-${tf.id}`}>
-                                <CheckCircle2 className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setDeleteId(tf.id)} data-testid={`btn-delete-${tf.id}`}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                            <Button variant="ghost" size="sm" className="text-green-600" onClick={() => setApproveId(tf.id)} data-testid={`btn-approve-${tf.id}`}>
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
                           )}
+                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setDeleteId(tf.id)} data-testid={`btn-delete-${tf.id}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                           {tf.status === "approved" && (
                             <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => { setShipId(tf.id); shipGps.requestGps(); }} data-testid={`btn-ship-${tf.id}`}>
                               <Truck className="h-4 w-4" />
