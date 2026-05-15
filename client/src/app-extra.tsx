@@ -43,7 +43,7 @@ const ManufacturingList = lazy(() => import("@/pages/inventory/manufacturing-lis
 
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 9999, overflow: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 100, overflow: "auto" }}>
       {children}
     </div>
   );
