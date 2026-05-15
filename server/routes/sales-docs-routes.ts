@@ -2075,6 +2075,7 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
         paymentMethod: result.paymentMethod || "เครดิต",
         paymentMethodAccountCode: pmAccCode,
         linkedInvoiceId: result.invoiceId,
+        isCreditPayment: result.status !== "cash",
         overrideLines: body?.journalOverrideLines || req?.body?.journalOverrideLines || undefined,
       });
     } catch (e) {}

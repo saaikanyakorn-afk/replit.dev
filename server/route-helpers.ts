@@ -256,6 +256,7 @@ export interface AutoJournalParams {
   formulaBusinessType?: string | null;
   lineItemAccounts?: { accountCode: string; accountName: string; amount: number; description?: string }[];
   overrideLines?: { accountCode: string; accountName: string; debit: string; credit: string }[];
+  isCreditPayment?: boolean;
 }
 
 export async function createAutoJournalEntry(params: AutoJournalParams): Promise<{ journalEntryId: number | null; skipped: boolean; reason?: string }> {
@@ -284,7 +285,9 @@ async function _createAutoJournalEntryInner(params: AutoJournalParams): Promise<
     paymentMethod, linkedInvoiceId, formulaId,
     formulaBusinessType: overrideBusinessType,
   } = params;
-  const isCreditPayment = paymentMethod === "เครดิต" || !paymentMethod;
+  const isCreditPayment = params.isCreditPayment !== undefined
+    ? params.isCreditPayment
+    : (paymentMethod === "เครดิต" || !paymentMethod);
 
   const existingJEPromise = db.select().from(journalEntries)
     .where(and(
