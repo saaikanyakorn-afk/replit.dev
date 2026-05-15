@@ -1223,6 +1223,9 @@ app.delete("/api/invoices/:id", requireAuth, requireAnyModule("sales", "ecommerc
 app.post("/api/invoices/recompute-payment-statuses", requireAuth, requireRole("admin", "owner", "super_admin"), async (req, res) => {
   try {
     const companyId = req.body.companyId ? Number(req.body.companyId) : null;
+    let updated = 0;
+    const errors: string[] = [];
+    // Case 1: TIV ที่มี invoiceId → recompute IV ก่อน แล้วค่อย cascade TIV
     const tivRows = await db.execute(sql`
       SELECT DISTINCT invoice_id AS id FROM tax_invoices
       WHERE invoice_id IS NOT NULL
@@ -1230,20 +1233,35 @@ app.post("/api/invoices/recompute-payment-statuses", requireAuth, requireRole("a
         ${companyId ? sql`AND company_id = ${companyId}` : sql``}
     `);
     const invoiceIds = ((tivRows as any).rows || []).map((r: any) => Number(r.id)).filter(Boolean);
-    let updated = 0;
-    const errors: string[] = [];
     for (const id of invoiceIds) {
       try {
         await recomputePaymentStatus("invoice", id);
         const tivs = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(eq(taxInvoices.invoiceId, id));
-        for (const tiv of tivs) await recomputePaymentStatus("taxInvoice", tiv.id);
-        updated++;
+        for (const tiv of tivs) { await recomputePaymentStatus("taxInvoice", tiv.id); updated++; }
       } catch (e: any) {
         console.error(`[recompute-payment-statuses] invoice#${id} failed:`, e.message);
         errors.push(`invoice#${id}: ${e.message}`);
       }
     }
-    res.json({ message: `อัพเดทสถานะ ${updated} ใบแจ้งหนี้เรียบร้อย`, updated, errors });
+    // Case 2: TIV ที่ไม่มี invoiceId (สร้างโดยตรง ไม่ผ่าน IV) → recompute TIV โดยตรง
+    const standaloneTivRows = await db.execute(sql`
+      SELECT id FROM tax_invoices
+      WHERE invoice_id IS NULL
+        AND status IN ('approved', 'debtor', 'issued')
+        AND is_debit_note = false AND is_credit_note = false
+        ${companyId ? sql`AND company_id = ${companyId}` : sql``}
+    `);
+    const standaloneTivIds = ((standaloneTivRows as any).rows || []).map((r: any) => Number(r.id)).filter(Boolean);
+    for (const id of standaloneTivIds) {
+      try {
+        await recomputePaymentStatus("taxInvoice", id);
+        updated++;
+      } catch (e: any) {
+        console.error(`[recompute-payment-statuses] taxInvoice#${id} failed:`, e.message);
+        errors.push(`taxInvoice#${id}: ${e.message}`);
+      }
+    }
+    res.json({ message: `อัพเดทสถานะ ${updated} เอกสารเรียบร้อย`, updated, errors });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
