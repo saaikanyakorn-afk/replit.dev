@@ -102,14 +102,14 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
       const newItems = importPreview.preview.filter((p: any) => p.status === "ok" && !p.issues.some((i: string) => i.includes("มีในระบบแล้ว"))).map((p: any) => p.data);
       const existingItems = importPreview.preview.filter((p: any) => (p.status === "ok" || p.status === "duplicate") && p.issues.some((i: string) => i.includes("มีในระบบแล้ว"))).map((p: any) => p.data);
 
-      const stockEntries: { code: string; warehouseName: string; stockQty: number }[] = [];
+      const stockEntries: { code: string; warehouseName: string; stockQty: number; cost: number }[] = [];
       if (importPreview.hasWarehouseCol) {
         for (const item of importPreview.preview) {
           if (item.status === "error") continue;
           const wh = item.data.warehouseName;
           const qty = Number(item.data.stockQty) || 0;
           if (wh && qty > 0) {
-            stockEntries.push({ code: item.data.code, warehouseName: wh, stockQty: qty });
+            stockEntries.push({ code: item.data.code, warehouseName: wh, stockQty: qty, cost: Number(item.data.cost) || 0 });
           }
         }
       }

@@ -553,8 +553,8 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
               notes: `ตั้งต้นสต๊อก (นำเข้า Excel) คลัง ${entry.warehouseName || warehouseId}`,
               referenceType: null,
               referenceId: null,
-              unitCost: "0",
-              totalCost: "0",
+              unitCost: String(Number(entry.cost) || 0),
+              totalCost: String((Number(entry.cost) || 0) * Math.abs(delta)),
               ...(stockOpenDate ? { createdAt: new Date(stockOpenDate) } : {}),
             });
           } catch (mvErr: any) {
