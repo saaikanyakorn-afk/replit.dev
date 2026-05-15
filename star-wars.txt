@@ -407,6 +407,22 @@ DEPLOY LOG (latest first):
   Tested: พี่ทราย tested on dev ✅ — 804 products, 1000/page, select-all works correctly
   Server: git fetch origin && git checkout origin/main -- client/src/pages/inventory/inventory-list.tsx client/src/hooks/use-show-more.ts server/routes/products-routes.ts && npm run build && pm2 restart etax-center
   Hotfix #67b: bulk-permanent-delete missing stock_transfer_items FK check → added to both pre-check query and docRows query
+  Hotfix #67c: stock_transfer_items join column was stock_transfer_id → fixed to transfer_id
+  Hotfix #67d: pre-check FK list incomplete → added all product_id reference tables from schema
+  Hotfix #67e: manufacturing_order_lines uses component_product_id not product_id → fixed alias
+
+[#68] 2026-05-15 — Allow delete stock transfer all statuses
+  Files: client/src/pages/inventory/stock-transfer.tsx, server/routes/products-routes.ts (2 files)
+  Fix: delete button was draft-only → now shows for all statuses
+  Fix: backend blocked delete if status != draft → removed restriction
+  Authorized by: พี่ช้าง ("Who can see the screen can delete it")
+
+[#69] 2026-05-15 — Fix goods-requisition crash + allow delete all statuses
+  Files: client/src/pages/inventory/goods-requisition-list.tsx, server/routes/products-routes.ts (2 files)
+  Fix: dateFormat is not defined crash → typo, should be dateFmt
+  Fix: delete button was draft-only → now shows for all statuses
+  Fix: backend blocked delete if status = approved → removed restriction
+  Server: git fetch origin && git checkout origin/main -- client/src/pages/inventory/goods-requisition-list.tsx server/routes/products-routes.ts && npm run build && pm2 restart etax-center
 
 [#66] 2026-05-15 — Product import: cost from Excel, delete batch truly deletes, duplicate badge fallback, bundle delete, pagination 1000, innerJoin migration
   Files: server/routes/products-routes.ts, server/routes/import-batch-routes.ts, server/routes/commerce-intelligence.ts, server/routes/price-calculator.ts, server/routes/ad-cost-routes.ts, server/routes/pos-routes.ts, server/routes/ecommerce-routes.ts, server/routes/notifications-routes.ts, server/storage.ts, client/src/pages/inventory/product-import-export.tsx, client/src/pages/inventory/inventory-list.tsx, client/src/pages/inventory/bundle-management.tsx, client/src/lib/queryClient.ts (13 files)
