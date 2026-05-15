@@ -867,7 +867,7 @@ app.post("/api/products/bulk-permanent-delete", requireAuth, requireModule("inve
         UNION ALL SELECT product_id, 'รายการ POS ' || pt.transaction_no as doc FROM pos_transaction_items pti JOIN pos_transactions pt ON pt.id=pti.transaction_id WHERE pti.product_id = ANY(${skippedPgIds})
         UNION ALL SELECT product_id, 'รับสินค้า ' || gr.gr_no as doc FROM goods_receiving_items gri JOIN goods_receivings gr ON gr.id=gri.goods_receiving_id WHERE gri.product_id = ANY(${skippedPgIds})
         UNION ALL SELECT product_id, 'เบิกสินค้า ' || giq.giq_no as doc FROM goods_requisition_items giqi JOIN goods_requisitions giq ON giq.id=giqi.goods_requisition_id WHERE giqi.product_id = ANY(${skippedPgIds})
-        UNION ALL SELECT product_id, 'โอนสินค้า ' || st.transfer_no as doc FROM stock_transfer_items sti JOIN stock_transfers st ON st.id=sti.stock_transfer_id WHERE sti.product_id = ANY(${skippedPgIds})
+        UNION ALL SELECT product_id, 'โอนสินค้า ' || st.transfer_no as doc FROM stock_transfer_items sti JOIN stock_transfers st ON st.id=sti.transfer_id WHERE sti.product_id = ANY(${skippedPgIds})
       `);
       for (const row of docRows.rows as any[]) {
         if (!skippedDocMap[row.product_id]) skippedDocMap[row.product_id] = [];
