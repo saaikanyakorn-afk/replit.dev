@@ -31,19 +31,10 @@ const BillingNoteShare = lazy(() => import("@/pages/finance/billing-note-share")
 const ExchangeRateSettings = lazy(() => import("@/pages/settings/exchange-rate-settings"));
 // [inventory-triggers] /settings/inventory-triggers — app-extra module required
 const InventoryTriggersPage = lazy(() => import("@/pages/settings/inventory-triggers"));
-// [stock-card-list-routes] List pages for doc types linked from stock-card movements.
-// Production App.tsx (frozen) may have these pointing to edit/form — override with list here.
-const TaxInvoiceList = lazy(() => import("@/pages/sales/tax-invoice-list"));
-const InvoiceList = lazy(() => import("@/pages/sales/invoice-list"));
-const PurchaseOrderList = lazy(() => import("@/pages/purchases/purchase-order-list"));
-const PurchaseInvoiceList = lazy(() => import("@/pages/purchases/purchase-invoice-list"));
-const GoodsReceivingList = lazy(() => import("@/pages/inventory/goods-receiving-list"));
-const GoodsRequisitionList = lazy(() => import("@/pages/inventory/goods-requisition-list"));
-const ManufacturingList = lazy(() => import("@/pages/inventory/manufacturing-list"));
 
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 100, overflow: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 9999, overflow: "auto" }}>
       {children}
     </div>
   );
@@ -81,11 +72,6 @@ function matchExchangeRate(location: string): boolean {
 // [inventory-triggers] Exact match for /settings/inventory-triggers
 function matchInventoryTriggers(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/settings/inventory-triggers";
-}
-
-// [stock-card-list-routes] Exact match helpers — must NOT match sub-paths like /edit/:id
-function matchExactPath(location: string, path: string): boolean {
-  return location.replace(/\?.*$/, "") === path;
 }
 
 export default function AppExtra() {
@@ -131,14 +117,6 @@ export default function AppExtra() {
   const bnShareToken = matchBillingNoteShare(location);
   const isExchangeRate = matchExchangeRate(location);
   const isInventoryTriggers = matchInventoryTriggers(location);
-  // [stock-card-list-routes]
-  const isTaxInvoiceList = matchExactPath(location, "/sales/tax-invoice");
-  const isInvoiceList = matchExactPath(location, "/sales/invoice");
-  const isPurchaseOrderList = matchExactPath(location, "/purchases/po");
-  const isPurchaseInvoiceList = matchExactPath(location, "/purchases/invoice");
-  const isGoodsReceivingList = matchExactPath(location, "/inventory/receiving");
-  const isGoodsRequisitionList = matchExactPath(location, "/inventory/requisition");
-  const isManufacturingList = matchExactPath(location, "/inventory/manufacturing");
 
   if (pdfId) {
     return (
@@ -197,77 +175,6 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <InventoryTriggersPage />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [stock-card-list-routes] Override production App.tsx (frozen) that may point to edit/form
-  if (isTaxInvoiceList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <TaxInvoiceList />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  if (isInvoiceList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <InvoiceList />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  if (isPurchaseOrderList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <PurchaseOrderList />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  if (isPurchaseInvoiceList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <PurchaseInvoiceList />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  if (isGoodsReceivingList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <GoodsReceivingList />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  if (isGoodsRequisitionList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <GoodsRequisitionList />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  if (isManufacturingList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingList />
         </Suspense>
       </FullPageOverlay>
     );
