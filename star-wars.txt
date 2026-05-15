@@ -399,6 +399,15 @@ WHAT DOES NOT WORK (tested 2026-05-04):
 ----------------------------------------------------------------
 DEPLOY LOG (latest first):
 
+[#73] 2026-05-15 — Fix TIV paymentMethod cash/credit toggle (status-based)
+  Files: server/routes/sales-docs-routes.ts, server/route-helpers.ts, client/src/pages/sales/tax-invoice-list.tsx (3 files)
+  Fix 1: TIV create → mark paid เฉพาะ status === "cash" (เดิมเช็ค paymentMethod !== "เครดิต" → "ตั้งหนี้ลูกค้า" ก็โดน mark paid)
+  Fix 2: recomputePaymentStatus("invoice") → นับ TIV เป็น paid เฉพาะ status = 'paid' (เดิมเช็ค payment_method != 'เครดิต')
+  Fix 3: createAutoJournalEntry → รับ isCreditPayment parameter; TIV create ส่ง isCreditPayment: result.status !== "cash"
+  Fix 4: TIV list label → โหลด paymentMethodsList + isCashMethod() เพื่อแสดง Cash[TIV] หรือ Credit[TIV] ถูกต้อง
+  Tested: พี่ทราย tested on dev ✅ — TIV จาก SO เลือก "ตั้งหนี้ลูกค้า" → สถานะ "ยังไม่ชำระ" + label Credit[TIV] ✅
+  Server: git fetch origin && git checkout origin/main -- server/routes/sales-docs-routes.ts server/route-helpers.ts client/src/pages/sales/tax-invoice-list.tsx && npm run build && pm2 restart etax-center
+
 [#67] 2026-05-15 — Bulk deactivate products + pageSize select-all fix
   Files: client/src/pages/inventory/inventory-list.tsx, client/src/hooks/use-show-more.ts, server/routes/products-routes.ts (3 files)
   New: bulk deactivate (active→inactive) with checkbox select per page, select-all header, orange action bar, confirmation dialog
