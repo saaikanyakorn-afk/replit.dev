@@ -14,21 +14,21 @@ interface RelatedDoc {
   attachedUrl?: string;
 }
 
-const docTypeConfig: Record<string, { label: string; icon: any; color: string; listPath: string; searchParam: string }> = {
-  quotation: { label: "ใบเสนอราคา", icon: ClipboardList, color: "#fec90f", listPath: "/sales/quote", searchParam: "quotationNo" },
-  sales_order: { label: "ใบสั่งขาย", icon: ShoppingCart, color: "#fb9678", listPath: "/sales/order", searchParam: "orderNo" },
-  invoice: { label: "ใบแจ้งหนี้", icon: FileText, color: "#05b187", listPath: "/sales/invoice", searchParam: "invoiceNo" },
-  tax_invoice: { label: "ใบกำกับภาษี", icon: FileCheck, color: "var(--theme-primary)", listPath: "/sales/tax-invoice", searchParam: "taxInvoiceNo" },
-  receipt: { label: "ใบเสร็จรับเงิน", icon: Receipt, color: "#03c9d7", listPath: "/sales/receipt", searchParam: "receiptNo" },
-  journal: { label: "บันทึกบัญชี", icon: BookOpen, color: "#fb9678", listPath: "/journal", searchParam: "reference" },
-  purchase_request: { label: "ใบขอซื้อ", icon: ShoppingBag, color: "#fb9678", listPath: "/purchases/pr", searchParam: "prNo" },
-  bid_comparison: { label: "เปรียบเทียบราคา", icon: Scale, color: "#fec90f", listPath: "/purchases/bid", searchParam: "bidNo" },
-  purchase_order: { label: "ใบสั่งซื้อ", icon: ClipboardList, color: "#05b187", listPath: "/purchases/po", searchParam: "poNo" },
+const docTypeConfig: Record<string, { label: string; icon: any; color: string; listPath: string; searchParam: string; editPath?: string }> = {
+  quotation: { label: "ใบเสนอราคา", icon: ClipboardList, color: "#fec90f", listPath: "/sales/quote", searchParam: "quotationNo", editPath: "/sales/quote/edit/" },
+  sales_order: { label: "ใบสั่งขาย", icon: ShoppingCart, color: "#fb9678", listPath: "/sales/order", searchParam: "orderNo", editPath: "/sales/order/edit/" },
+  invoice: { label: "ใบแจ้งหนี้", icon: FileText, color: "#05b187", listPath: "/sales/invoice", searchParam: "invoiceNo", editPath: "/sales/invoice/edit/" },
+  tax_invoice: { label: "ใบกำกับภาษี", icon: FileCheck, color: "var(--theme-primary)", listPath: "/sales/tax-invoice", searchParam: "taxInvoiceNo", editPath: "/sales/tax-invoice/edit/" },
+  receipt: { label: "ใบเสร็จรับเงิน", icon: Receipt, color: "#03c9d7", listPath: "/sales/receipt", searchParam: "receiptNo", editPath: "/sales/receipt/edit/" },
+  journal: { label: "บันทึกบัญชี", icon: BookOpen, color: "#fb9678", listPath: "/journal", searchParam: "reference", editPath: "/journal/edit/" },
+  purchase_request: { label: "ใบขอซื้อ", icon: ShoppingBag, color: "#fb9678", listPath: "/purchases/pr", searchParam: "prNo", editPath: "/purchases/pr/edit/" },
+  bid_comparison: { label: "เปรียบเทียบราคา", icon: Scale, color: "#fec90f", listPath: "/purchases/bid", searchParam: "bidNo", editPath: "/purchases/bid/edit/" },
+  purchase_order: { label: "ใบสั่งซื้อ", icon: ClipboardList, color: "#05b187", listPath: "/purchases/po", searchParam: "poNo", editPath: "/purchases/po/edit/" },
   purchase_invoice: { label: "เอกสารซื้อ", icon: FileText, color: "var(--theme-primary)", listPath: "/purchases/invoice", searchParam: "apNo" },
   expense: { label: "รายจ่ายอื่น", icon: Receipt, color: "#03c9d7", listPath: "/purchases/expense", searchParam: "expNo" },
-  purchase_debit_note: { label: "ใบลดหนี้ซื้อ", icon: FileText, color: "#f94d4d", listPath: "/purchases/debit-note", searchParam: "debitNoteNo" },
+  purchase_debit_note: { label: "ใบลดหนี้ซื้อ", icon: FileText, color: "#f94d4d", listPath: "/purchases/debit-note", searchParam: "debitNoteNo", editPath: "/purchases/debit-note/edit/" },
   billing_note: { label: "ใบวางบิล", icon: FileText, color: "#fec90f", listPath: "/finance/billing-notes", searchParam: "billingNo" },
-  credit_note: { label: "ใบลดหนี้", icon: FileX, color: "#dc2626", listPath: "/sales/credit-note", searchParam: "creditNoteNo" },
+  credit_note: { label: "ใบลดหนี้", icon: FileX, color: "#dc2626", listPath: "/sales/credit-note", searchParam: "creditNoteNo", editPath: "/sales/credit-note/edit/" },
   payment_voucher: { label: "ใบสำคัญจ่าย", icon: Receipt, color: "#03c9d7", listPath: "/finance/ap-billing", searchParam: "pvNo" },
 };
 
@@ -127,7 +127,9 @@ export default function RelatedDocsDialog({
                   data-testid={`related-link-${doc.type}-${doc.id}`}
                   onClick={() => {
                     onOpenChange(false);
-                    if (doc.type === "payment_voucher") {
+                    if (config.editPath) {
+                      navigate(`${config.editPath}${doc.id}`);
+                    } else if (doc.type === "payment_voucher") {
                       navigate(`${config.listPath}?companyId=${companyId}&apId=${docId}`);
                     } else {
                       navigate(`${config.listPath}?companyId=${companyId}&${config.searchParam}=${encodeURIComponent(doc.docNo)}`);
