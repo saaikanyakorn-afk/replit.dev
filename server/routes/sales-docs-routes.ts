@@ -3110,6 +3110,11 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
       }
       const txsByQo = await db.select().from(taxInvoices).where(and(eq(taxInvoices.quotationId, id), eq(taxInvoices.companyId, companyId)));
       for (const tx of txsByQo) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.taxInvoiceNo, date: tx.taxInvoiceDate, status: tx.status, totalAmount: tx.totalAmount });
+      // TIV ที่สร้างจาก SO ที่ link กับ QO นี้ (refDoc = SO.orderNo)
+      for (const relSo of related.filter(r => r.type === "sales_order")) {
+        const tivsFromSo = await db.select().from(taxInvoices).where(and(eq(taxInvoices.refDoc, relSo.docNo), eq(taxInvoices.companyId, companyId)));
+        for (const tx of tivsFromSo) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.taxInvoiceNo, date: tx.taxInvoiceDate, status: tx.status, totalAmount: tx.totalAmount });
+      }
 
     } else if (docType === "sales_order") {
       const [so] = await db.select().from(salesOrders).where(and(eq(salesOrders.id, id), eq(salesOrders.companyId, companyId)));
@@ -3141,6 +3146,11 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
       // TIV ที่สร้างตรงจาก SO (refDoc = orderNo, ไม่ผ่าน IV)
       const tivsDirect = await db.select().from(taxInvoices).where(and(eq(taxInvoices.refDoc, so.orderNo), eq(taxInvoices.companyId, companyId)));
       for (const tx of tivsDirect) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.taxInvoiceNo, date: tx.taxInvoiceDate, status: tx.status, totalAmount: tx.totalAmount });
+      // TIV ที่สร้างจาก QO ที่ link กับ SO นี้ (refDoc = QO.quotationNo)
+      for (const relQo of related.filter(r => r.type === "quotation")) {
+        const tivsFromQo = await db.select().from(taxInvoices).where(and(eq(taxInvoices.refDoc, relQo.docNo), eq(taxInvoices.companyId, companyId)));
+        for (const tx of tivsFromQo) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.taxInvoiceNo, date: tx.taxInvoiceDate, status: tx.status, totalAmount: tx.totalAmount });
+      }
 
     } else if (docType === "invoice") {
       const [iv] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.companyId, companyId)));
@@ -3248,7 +3258,18 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
           }
         }
         const qoByRef = await db.select().from(quotations).where(and(eq(quotations.quotationNo, refDocNo), eq(quotations.companyId, companyId)));
-        for (const qo of qoByRef) addUnique({ type: "quotation", id: qo.id, docNo: qo.quotationNo, date: qo.quotationDate, status: qo.status, totalAmount: qo.totalAmount });
+        for (const qo of qoByRef) {
+          addUnique({ type: "quotation", id: qo.id, docNo: qo.quotationNo, date: qo.quotationDate, status: qo.status, totalAmount: qo.totalAmount });
+          // SO ที่ link กับ QO นี้
+          if (qo.salesOrderId) {
+            const [soFromQo] = await db.select().from(salesOrders).where(and(eq(salesOrders.id, qo.salesOrderId), eq(salesOrders.companyId, companyId)));
+            if (soFromQo) addUnique({ type: "sales_order", id: soFromQo.id, docNo: soFromQo.orderNo, date: soFromQo.orderDate, status: soFromQo.status, totalAmount: soFromQo.totalAmount });
+          }
+          const sosByQoId = await db.execute(sql`SELECT id, order_no, order_date, status, total_amount FROM sales_orders WHERE quotation_id = ${qo.id} AND company_id = ${companyId}`);
+          for (const s of sosByQoId.rows as any[]) addUnique({ type: "sales_order", id: s.id, docNo: s.order_no, date: s.order_date, status: s.status, totalAmount: s.total_amount });
+          const sosByQoRef = await db.select().from(salesOrders).where(and(eq(salesOrders.refDoc, qo.quotationNo), eq(salesOrders.companyId, companyId)));
+          for (const s of sosByQoRef) addUnique({ type: "sales_order", id: s.id, docNo: s.orderNo, date: s.orderDate, status: s.status, totalAmount: s.totalAmount });
+        }
         const soByRef = await db.select().from(salesOrders).where(and(eq(salesOrders.orderNo, refDocNo), eq(salesOrders.companyId, companyId)));
         for (const so of soByRef) {
           addUnique({ type: "sales_order", id: so.id, docNo: so.orderNo, date: so.orderDate, status: so.status, totalAmount: so.totalAmount });
