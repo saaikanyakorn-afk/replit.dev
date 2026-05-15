@@ -399,6 +399,21 @@ WHAT DOES NOT WORK (tested 2026-05-04):
 ----------------------------------------------------------------
 DEPLOY LOG (latest first):
 
+[#75] 2026-05-15 — Fix related-docs dialog แสดงเอกสารไม่ครบ (chain QO↔SO↔TIV)
+  Files: server/routes/sales-docs-routes.ts (1 file)
+  Fix 1 (QO block): หลังพบ SO แล้ว ต่อหา TIV ที่ refDoc = SO.orderNo
+  Fix 2 (SO block): หา TIV ที่ refDoc = so.orderNo (raw SQL) + TIV ที่ refDoc = found_QO.quotationNo
+  Fix 3 (SO block): หา QO ที่ link กับ SO ผ่าน quotations.salesOrderId + so.refDoc
+  Fix 4 (TIV block): เมื่อ refDoc = QO.quotationNo → ต่อหา SO ที่ link กับ QO นั้น (3 วิธี)
+  Tested: พี่ทราย tested on dev ✅ — SO เห็น QO + TIV, QO เห็น SO + TIV, TIV เห็น QO + SO ✅
+  Server: git fetch origin && git checkout origin/main -- server/routes/sales-docs-routes.ts && npm run build && pm2 restart etax-center
+
+[#74] 2026-05-15 — Revert #72: related-docs-dialog กลับ navigate listPath เสมอ (ไม่ใช่ editPath)
+  Files: client/src/components/related-docs-dialog.tsx (1 file)
+  Fix: ลบ editPath logic ออก → click เอกสารใน dialog ไปหน้า list เสมอ (+ searchParam หรือ apId)
+  Tested: พี่ทราย confirmed ✅
+  Server: git fetch origin && git checkout origin/main -- client/src/components/related-docs-dialog.tsx && npm run build && pm2 restart etax-center
+
 [#73] 2026-05-15 — Fix TIV paymentMethod cash/credit toggle (status-based)
   Files: server/routes/sales-docs-routes.ts, server/route-helpers.ts, client/src/pages/sales/tax-invoice-list.tsx (3 files)
   Fix 1: TIV create → mark paid เฉพาะ status === "cash" (เดิมเช็ค paymentMethod !== "เครดิต" → "ตั้งหนี้ลูกค้า" ก็โดน mark paid)
