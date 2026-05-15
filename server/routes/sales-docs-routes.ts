@@ -2118,6 +2118,8 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
     if (result.invoiceId) {
       try { await recomputePaymentStatus("invoice", result.invoiceId); } catch (e: any) { console.error(`[TIV-CREATE] recomputePaymentStatus invoice#${result.invoiceId} failed:`, e.message); }
     }
+    // recompute TIV ใหม่นี้ด้วย — เพื่อ detect Receipt ที่มีอยู่แล้วกับ Invoice หรือ TIV นี้
+    try { await recomputePaymentStatus("taxInvoice", result.id); } catch (e: any) { console.error(`[TIV-CREATE] recomputePaymentStatus taxInvoice#${result.id} failed:`, e.message); }
     res.status(201).json({ ...result, items: savedItems, journalResult });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });

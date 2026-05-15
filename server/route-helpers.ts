@@ -1228,7 +1228,16 @@ export async function recomputePaymentStatus(docType: "taxInvoice" | "invoice", 
   if (!doc) return;
   const docTotal = parseFloat((doc as any).totalAmount || "0");
   const linkedReceipts = await db.select().from(receipts).where(eq(linkCol, docId));
-  const directSum = linkedReceipts.reduce((sum: number, r: any) => sum + parseFloat(r.totalAmount || "0"), 0);
+  // กรณี TIV ที่มี invoiceId → ให้ค้นหา receipts ที่ link กับ invoice นั้นด้วย (receipt.invoiceId)
+  let ivLinkedReceipts: any[] = [];
+  if (docType === "taxInvoice") {
+    const tivInvoiceId = (doc as any).invoiceId;
+    if (tivInvoiceId) {
+      ivLinkedReceipts = await db.select().from(receipts).where(eq(receipts.invoiceId, tivInvoiceId));
+    }
+  }
+  const allDirectReceipts = [...linkedReceipts, ...ivLinkedReceipts.filter((iv: any) => !linkedReceipts.some((r: any) => r.id === iv.id))];
+  const directSum = allDirectReceipts.reduce((sum: number, r: any) => sum + parseFloat(r.totalAmount || "0"), 0);
   const linkedDocs = await db.select().from(receiptLinkedDocs).where(and(eq(receiptLinkedDocs.docType, rldDocType), eq(receiptLinkedDocs.docId, docId)));
   const batchSum = linkedDocs.reduce((sum: number, ld: any) => sum + parseFloat(ld.amount || "0"), 0);
   let tivSum = 0;
@@ -1252,7 +1261,7 @@ export async function recomputePaymentStatus(docType: "taxInvoice" | "invoice", 
   if (newPaymentStatus === "paid" && !["cancelled", "voided", "cancel"].includes(docStatus)) {
     updateFields.status = "paid";
     if (docType === "taxInvoice") {
-      const allLinked = [...linkedReceipts];
+      const allLinked = allDirectReceipts;
       if (allLinked.length > 0) {
         const rcPm = allLinked[allLinked.length - 1].paymentMethod;
         if (rcPm) updateFields.paymentMethod = rcPm;
