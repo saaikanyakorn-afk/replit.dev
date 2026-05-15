@@ -127,9 +127,7 @@ export default function RelatedDocsDialog({
                   data-testid={`related-link-${doc.type}-${doc.id}`}
                   onClick={() => {
                     onOpenChange(false);
-                    if (config.editPath) {
-                      navigate(`${config.editPath}${doc.id}`);
-                    } else if (doc.type === "payment_voucher") {
+                    if (doc.type === "payment_voucher") {
                       navigate(`${config.listPath}?companyId=${companyId}&apId=${docId}`);
                     } else {
                       navigate(`${config.listPath}?companyId=${companyId}&${config.searchParam}=${encodeURIComponent(doc.docNo)}`);
