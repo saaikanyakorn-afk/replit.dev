@@ -3138,6 +3138,9 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
         const rcs = await db.select().from(receipts).where(and(eq(receipts.invoiceId, iv.id), eq(receipts.companyId, companyId)));
         for (const rc of rcs) addUnique({ type: "receipt", id: rc.id, docNo: rc.receiptNo, date: rc.receiptDate, status: rc.status, totalAmount: rc.totalAmount });
       }
+      // TIV ที่สร้างตรงจาก SO (refDoc = orderNo, ไม่ผ่าน IV)
+      const tivsDirect = await db.select().from(taxInvoices).where(and(eq(taxInvoices.refDoc, so.orderNo), eq(taxInvoices.companyId, companyId)));
+      for (const tx of tivsDirect) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.taxInvoiceNo, date: tx.taxInvoiceDate, status: tx.status, totalAmount: tx.totalAmount });
 
     } else if (docType === "invoice") {
       const [iv] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.companyId, companyId)));
@@ -3247,7 +3250,16 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
         const qoByRef = await db.select().from(quotations).where(and(eq(quotations.quotationNo, refDocNo), eq(quotations.companyId, companyId)));
         for (const qo of qoByRef) addUnique({ type: "quotation", id: qo.id, docNo: qo.quotationNo, date: qo.quotationDate, status: qo.status, totalAmount: qo.totalAmount });
         const soByRef = await db.select().from(salesOrders).where(and(eq(salesOrders.orderNo, refDocNo), eq(salesOrders.companyId, companyId)));
-        for (const so of soByRef) addUnique({ type: "sales_order", id: so.id, docNo: so.orderNo, date: so.orderDate, status: so.status, totalAmount: so.totalAmount });
+        for (const so of soByRef) {
+          addUnique({ type: "sales_order", id: so.id, docNo: so.orderNo, date: so.orderDate, status: so.status, totalAmount: so.totalAmount });
+          // QO ที่ link กับ SO นี้
+          if ((so as any).quotationId) {
+            const [qoFromSo] = await db.select().from(quotations).where(and(eq(quotations.id, (so as any).quotationId), eq(quotations.companyId, companyId)));
+            if (qoFromSo) addUnique({ type: "quotation", id: qoFromSo.id, docNo: qoFromSo.quotationNo, date: qoFromSo.quotationDate, status: qoFromSo.status, totalAmount: qoFromSo.totalAmount });
+          }
+          const qosBySoRef = await db.select().from(quotations).where(and(eq(quotations.salesOrderId, so.id), eq(quotations.companyId, companyId)));
+          for (const qo of qosBySoRef) addUnique({ type: "quotation", id: qo.id, docNo: qo.quotationNo, date: qo.quotationDate, status: qo.status, totalAmount: qo.totalAmount });
+        }
       }
       const rcs = await db.select().from(receipts).where(and(eq(receipts.taxInvoiceId, id), eq(receipts.companyId, companyId)));
       for (const rc of rcs) addUnique({ type: "receipt", id: rc.id, docNo: rc.receiptNo, date: rc.receiptDate, status: rc.status, totalAmount: rc.totalAmount });
