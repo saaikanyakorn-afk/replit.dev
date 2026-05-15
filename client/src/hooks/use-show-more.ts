@@ -7,6 +7,10 @@ export function useShowMore<T>(items: T[], pageSize = PAGE_SIZE) {
   const prevLenRef = useRef(items.length);
 
   useEffect(() => {
+    setVisibleCount(pageSize);
+  }, [pageSize]);
+
+  useEffect(() => {
     if (items.length !== prevLenRef.current) {
       setVisibleCount(pageSize);
       prevLenRef.current = items.length;
