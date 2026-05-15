@@ -6,68 +6,47 @@ Last updated: 2026-05-15
 
 ## CURRENT TASK
 
-**Task:** รอ พี่ช้าง authorize push to GitHub
-**Status:** หลาย bug fixes สะสมบน dev — ยังไม่ได้ push GitHub เลย
+**Status:** DEPLOY #66 ✅ complete — production online 84.4mb
+**No pending work** — waiting for new task from พี่ช้าง or พี่ทราย
 
 ---
 
-## PENDING GITHUB PUSH (dev only — not yet on GitHub)
+## DEPLOY #66 — COMPLETED 2026-05-15
 
-### ชุด A: innerJoin migration (authorized by พี่ช้าง 2026-05-13)
-Pattern: `eq(products.active, true/false)` → `innerJoin(activeProducts, ...)` across 8 files:
+All 13 files pushed to GitHub and deployed to production successfully.
 
-| File | Sites |
-|------|-------|
-| server/routes/commerce-intelligence.ts | 2 |
-| server/routes/price-calculator.ts | 1 |
-| server/routes/ad-cost-routes.ts | 1 |
-| server/routes/pos-routes.ts | 2 |
-| server/routes/ecommerce-routes.ts | 2 |
-| server/routes/notifications-routes.ts | 1 |
-| server/routes/products-routes.ts | 3 |
-| server/storage.ts | 1 |
+| Fix | Files |
+|-----|-------|
+| unitCost hardcoded "0" on import → uses entry.cost from Excel | products-routes.ts, product-import-export.tsx |
+| delete import batch deactivated instead of truly deleting → clears initial stock_movements + warehouse_stock_levels before FK check | import-batch-routes.ts |
+| duplicate badge disappeared after stat split → fallback for old response | product-import-export.tsx |
+| innerJoin migration (eq products.active → innerJoin activeProducts) | commerce-intelligence.ts, price-calculator.ts, ad-cost-routes.ts, pos-routes.ts, ecommerce-routes.ts, notifications-routes.ts, products-routes.ts, storage.ts |
+| bundle delete button (Trash2) | bundle-management.tsx |
+| bulk permanent delete limit 1000, pagination option 1000 | products-routes.ts, inventory-list.tsx |
+| downloadFile export added (build fix) | queryClient.ts |
 
-### ชุด B: Bug fixes (2026-05-14 to 2026-05-15) — พี่ทราย verified PASS ✅
-
-| Fix | File | Status |
-|-----|------|--------|
-| stockOpenDate ไม่ถูก destructure → stock movement ใช้วันผิด | server/routes/products-routes.ts | ✅ dev verified |
-| Delete button (Trash2) + deleteMutation ใน bundle management | client/src/pages/inventory/bundle-management.tsx | ✅ |
-| Bulk permanent delete limit 500→1000 | server/routes/products-routes.ts | ✅ |
-| Pagination option 1000 ใน inventory list | client/src/pages/inventory/inventory-list.tsx | ✅ |
-| Import preview split duplicateInFile vs duplicateInSystem | server/routes/products-routes.ts + client/src/pages/inventory/product-import-export.tsx | ✅ |
-| DatePicker (DD/MM/YYYY BE) แทน native input[date] สำหรับ stock open date | client/src/pages/inventory/product-import-export.tsx | ✅ |
-| Fallback badge "รายการซ้ำ" สำหรับ response เก่า | client/src/pages/inventory/product-import-export.tsx | ✅ |
-| unitCost hardcode "0" → ใช้ entry.cost จาก Excel จริง | server/routes/products-routes.ts + client/src/pages/inventory/product-import-export.tsx | ✅ |
-| Delete import batch → deactivate แทนลบจริง เพราะ initial stock_movements นับเป็น FK | server/routes/import-batch-routes.ts | ✅ dev verified |
+**Note:** First build failed — queryClient.ts was a missing dependency of inventory-list.tsx. Pushed separately. Lesson: always grep imports before pushing.
 
 ---
 
 ## WHAT NEXT AGENT MUST DO
 
-**STEP 1** — ขอ พี่ช้าง authorize push ชุด A + ชุด B ไป GitHub พร้อมกัน
-  - Do NOT push without explicit authorization from พี่ช้าง.
+**No pending GitHub push.** Dev and production are in sync.
 
-**STEP 2** — Push method: GitHub API PUT per file via code_execution only.
-  - Token: retrieve from `git remote get-url github-production` — verify suffix ends with `UnnR7`
-  - Protected files (ใช้ -extra bypass): App.tsx, server/index.ts, shared/schema.ts
-
-**STEP 3** — After GitHub push confirmed → ask พี่ช้าง for authorization for production server command.
-  - DO NOT issue server command without พี่ช้าง's explicit instruction.
+If new task arrives:
+1. Read star-wars.txt line by line before touching anything production-related
+2. Check imports of any server file before pushing (grep import lines → verify each module is in GitHub)
+3. Dev test FIRST (Type A: test yourself / Type B: ask พี่ทราย) before any push
+4. Get authorization from พี่ช้าง before every push
 
 ---
 
-## FILES TO PUSH (all files touched since last GitHub push)
+## PROTECTED FILES (never push to GitHub)
+- client/src/App.tsx → bypass: client/src/app-extra.tsx
+- server/index.ts → bypass: server/index-extra.ts
+- shared/schema.ts → bypass: shared/schema-extra.ts
 
-- server/routes/products-routes.ts
-- server/routes/import-batch-routes.ts
-- server/routes/commerce-intelligence.ts
-- server/routes/price-calculator.ts
-- server/routes/ad-cost-routes.ts
-- server/routes/pos-routes.ts
-- server/routes/ecommerce-routes.ts
-- server/routes/notifications-routes.ts
-- server/storage.ts
-- client/src/pages/inventory/product-import-export.tsx
-- client/src/pages/inventory/inventory-list.tsx
-- client/src/pages/inventory/bundle-management.tsx
+## PUSH METHOD
+- GitHub API PUT per file via code_execution only
+- Token: `git remote get-url github-production` — verify suffix ends with `UnnR7`
+- Server command format: `git fetch origin && git checkout origin/main -- <files> && npm run build && pm2 restart etax-center`
