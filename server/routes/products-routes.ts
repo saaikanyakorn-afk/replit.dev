@@ -776,6 +776,31 @@ app.delete("/api/products/:id", requireAuth, requireModule("inventory"), async (
   }
 });
 
+// ==================== Bulk Deactivate (active → inactive) ====================
+app.post("/api/products/bulk-deactivate", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const { companyId, productIds } = req.body as { companyId: number; productIds: number[] };
+    if (!companyId || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ message: "กรุณาระบุ companyId และ productIds" });
+    }
+    if (productIds.length > 1000) {
+      return res.status(400).json({ message: "เลิกใช้งานได้ครั้งละไม่เกิน 1000 รายการ" });
+    }
+    { const ac = await checkDocOwnership(companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
+
+    const result = await db
+      .update(products)
+      .set({ active: false })
+      .where(and(inArray(products.id, productIds), eq(products.companyId, companyId), eq(products.active, true)))
+      .returning({ id: products.id });
+
+    return res.json({ deactivated: result.length });
+  } catch (err) {
+    console.error("[bulk-deactivate-products] error:", err);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาดในการเลิกใช้งานสินค้า" });
+  }
+});
+
 // ==================== Bulk Permanent Delete (inactive products only) ====================
 // Reuses FK ref check from import-batch-routes deactivate logic
 app.post("/api/products/bulk-permanent-delete", requireAuth, requireModule("inventory"), async (req, res) => {
