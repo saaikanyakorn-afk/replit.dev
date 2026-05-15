@@ -443,16 +443,25 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <span>พร้อมนำเข้า: <strong data-testid="text-ok-count">{importPreview.stats.ok}</strong></span>
                   </div>
-                  {(importPreview.stats.duplicateInSystem ?? 0) > 0 && (
+                  {importPreview.stats.duplicateInSystem !== undefined || importPreview.stats.duplicateInFile !== undefined ? (
+                    <>
+                      {(importPreview.stats.duplicateInSystem ?? 0) > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-amber-600">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>มีในระบบแล้ว (จะอัพเดท): <strong data-testid="text-dup-system-count">{importPreview.stats.duplicateInSystem}</strong></span>
+                        </div>
+                      )}
+                      {(importPreview.stats.duplicateInFile ?? 0) > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-amber-600">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>รหัสซ้ำในไฟล์ (จะข้ามแถวซ้ำ): <strong data-testid="text-dup-file-count">{importPreview.stats.duplicateInFile}</strong></span>
+                        </div>
+                      )}
+                    </>
+                  ) : (importPreview.stats.duplicate ?? 0) > 0 && (
                     <div className="flex items-center gap-2 text-sm text-amber-600">
                       <AlertCircle className="h-4 w-4" />
-                      <span>มีในระบบแล้ว (จะอัพเดท): <strong data-testid="text-dup-system-count">{importPreview.stats.duplicateInSystem}</strong></span>
-                    </div>
-                  )}
-                  {(importPreview.stats.duplicateInFile ?? 0) > 0 && (
-                    <div className="flex items-center gap-2 text-sm text-amber-600">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>รหัสซ้ำในไฟล์ (จะข้ามแถวซ้ำ): <strong data-testid="text-dup-file-count">{importPreview.stats.duplicateInFile}</strong></span>
+                      <span>รายการซ้ำ (จะข้าม): <strong data-testid="text-dup-count">{importPreview.stats.duplicate}</strong></span>
                     </div>
                   )}
                   {importPreview.stats.error > 0 && (
