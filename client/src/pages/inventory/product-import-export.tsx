@@ -10,6 +10,7 @@ import { useCompany } from "@/lib/company-context";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import ImportBatchHistory from "@/components/import-batch-history";
+import { DatePicker } from "@/components/ui/date-picker";
 import { downloadFile } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
@@ -476,12 +477,14 @@ export default function ProductImportExport(props: { Wrapper?: React.ComponentTy
                     <p className="text-sm font-semibold text-amber-900">วันที่เริ่มต้นสต๊อก <span className="text-red-500">*</span></p>
                     <p className="text-xs text-amber-700 mt-0.5">ยอดเปิดสต๊อกทุกรายการจะใช้วันที่นี้</p>
                   </div>
-                  <input
+                  <DatePicker
                     data-testid="input-stock-open-date"
-                    type="date"
                     value={stockOpenDate}
-                    onChange={e => setStockOpenDate(e.target.value)}
-                    className="border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                    onChange={setStockOpenDate}
+                    dateFormat="DD/MM/YYYY"
+                    dateEra="BE"
+                    placeholder="วว/ดด/ปปปป"
+                    className="w-44"
                   />
                 </div>
               )}
