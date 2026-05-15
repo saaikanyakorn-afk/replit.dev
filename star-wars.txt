@@ -399,6 +399,14 @@ WHAT DOES NOT WORK (tested 2026-05-04):
 ----------------------------------------------------------------
 DEPLOY LOG (latest first):
 
+[#67] 2026-05-15 — Bulk deactivate products + pageSize select-all fix
+  Files: client/src/pages/inventory/inventory-list.tsx, client/src/hooks/use-show-more.ts, server/routes/products-routes.ts (3 files)
+  New: bulk deactivate (active→inactive) with checkbox select per page, select-all header, orange action bar, confirmation dialog
+  Fix: useShowMore pageSize change did not reset visibleCount → select-all stuck at 50 regardless of dropdown choice
+  Backend: POST /api/products/bulk-deactivate (limit 1000, company ownership check)
+  Tested: พี่ทราย tested on dev ✅ — 804 products, 1000/page, select-all works correctly
+  Server: git fetch origin && git checkout origin/main -- client/src/pages/inventory/inventory-list.tsx client/src/hooks/use-show-more.ts server/routes/products-routes.ts && npm run build && pm2 restart etax-center
+
 [#66] 2026-05-15 — Product import: cost from Excel, delete batch truly deletes, duplicate badge fallback, bundle delete, pagination 1000, innerJoin migration
   Files: server/routes/products-routes.ts, server/routes/import-batch-routes.ts, server/routes/commerce-intelligence.ts, server/routes/price-calculator.ts, server/routes/ad-cost-routes.ts, server/routes/pos-routes.ts, server/routes/ecommerce-routes.ts, server/routes/notifications-routes.ts, server/storage.ts, client/src/pages/inventory/product-import-export.tsx, client/src/pages/inventory/inventory-list.tsx, client/src/pages/inventory/bundle-management.tsx, client/src/lib/queryClient.ts (13 files)
   Fix: unitCost hardcoded "0" on import → now uses entry.cost from Excel
