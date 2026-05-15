@@ -853,7 +853,7 @@ app.post("/api/products/bulk-permanent-delete", requireAuth, requireModule("inve
         UNION ALL SELECT product_id FROM purchase_debit_note_items WHERE product_id = ANY(${pgIds})
         UNION ALL SELECT product_id FROM sales_credit_note_items WHERE product_id = ANY(${pgIds})
         UNION ALL SELECT product_id FROM bid_comparison_items WHERE product_id = ANY(${pgIds})
-        UNION ALL SELECT product_id FROM manufacturing_order_lines WHERE product_id = ANY(${pgIds})
+        UNION ALL SELECT component_product_id AS product_id FROM manufacturing_order_lines WHERE component_product_id = ANY(${pgIds})
         UNION ALL SELECT product_id FROM picking_wave_items WHERE product_id = ANY(${pgIds})
         UNION ALL SELECT product_id FROM live_cf_items WHERE product_id = ANY(${pgIds})
         UNION ALL SELECT product_id FROM live_session_products WHERE product_id = ANY(${pgIds})
