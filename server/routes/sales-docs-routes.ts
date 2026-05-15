@@ -2104,8 +2104,8 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
       } catch (e: any) { console.error("[TIV-CREATE] release SO reservation failed:", e.message); }
     }
     logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "tax_invoice", entityId: String(result.id), entityName: taxInvoiceNo }).catch(() => {});
-    // ถ้า paymentMethod ไม่ใช่เครดิต → ถือว่าชำระแล้วทันที
-    if (result.paymentMethod && result.paymentMethod !== "เครดิต") {
+    // ถ้า status = "cash" (frontend คำนวณ isCashMethod แล้ว) → ถือว่าชำระแล้วทันที
+    if (result.status === "cash") {
       try {
         await db.update(taxInvoices).set({ paymentStatus: "paid", status: "paid" }).where(eq(taxInvoices.id, result.id));
         result.paymentStatus = "paid";
