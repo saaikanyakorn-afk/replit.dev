@@ -3144,12 +3144,12 @@ app.get("/api/related-documents/:docType/:docId", requireAuth, async (req, res) 
         for (const rc of rcs) addUnique({ type: "receipt", id: rc.id, docNo: rc.receiptNo, date: rc.receiptDate, status: rc.status, totalAmount: rc.totalAmount });
       }
       // TIV ที่สร้างตรงจาก SO (refDoc = orderNo, ไม่ผ่าน IV)
-      const tivsDirect = await db.select().from(taxInvoices).where(and(eq(taxInvoices.refDoc, so.orderNo), eq(taxInvoices.companyId, companyId)));
-      for (const tx of tivsDirect) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.taxInvoiceNo, date: tx.taxInvoiceDate, status: tx.status, totalAmount: tx.totalAmount });
+      const tivsDirectRaw = await db.execute(sql`SELECT id, tax_invoice_no, tax_invoice_date, status, total_amount FROM tax_invoices WHERE ref_doc = ${so.orderNo} AND company_id = ${companyId}`);
+      for (const tx of tivsDirectRaw.rows as any[]) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.tax_invoice_no, date: tx.tax_invoice_date, status: tx.status, totalAmount: tx.total_amount });
       // TIV ที่สร้างจาก QO ที่ link กับ SO นี้ (refDoc = QO.quotationNo)
       for (const relQo of related.filter(r => r.type === "quotation")) {
-        const tivsFromQo = await db.select().from(taxInvoices).where(and(eq(taxInvoices.refDoc, relQo.docNo), eq(taxInvoices.companyId, companyId)));
-        for (const tx of tivsFromQo) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.taxInvoiceNo, date: tx.taxInvoiceDate, status: tx.status, totalAmount: tx.totalAmount });
+        const tivsFromQoRaw = await db.execute(sql`SELECT id, tax_invoice_no, tax_invoice_date, status, total_amount FROM tax_invoices WHERE ref_doc = ${relQo.docNo} AND company_id = ${companyId}`);
+        for (const tx of tivsFromQoRaw.rows as any[]) addUnique({ type: "tax_invoice", id: tx.id, docNo: tx.tax_invoice_no, date: tx.tax_invoice_date, status: tx.status, totalAmount: tx.total_amount });
       }
 
     } else if (docType === "invoice") {
