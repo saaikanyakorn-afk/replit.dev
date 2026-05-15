@@ -1232,7 +1232,7 @@ export async function recomputePaymentStatus(docType: "taxInvoice" | "invoice", 
   if (docType === "invoice") {
     const nonCreditTIVs = await db.select({ subtotal: taxInvoices.subtotal, vatAmount: taxInvoices.vatAmount })
       .from(taxInvoices)
-      .where(sql`invoice_id = ${docId} AND (payment_method IS NULL OR payment_method != 'เครดิต') AND status NOT IN ('cancelled','voided','cancel')`);
+      .where(sql`invoice_id = ${docId} AND status = 'paid'`);
     tivSum = nonCreditTIVs.reduce((sum: number, tiv: any) => sum + parseFloat(String(tiv.subtotal || "0")) + parseFloat(String(tiv.vatAmount || "0")), 0);
   }
   const rawPaid = directSum + batchSum + tivSum;
