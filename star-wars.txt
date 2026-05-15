@@ -741,6 +741,37 @@ DEPLOY #62 — 2026-05-13 (LINE share Android redirect fix)
   pm2: online 85.0mb ✅
 
 ----------------------------------------------------------------
+DEPLOY #74 — Revert related-docs-dialog.tsx to listPath (2026-05-15)
+  Authorized by: พี่ช้าง | Tested: พี่ทราย ✅
+  Files: client/src/components/related-docs-dialog.tsx
+  Fix: removed editPath branch — always navigate to listPath+searchParam (or apId for payment_voucher)
+  GitHub commit: bce7f58 | Server: build Done 523ms, pm2 online ✅
+
+DEPLOY #75 — Fix related-docs API chain QO↔SO↔TIV (2026-05-15)
+  Authorized by: พี่ช้าง | Tested: พี่ทราย ✅
+  Files: server/routes/sales-docs-routes.ts
+  Fix: SO block raw SQL for TIV refDoc=so.orderNo; QO block extend TIV search; TIV block QO→SO→TIV chain
+  GitHub commit: 62fb786 | Server: same build as #74 ✅
+
+DEPLOY #76 — stock-card navigate to list page (override production frozen App.tsx) (2026-05-15)
+  Authorized by: พี่ช้าง
+  Files:
+    - client/src/pages/inventory/stock-card.tsx (REF_TYPE_LABELS path=list, handleRefClick→setLocation list path)
+    - client/src/app-extra.tsx (add 7 list routes: TIV/IV/PO/AP/GR/GIQ/MO — override frozen App.tsx)
+  Reason: production App.tsx frozen — GitHub copy unreliable (rogue agents pushed dirty versions)
+          stock-card was navigating to /edit/:id directly; now navigates to list page
+  ⚠️ Awaiting พี่ช้าง server command
+
+DEPLOY #77 — stock-card filter by real docNo from enrichMovements JOIN (2026-05-15)
+  Authorized by: พี่ช้าง | Tested: พี่ทราย ✅
+  Files:
+    - server/inventory-costing.ts (enrichMovements: JOIN TIV/IV/GR/GIQ/PO/AP/MO → return docNo field)
+    - client/src/pages/inventory/stock-card.tsx (handleRefClick uses docNo → ?search=TIV6905150001)
+  Fix: m.referenceNo was description text not doc number; now uses real taxInvoiceNo/grNo/giqNo/etc.
+  Dev tested: ✅ (search param correct, list filters to exact document)
+  ⚠️ Awaiting พี่ช้าง server command (inventory-costing.ts is server-side — requires build+restart)
+
+----------------------------------------------------------------
 DEPLOY #61 — SO Stock Reservation System (2026-05-12)
   Implemented by: Kai (dev Replit)
   Files changed:
