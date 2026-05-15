@@ -406,6 +406,7 @@ DEPLOY LOG (latest first):
   Backend: POST /api/products/bulk-deactivate (limit 1000, company ownership check)
   Tested: พี่ทราย tested on dev ✅ — 804 products, 1000/page, select-all works correctly
   Server: git fetch origin && git checkout origin/main -- client/src/pages/inventory/inventory-list.tsx client/src/hooks/use-show-more.ts server/routes/products-routes.ts && npm run build && pm2 restart etax-center
+  Hotfix #67b: bulk-permanent-delete missing stock_transfer_items FK check → added to both pre-check query and docRows query
 
 [#66] 2026-05-15 — Product import: cost from Excel, delete batch truly deletes, duplicate badge fallback, bundle delete, pagination 1000, innerJoin migration
   Files: server/routes/products-routes.ts, server/routes/import-batch-routes.ts, server/routes/commerce-intelligence.ts, server/routes/price-calculator.ts, server/routes/ad-cost-routes.ts, server/routes/pos-routes.ts, server/routes/ecommerce-routes.ts, server/routes/notifications-routes.ts, server/storage.ts, client/src/pages/inventory/product-import-export.tsx, client/src/pages/inventory/inventory-list.tsx, client/src/pages/inventory/bundle-management.tsx, client/src/lib/queryClient.ts (13 files)
