@@ -311,11 +311,13 @@ export function registerImportBatchRoutes(app: Express) {
           }
           case "product": {
             const pgDocIds = sql.raw(`ARRAY[${docIds.join(',')}]::int[]`);
+            // ลบ initial stock movements จาก import ก่อน (ไม่มี referenceType) เพื่อไม่ให้นับเป็น FK ค้าง
+            await tx.execute(sql`DELETE FROM stock_movements WHERE movement_type = 'initial' AND reference_type IS NULL AND product_id = ANY(${pgDocIds})`);
+            await tx.execute(sql`DELETE FROM warehouse_stock_levels WHERE product_id = ANY(${pgDocIds})`);
             const usedRows = await tx.execute(sql`
               SELECT DISTINCT product_id FROM (
                 SELECT product_id FROM pos_transaction_items WHERE product_id = ANY(${pgDocIds})
                 UNION ALL SELECT product_id FROM invoice_items WHERE product_id = ANY(${pgDocIds})
-                UNION ALL SELECT product_id FROM stock_movements WHERE product_id = ANY(${pgDocIds})
                 UNION ALL SELECT product_id FROM quotation_items WHERE product_id = ANY(${pgDocIds})
                 UNION ALL SELECT product_id FROM sales_order_items WHERE product_id = ANY(${pgDocIds})
                 UNION ALL SELECT product_id FROM tax_invoice_items WHERE product_id = ANY(${pgDocIds})
