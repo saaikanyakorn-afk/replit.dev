@@ -184,6 +184,18 @@ export default function BarcodeLabels(props: { Wrapper?: React.ComponentType<{ c
       return;
     }
 
+    // Clone the content and replace canvas elements with img (canvas pixel data is lost via innerHTML)
+    const clone = printContent.cloneNode(true) as HTMLElement;
+    const originalCanvases = printContent.querySelectorAll("canvas");
+    const clonedCanvases = clone.querySelectorAll("canvas");
+    originalCanvases.forEach((canvas, i) => {
+      const img = document.createElement("img");
+      img.src = canvas.toDataURL("image/png");
+      img.style.width = canvas.style.width || canvas.width + "px";
+      img.style.height = canvas.style.height || canvas.height + "px";
+      clonedCanvases[i]?.parentNode?.replaceChild(img, clonedCanvases[i]);
+    });
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -212,13 +224,14 @@ export default function BarcodeLabels(props: { Wrapper?: React.ComponentType<{ c
           .label-code { color: #666; text-align: center; }
           .label-price { font-weight: 700; text-align: center; }
           .label-barcode svg { max-width: 100%; }
+          img { display: block; }
           @media print {
             .label-item { border: 0.5px dashed #ddd; }
           }
         </style>
       </head>
       <body>
-        ${printContent.innerHTML}
+        ${clone.innerHTML}
         <script>window.onload = function() { window.print(); window.close(); }<\/script>
       </body>
       </html>
