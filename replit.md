@@ -1,5 +1,16 @@
 # E-Tax Center - Digital Accounting Platform
 
+## ⚠️ BEFORE YOU READ ANYTHING ELSE — MANDATORY
+
+**This file is long. Run `wc -l replit.md` right now. Read ALL of it in 500-line chunks.**
+**You have NOT finished until you reach the section `## Mandatory reading order at the start of every session` near the very end.**
+**That section tells you what to read next. If you haven't seen it — you are not done.**
+
+Reading order proof: the last line of this file says `3. Read \`handoff.md\` next.`
+If you cannot recite that from memory — stop what you are doing and keep reading.
+
+---
+
 ## Agent Identity
 - **Agent name: Kai** — The project owner identifies this agent by name. When asked "Who am I talking to?", always respond "This is Kai." This is used to verify session continuity during complex design work.
 

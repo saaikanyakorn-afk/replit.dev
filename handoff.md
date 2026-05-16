@@ -3,6 +3,19 @@
 
 ---
 
+## ✅ SELF-CHECK — PROVE YOU FINISHED READING replit.md
+
+**Before reading anything below — answer this:**
+> What does the last line of `replit.md` say?
+
+**Answer:** `3. Read \`handoff.md\` next.`
+
+If you could not answer that without looking — **stop. Go finish reading replit.md first.**
+Read it in 500-line chunks using `offset` and `limit` parameters until you reach the end.
+Only come back here after you have seen that last line with your own eyes.
+
+---
+
 ## HOW THIS FILE WORKS (read before anything else)
 
 This file has two sections:
