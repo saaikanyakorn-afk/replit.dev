@@ -24,6 +24,20 @@ const DEFAULT_CATEGORIES = [
   { code: "consumable", name: "วัสดุสิ้นเปลือง" },
 ];
 
+function generateEAN13(existingBarcodes: Set<string>): string {
+  let barcode: string;
+  do {
+    const num = Math.floor(Math.random() * 999999999999).toString().padStart(12, "0");
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+      sum += parseInt(num[i]) * (i % 2 === 0 ? 1 : 3);
+    }
+    const checkDigit = (10 - (sum % 10)) % 10;
+    barcode = num + checkDigit;
+  } while (existingBarcodes.has(barcode));
+  return barcode;
+}
+
 export function registerProductsRoutes(app: Express) {
   // runProductSplitMigration(db).catch((err: any) => { // ✅ DONE 2026-05-11T13:35:09Z — commented out after verify
   //   console.error("[migration] ❌ runProductSplitMigration failed — server continues but product split tables may be incomplete:", err.message);
@@ -732,6 +746,11 @@ app.post("/api/products", requireAuth, requireModule("inventory"), async (req, r
     const codeExists = await storage.findDuplicateProducts(parsed.companyId, { code: parsed.code });
     if (codeExists.length > 0) {
       return res.status(409).json({ message: `รหัสสินค้า "${parsed.code}" ถูกใช้แล้ว`, field: "code", duplicates: codeExists });
+    }
+    if (!parsed.barcode) {
+      const allProducts = await storage.getProducts(parsed.companyId);
+      const existingBarcodes = new Set(allProducts.filter(p => p.barcode).map(p => p.barcode as string));
+      (parsed as any).barcode = generateEAN13(existingBarcodes);
     }
     const created = await storage.createProduct(parsed);
     logActivity({ companyId: created.companyId || 0, userId: (req.user as any)?.id, userName: (req.user as any)?.username, action: "create", entityType: "product", entityId: String(created.id), entityName: created.name || "" }).catch(() => {});
