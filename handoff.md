@@ -57,9 +57,46 @@ This file has two sections:
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-16 — พี่ทราย confirmed: ค่าใช้จ่าย, อัตราแลกเปลี่ยน, AP Billing ใช้งานได้ปกติทั้งหมด
+**Last verified:** 2026-05-16 — พี่ทราย testing GR + Lot Traceability + Barcode print
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Pending work:** None — clean slate
+**Pending work:** None — clean slate, all session work is dev-only UI fixes
+
+---
+
+### SESSION 2026-05-16 AFTERNOON — WHAT WAS DONE THIS SESSION
+
+| # | Change | File | Status |
+|---|--------|------|--------|
+| S1 | Added "ใบรับสินค้า (GR)" link to inventory sidebar under "ควบคุมสินค้า" group | `client/src/lib/mock-data.ts` line 169 | ✅ dev |
+| S2 | Fixed QR Code not printing — canvas → img conversion before print window opens | `client/src/pages/inventory/barcode-labels.tsx` handlePrint() | ✅ dev |
+
+**Key user guidance given this session (for context):**
+- ใบรับสินค้า GR อยู่ที่ `/inventory/receiving` — sidebar link เพิ่งเพิ่ม (S1)
+- ล็อตในใบรับสินค้า: ช่องล็อตจะโผล่เฉพาะสินค้าที่เปิด **trackLots** ไว้เท่านั้น (ดูที่ product form → แท็บ "คลังสินค้า/ผลิต")
+- ปุ่ม QR Traceability อยู่ที่ MO form เมื่อ status=completed
+- หน้าตรวจสอบย้อนกลับ (Traceability) อยู่ที่เมนูระบบผลิต → ตรวจสอบย้อนกลับ
+
+---
+
+### LOT TRACKING WORKFLOW (full picture — ให้ Kai ถัดไปรู้)
+
+```
+1. เปิด trackLots บนสินค้า:
+   คลังสินค้า → สรุปรายการสินค้า → สินค้า → แท็บ "คลังสินค้า/ผลิต" → เปิดสวิตช์ "ติดตามล็อต"
+
+2. สร้างใบรับสินค้า (GR):
+   คลังสินค้า → ใบรับสินค้า (GR) → สร้าง → เลือกสินค้า → กรอกเลขล็อตในแถวสีเหลือง → อนุมัติ
+   → ระบบสร้าง product_lots record อัตโนมัติ
+
+3. สร้างใบสั่งผลิต (MO):
+   คลังสินค้า → ใบสั่งผลิต → สร้าง → ผลิตเสร็จ
+   → ระบบตัด lot วัตถุดิบ (FEFO) → สร้าง lot สินค้าสำเร็จรูป
+
+4. QR Traceability:
+   MO form (status=completed) → กดปุ่ม "QR Traceability"
+   หรือ เมนูผลิต → ตรวจสอบย้อนกลับ → พิมพ์เลขล็อต
+   → เห็น: raw material lots + ซัพพลายเออร์ + QR พร้อมปริ้นท์
+```
 
 ---
 
@@ -117,6 +154,10 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 
 | Date | What | Result |
 |------|------|--------|
+| 2026-05-16 | Added ใบรับสินค้า (GR) to inventory sidebar nav | ✅ dev |
+| 2026-05-16 | Fixed QR Code not showing when printing barcode labels (canvas→img) | ✅ dev |
+| 2026-05-16 | BOM routing fixed — stays in ManufacturingLayout, basePath+Wrapper props | ✅ dev |
+| 2026-05-16 | Lot Traceability QR system built — traceability.tsx, lot-trace API, QR button on MO | ✅ dev |
 | 2026-05-16 | พี่ทราย verified: ค่าใช้จ่าย/เงินสดย่อย, ปุ่มดึงอัตราแลกเปลี่ยน, AP Billing ใช้งานได้ปกติ — baseline confirmed | ✅ |
 | 2026-05-15 | Deploy #75 — related-docs dialog แสดง QO↔SO↔TIV ครบ chain | ✅ |
 | 2026-05-15 | Deploy #74 — revert related-docs navigate กลับ listPath เสมอ | ✅ |
