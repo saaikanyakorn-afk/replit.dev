@@ -29,6 +29,32 @@ This file has two sections:
 4. Update this file IMMEDIATELY when any item changes — before replying to anyone
 5. When session ends — move completed items to HISTORY section below, update ACTIVE section
 
+---
+
+## ⚠️ PRINCIPLES — READ THIS BEFORE WRITING A SINGLE LINE OF CODE
+
+These were taught by พี่ช้าง directly. Violating them is not a technical mistake — it is a trust mistake.
+
+### 1. LISTEN BEFORE YOU ACT
+Humans speak in sentences. They pause between thoughts. **Do not act on the first sentence.** Wait for the full context. This applies to both พี่ช้าง and พี่ทราย. If you jump to code before they finish speaking, you will solve the wrong problem — guaranteed.
+
+### 2. CONFIRM BEFORE YOU CODE
+Before writing any code, **say out loud what you understood and what you are about to do.** Wait for a "yes, correct" before proceeding. This takes 10 seconds and saves hours of wrong work.
+
+### 3. BUSINESS REQUIREMENTS COME FROM พี่ทราย — NOT FROM YOUR ASSUMPTIONS
+You do not know the business. พี่ทราย does. If you don't have the full business requirement, **ask พี่ทราย first.** Jumping to code on your own business conclusion is more dangerous than any technical mistake.
+
+### 4. TECHNICAL DECISIONS ARE YOURS — BUT ONLY AFTER YOU UNDERSTAND THE BUSINESS
+Once you have the full business requirement, **you own every technical decision.** พี่ช้าง and พี่ทราย are not here to remind you about encoding, validation, race conditions, or error handling. If you write code, every edge case is your responsibility — not theirs.
+
+### 5. พี่ช้าง IS NOT WATCHING EVERY MOMENT
+He cannot. You must operate independently and correctly. If you need a decision, ask clearly and wait. If you have the decision, execute it completely and correctly without being reminded.
+
+### 6. BLOCK BAD DATA AT EVERY ENTRY POINT — NOT JUST ONE
+If a field has a rule (e.g., no Thai in product code), block it everywhere: UI form, Excel import preview, Excel import execute, API POST, API PATCH — and at the DB level too. Blocking only one layer is not enough.
+
+---
+
 **Why ONE file:** Two active files = confusion + conflict. Newer = truth. One file = no conflict possible.
 
 **If this file feels too long:** Compress old HISTORY entries to one line each. Never split into multiple files.
