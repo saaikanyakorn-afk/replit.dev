@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
-import { eq, and, asc, desc, sql } from "drizzle-orm";
-import { manufacturingOrders, manufacturingOrderLines, bomHeaders, bomLines, products, productLots, stockMovements, productStock, journalEntries, journalLines, accounts, warehouseStockLevels } from "@shared/schema";
+import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
+import { manufacturingOrders, manufacturingOrderLines, bomHeaders, bomLines, products, productLots, stockMovements, productStock, journalEntries, journalLines, accounts, warehouseStockLevels, goodsReceivings } from "@shared/schema";
 import { requireAuth, requireModule , checkDocOwnership} from "../route-middleware";
 import { getNextJournalEntryNo, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 
@@ -523,5 +523,88 @@ export function registerManufacturingRoutes(app: Express) {
 
       res.json({ success: true, ...result });
     } catch (err: any) { res.status(400).json({ message: err.message }); }
+  });
+
+  // [lot-trace] GET /api/manufacturing-orders/lot-trace — ตรวจสอบย้อนกลับจาก Lot สินค้าสำเร็จรูป
+  app.get("/api/manufacturing-orders/lot-trace", requireAuth, requireModule("inventory"), async (req, res) => {
+    try {
+      const companyId = Number(req.query.companyId);
+      const lotNumber = req.query.lot as string;
+      if (!companyId || !lotNumber) return res.status(400).json({ message: "companyId and lot required" });
+
+      const [outputLot] = await db.select().from(productLots)
+        .where(and(eq(productLots.companyId, companyId), eq(productLots.lotNumber, lotNumber)));
+      if (!outputLot) return res.status(404).json({ message: "ไม่พบล็อตนี้ในระบบ" });
+
+      const [outputProduct] = await db.select().from(products).where(eq(products.id, outputLot.productId));
+
+      const [productionMove] = await db.select().from(stockMovements)
+        .where(and(
+          eq(stockMovements.companyId, companyId),
+          eq(stockMovements.lotId, outputLot.id),
+          eq(stockMovements.movementType, "production")
+        ));
+
+      if (!productionMove?.referenceId) {
+        return res.json({
+          outputLot: { id: outputLot.id, lotNumber: outputLot.lotNumber, product: outputProduct ? { name: outputProduct.name, code: outputProduct.code } : null, quantity: outputLot.quantity, manufacturingDate: outputLot.manufacturingDate, expiryDate: outputLot.expiryDate, unitCost: outputLot.unitCost },
+          mo: null,
+          consumedLots: [],
+        });
+      }
+
+      const moId = productionMove.referenceId;
+      const [mo] = await db.select().from(manufacturingOrders).where(eq(manufacturingOrders.id, moId));
+
+      const consumeMoves = await db.select().from(stockMovements)
+        .where(and(
+          eq(stockMovements.companyId, companyId),
+          eq(stockMovements.referenceType, "manufacturing_order"),
+          eq(stockMovements.referenceId, moId),
+          eq(stockMovements.movementType, "mo_consume")
+        ));
+
+      const lotIds = consumeMoves.filter(m => m.lotId).map(m => m.lotId!);
+      const inputLots = lotIds.length > 0
+        ? await db.select().from(productLots).where(inArray(productLots.id, lotIds))
+        : [];
+
+      const grIds = [...new Set(inputLots.filter(l => l.grId).map(l => l.grId!))];
+      const grRows = grIds.length > 0
+        ? await db.select({ id: goodsReceivings.id, grNo: goodsReceivings.grNo, vendorName: goodsReceivings.vendorName })
+            .from(goodsReceivings).where(inArray(goodsReceivings.id, grIds))
+        : [];
+      const grMap = new Map(grRows.map(g => [g.id, g]));
+
+      const inputProductIds = [...new Set(consumeMoves.map(m => m.productId))];
+      const inputProducts = inputProductIds.length > 0
+        ? await db.select().from(products).where(inArray(products.id, inputProductIds))
+        : [];
+      const inputProductMap = new Map(inputProducts.map(p => [p.id, p]));
+      const inputLotMap = new Map(inputLots.map(l => [l.id, l]));
+
+      const consumedLots = consumeMoves.map(move => {
+        const lot = move.lotId ? inputLotMap.get(move.lotId) : null;
+        const prod = inputProductMap.get(move.productId);
+        const gr = lot?.grId ? grMap.get(lot.grId) : null;
+        return {
+          productId: move.productId,
+          product: prod ? { name: prod.name, code: prod.code } : null,
+          lotNumber: lot?.lotNumber || "(ไม่ระบุล็อต)",
+          lotId: move.lotId,
+          qtyConsumed: Math.abs(Number(move.quantity)),
+          supplier: gr?.vendorName || null,
+          grNo: gr?.grNo || null,
+          expiryDate: lot?.expiryDate || null,
+          manufacturingDate: lot?.manufacturingDate || null,
+        };
+      });
+
+      res.json({
+        outputLot: { id: outputLot.id, lotNumber: outputLot.lotNumber, product: outputProduct ? { name: outputProduct.name, code: outputProduct.code } : null, quantity: outputLot.quantity, manufacturingDate: outputLot.manufacturingDate, expiryDate: outputLot.expiryDate, unitCost: outputLot.unitCost },
+        mo: mo ? { id: mo.id, orderNo: mo.orderNo, completedAt: (mo as any).completedAt, plannedQty: mo.plannedQty, unit: mo.unit } : null,
+        consumedLots,
+      });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 }

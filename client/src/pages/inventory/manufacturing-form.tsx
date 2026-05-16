@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator } from "lucide-react";
+import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode } from "lucide-react";
 import { useState, useEffect, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
@@ -366,6 +366,15 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
               <Badge className="bg-blue-100 text-blue-700 gap-1 py-1.5 px-3">
                 <BookOpen className="h-3.5 w-3.5" /> บันทึกบัญชีแล้ว
               </Badge>
+            )}
+            {editId && moStatus === "completed" && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/manufacturing/traceability?lot=${encodeURIComponent(moData?.lotNumber || moData?.orderNo || "")}`)}
+                data-testid="button-qr-traceability"
+              >
+                <QrCode className="h-4 w-4 mr-1" /> QR Traceability
+              </Button>
             )}
           </div>
         </div>
