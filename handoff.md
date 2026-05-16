@@ -63,6 +63,23 @@ This file has two sections:
 
 ---
 
+### ⚠️ MANUAL DB ACTION — DEV ONLY (2026-05-16)
+
+Kai inserted demo data directly into dev DB via executeSql — **NOT allowed on production.**
+Rule: all data on production must come through UI only. Direct DB inserts are forbidden on production.
+
+**What was inserted (dev DB only):**
+- `mes_work_orders`: WO-2026-0516-001 — 48V 75Ah NMC, 20 units, company_id=3721 (มหานคร) — id=1
+- `mes_units`: 20 units (id 1–20), master QR BAT-MHN-2026-001 to BAT-MHN-2026-020
+- `mes_process_logs`: 55 rows — process history for units 1–18
+- `mes_cell_assignments`: 234 rows — 13 cells per unit for units 1–18 (serials NMC37-XXX-SXX)
+- `mes_balance_records`: 7 rows — before/after balance values for units 1–7
+
+**Purpose:** customer demo only — show the MES dashboard with realistic data across all process stages.
+**To undo:** DELETE FROM mes_balance_records; DELETE FROM mes_cell_assignments; DELETE FROM mes_process_logs; DELETE FROM mes_units; DELETE FROM mes_work_orders WHERE company_id=3721;
+
+---
+
 ### BLOCKED
 
 | # | Blocker | Who must act |
