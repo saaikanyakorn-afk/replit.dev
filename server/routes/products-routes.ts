@@ -757,6 +757,7 @@ app.post("/api/products", requireAuth, requireModule("inventory"), async (req, r
     res.status(201).json(created);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+    if (err.code === "23505" && err.constraint === "products_company_id_code_unique") return res.status(409).json({ message: `รหัสสินค้า "${req.body.code}" ถูกใช้แล้ว`, field: "code" });
     res.status(400).json({ message: err.message });
   }
 });
@@ -778,6 +779,7 @@ app.patch("/api/products/:id", requireAuth, requireModule("inventory"), async (r
     logActivity({ companyId: updated.companyId || 0, userId: (req.user as any)?.id, userName: (req.user as any)?.username, action: "update", entityType: "product", entityId: String(id), entityName: updated.name || "" }).catch(() => {});
     res.json(updated);
   } catch (err: any) {
+    if (err.code === "23505" && err.constraint === "products_company_id_code_unique") return res.status(409).json({ message: `รหัสสินค้า "${req.body.code}" ถูกใช้แล้ว`, field: "code" });
     res.status(400).json({ message: err.message });
   }
 });

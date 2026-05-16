@@ -135,7 +135,7 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 | P3 | app-extra.tsx + not-found.tsx + infra-machines.tsx | พี่ช้าง authorize |
 | P4 | ENTRY #006: orphan stock_movements cleanup | พี่ช้าง authorize |
 | P5 | Migrate 92 `products.active` query sites to split tables | พี่ช้าง authorize — future sprint |
-| P6 | QR Scanner garbled Thai — พี่ช้าง finding correct solution | พี่ช้าง decision |
+| P6 | QR Scanner Step 2 — พี่ทราย แก้ product.code 104 รายการเป็น English แล้ว print QR ใหม่ | พี่ทราย action |
 
 ---
 

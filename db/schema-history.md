@@ -377,3 +377,31 @@ with queries against `active_products` / `inactive_products` tables.
 
 **Who authorized this note:** พี่ช้าง — 2026-05-13
 **Priority:** Scheduled for a future sprint — do NOT begin without พี่ช้าง approval
+
+---
+
+## 2026-05-16 — products unique index (company_id, code) (ENTRY #008)
+
+**What:** Added DB-level unique index on `products(company_id, code)`.
+
+**Why:** `code` was only `notNull()` with no uniqueness constraint at DB level. Uniqueness was enforced only by application-level `findDuplicateProducts()` check — race conditions on concurrent inserts or bulk imports could silently create duplicate codes within the same company, breaking QR scanner lookup and product search.
+
+**SQL run on dev (2026-05-16):**
+```sql
+CREATE UNIQUE INDEX products_company_id_code_unique ON products (company_id, code);
+```
+
+**Pre-check:** Confirmed zero existing `(company_id, code)` duplicates before creating index.
+
+**Error handling added:** `POST /api/products` and `PATCH /api/products/:id` both now catch PostgreSQL error code `23505` with constraint `products_company_id_code_unique` and return `409 { message: "รหัสสินค้า ... ถูกใช้แล้ว", field: "code" }` — no 500 crash.
+
+**⚠️ MUST RUN ON PRODUCTION BEFORE DEPLOYMENT:**
+```sql
+CREATE UNIQUE INDEX products_company_id_code_unique ON products (company_id, code);
+```
+Verify no duplicates first:
+```sql
+SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING COUNT(*) > 1;
+```
+
+**Authorized by:** พี่ช้าง — 2026-05-16
