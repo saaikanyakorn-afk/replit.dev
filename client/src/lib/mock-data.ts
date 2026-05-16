@@ -163,6 +163,7 @@ export const NAV_ITEMS = [
       { label: "สินค้าจัดชุด", href: "/inventory/bundles", group: "สินค้า" },
       { label: "โปรโมชั่น", href: "/inventory/promotions", group: "สินค้า" },
       { label: "คลังสินค้า", href: "/inventory/warehouse", group: "ควบคุมสินค้า" },
+      { label: "ใบรับสินค้า (GR)", href: "/inventory/receiving", group: "ควบคุมสินค้า" },
       { label: "โอนย้ายสินค้า", href: "/inventory/stock-transfer", group: "ควบคุมสินค้า" },
       { label: "เบิกสินค้า", href: "/inventory/requisition", group: "ควบคุมสินค้า" },
       { label: "สต๊อกการ์ด", href: "/inventory/stock-card", group: "ควบคุมสินค้า" },
