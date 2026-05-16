@@ -527,7 +527,7 @@ export default function BarcodeLabels(props: { Wrapper?: React.ComponentType<{ c
                           <div className="label-barcode" style={{ maxWidth: "100%", overflow: "hidden", display: "flex", justifyContent: "center" }}>
                             {codeType === "qrcode" ? (
                               <QRCodeImage
-                                value={item.product.code || item.product.barcode || ""}
+                                value={item.product.barcode || item.product.code || String(item.product.id)}
                                 size={Math.min(currentLabelSize.width - 20, currentLabelSize.height - 30)}
                               />
                             ) : (

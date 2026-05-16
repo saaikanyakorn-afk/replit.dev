@@ -290,7 +290,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
   function handleBarcodeSubmit(code: string) {
     if (!code) return;
     if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
-    const matched = products.find(p => p.code === code || p.barcode === code);
+    const matched = products.find(p => p.code === code || p.barcode === code || String(p.id) === code);
     if (matched) {
       const existingIdx = items.findIndex(it => it.productId === matched.id);
       if (existingIdx >= 0) {
