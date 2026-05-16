@@ -95,12 +95,107 @@ If a field has a rule (e.g., no Thai in product code), block it everywhere: UI f
 |---|--------|------|--------|
 | S1 | Added "ใบรับสินค้า (GR)" link to inventory sidebar under "ควบคุมสินค้า" group | `client/src/lib/mock-data.ts` line 169 | ✅ dev |
 | S2 | Fixed QR Code not printing — canvas → img conversion before print window opens | `client/src/pages/inventory/barcode-labels.tsx` handlePrint() | ✅ dev |
+| S3 | GR barcode scan: detect Thai keyboard → block + red border + BIG red warning banner | `client/src/pages/inventory/goods-receiving-form.tsx` | ✅ dev |
+| S4 | GR barcode scan: fix lot tracking — `handleBarcodeScan` now sets `trackLots`, `lotNumber`, `manufacturingDate`, `expiryDate` on new item | `client/src/pages/inventory/goods-receiving-form.tsx` | ✅ dev |
 
 **Key user guidance given this session (for context):**
 - ใบรับสินค้า GR อยู่ที่ `/inventory/receiving` — sidebar link เพิ่งเพิ่ม (S1)
 - ล็อตในใบรับสินค้า: ช่องล็อตจะโผล่เฉพาะสินค้าที่เปิด **trackLots** ไว้เท่านั้น (ดูที่ product form → แท็บ "คลังสินค้า/ผลิต")
 - ปุ่ม QR Traceability อยู่ที่ MO form เมื่อ status=completed
 - หน้าตรวจสอบย้อนกลับ (Traceability) อยู่ที่เมนูระบบผลิต → ตรวจสอบย้อนกลับ
+
+---
+
+### 🔑 GR BARCODE SCANNER — KEYBOARD LAYOUT PROBLEM (confirmed 2026-05-16)
+
+**Root cause understood — do NOT relitigate this:**
+USB HID barcode scanners send raw keystrokes to the OS. If Windows keyboard layout = Thai (TH), every ASCII character the scanner sends gets translated by Windows into a Thai character before reaching the browser. Example: "Cell 18650" → "จำสาตูดจ". This is a Windows-level translation — the browser never sees the original ASCII.
+
+**What พี่ช้าง decided (do NOT change without asking him again):**
+- Browser CANNOT force-change OS keyboard layout — that is OS-level, impossible from JS
+- Solution: detect Thai chars in the barcode input → block scan + show BIG red warning
+- Warning tells user: "Keyboard ภาษาไทย — สแกนไม่ได้! กรุณาเปลี่ยน Keyboard เป็น EN (ดูที่ Taskbar มุมขวาล่าง)"
+- On mobile: hide "พร้อมสแกน" hint text (`hidden sm:block`) — mobile doesn't have this keyboard problem
+
+**How it works now (goods-receiving-form.tsx):**
+```
+isThai(str) → /[ก-๙]/.test(str)
+
+onChange barcode input:
+  if isThai(val) → setKeyboardWarning(true)   ← red border immediately while typing
+  else → setKeyboardWarning(false)
+
+handleBarcodeScan (on Enter):
+  if isThai(code) → setKeyboardWarning(true) + clear + return   ← BLOCK, no product search
+  else → setKeyboardWarning(false) → proceed normally
+
+UI: keyboardWarning=true → red border on input + red banner below input
+```
+
+**If พี่ช้าง or พี่ทราย asks to "fix this better" in future:**
+The ONLY real fix is telling users to switch keyboard to EN before scanning. A reverse-mapping approach (Thai chars → back-translate to ASCII) was considered but rejected — too fragile and depends on knowing which Thai keyboard layout the user is using (Kedmanee vs Pattachote).
+
+---
+
+### 🔑 PRODUCT.CODE THAI — 104 PRODUCTS (decision locked 2026-05-16)
+
+**Background:** 104 products in dev DB have Thai characters in `products.code` field (e.g. "นาโนชิป", "พลังแสง", "มหานครรุ่งเรือง"). These existed before the "no Thai in code" rule was introduced.
+
+**พี่ทราย's decision (do NOT change without asking her again):**
+- Do NOT rename those 104 existing Thai codes
+- Instead: QR encode the **barcode** field (numeric EAN-13) for Thai-code products
+- Logic: Thai code → encode barcode (if exists); no barcode → show error; English code → encode code
+
+**Current QR encode logic (barcode-labels.tsx ~line 530):**
+⚠️ AS OF 2026-05-16: this logic was confirmed as the business requirement but the barcode-labels.tsx encode was NOT yet updated to implement Thai→barcode fallback. If พี่ทราย reports that scanning a Thai-code product QR gives wrong result → THIS IS THE REMAINING FIX NEEDED.
+
+**New product validation (already in place):**
+- `product-form.tsx`: blocks Thai input in code field (new products only)
+- `product-import-execute` + preview: rejects Thai in code column
+- DB: unique index `products_company_id_code_unique ON products(company_id, code)` — see ENTRY #008
+
+---
+
+### 🔑 ENTRY #008 — UNIQUE INDEX (MUST RUN ON PRODUCTION BEFORE NEXT DEPLOY)
+
+**Status:** Created on DEV. NOT yet on production.
+**SQL to run on production:**
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS products_company_id_code_unique
+ON products(company_id, code);
+```
+**Who authorizes:** พี่ช้าง only. Run via psql on production DB before the next deploy that touches product code.
+**Reference:** `db/schema-history.md` ENTRY #008
+
+---
+
+### 🔑 GR FORM — LOT TRACKING TECHNICAL DETAILS (confirmed 2026-05-16)
+
+**Schema:** `goods_receiving_items` already has `lot_number`, `manufacturing_date`, `expiry_date`, `lot_id` columns — NO migration needed.
+
+**GRItemForm interface (goods-receiving-form.tsx):** already has `lotNumber`, `manufacturingDate`, `expiryDate`, `trackLots` fields.
+
+**How lot row appears in UI:**
+```
+{item.trackLots && <TableRow className="bg-amber-50/30">...lot fields...</TableRow>}
+```
+The amber sub-row (lot number + วันผลิต + วันหมดอายุ) only shows when `item.trackLots = true`.
+
+**Two ways to add item to GR — both must set trackLots:**
+1. Dropdown select → `handleProductSelect` → sets `trackLots: p.trackLots || false` ✅ was working
+2. Barcode scan → `handleBarcodeScan` → was NOT setting trackLots ❌ FIXED 2026-05-16
+
+**Fix applied:** `handleBarcodeScan` newItem now includes:
+```typescript
+lotNumber: "",
+manufacturingDate: "",
+expiryDate: "",
+trackLots: (matched as any).trackLots || false,
+```
+
+**Why `(matched as any).trackLots`:** The `Product` type from `@shared/schema` infers `trackLots` but the cast exists because at time of writing the type import path didn't expose it cleanly. If Kai sees a TS error here, check the Product type definition in shared/schema.ts.
+
+**If พี่ทราย reports lot fields still not showing after scan:** Check that the product itself has `trackLots = true` in the DB. Go to: คลังสินค้า → สินค้า → แก้ไขสินค้า → แท็บ "คลังสินค้า/ผลิต" → สวิตช์ "ติดตามล็อตการผลิต / วันหมดอายุ" ต้องเปิดอยู่
 
 ---
 
@@ -206,6 +301,8 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 | 2026-05-16 | Fixed QR Code not showing when printing barcode labels (canvas→img) | ✅ dev |
 | 2026-05-16 | BOM routing fixed — stays in ManufacturingLayout, basePath+Wrapper props | ✅ dev |
 | 2026-05-16 | Lot Traceability QR system built — traceability.tsx, lot-trace API, QR button on MO | ✅ dev |
+| 2026-05-16 | GR barcode scan: Thai keyboard detection — block + red border + red warning banner (decision: browser cannot force OS layout) | ✅ dev |
+| 2026-05-16 | GR barcode scan: fix lot tracking — handleBarcodeScan now sets trackLots/lotNumber/manufacturingDate/expiryDate (was missing, dropdown was fine) | ✅ dev |
 | 2026-05-16 | พี่ทราย verified: ค่าใช้จ่าย/เงินสดย่อย, ปุ่มดึงอัตราแลกเปลี่ยน, AP Billing ใช้งานได้ปกติ — baseline confirmed | ✅ |
 | 2026-05-15 | Deploy #75 — related-docs dialog แสดง QO↔SO↔TIV ครบ chain | ✅ |
 | 2026-05-15 | Deploy #74 — revert related-docs navigate กลับ listPath เสมอ | ✅ |
@@ -219,20 +316,3 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 | 2026-05-07 | ENTRY #001 — expense currency columns deployed | ✅ |
 | 2026-04-30 | Warehouse column migration (ENTRY v85) | ✅ |
 
----
-## Session Update 2026-05-16 (Keyboard warning + Lot tracking fix)
-
-### ปัญหาที่พบ
-1. **Keyboard layout issue**: Windows Thai keyboard → scanner ส่ง garbled Thai chars แทน ASCII (e.g. "Cell 18650" → "จำสาตูดจ")
-2. **Lot tracking ไม่แสดงใน GR**: สินค้า trackLots=true แต่ `handleBarcodeScan` ไม่ได้ set `trackLots` ใน newItem
-
-### สิ่งที่แก้ไข (`goods-receiving-form.tsx`)
-- เพิ่ม `isThai()` helper + `keyboardWarning` state
-- `handleBarcodeScan`: ถ้า code มี Thai → block + clear + set warning (ไม่ search สินค้า)
-- `handleBarcodeScan`: newItem ตอนนี้ set `trackLots`, `lotNumber`, `manufacturingDate`, `expiryDate` ครบ
-- barcode input `onChange`: detect Thai realtime → กรอบแดงทันที
-- แสดง BIG red banner เมื่อ keyboard ผิด พร้อมคำแนะนำ "ดูที่ Taskbar มุมขวาล่าง"
-- บน mobile: ซ่อน "พร้อมสแกน" text (`hidden sm:block`)
-
-### Note
-Browser ไม่สามารถ force OS keyboard layout ได้ → ใช้ detection + warning แทนตาม direction พี่ช้าง
