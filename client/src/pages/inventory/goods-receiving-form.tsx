@@ -85,6 +85,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
   const [barcodeInput, setBarcodeInput] = useState("");
   const [barcodeFlash, setBarcodeFlash] = useState(false);
   const barcodeRef = useRef<HTMLInputElement>(null);
+  const barcodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", companyId],
@@ -286,10 +287,9 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     return items.reduce((s, it) => s + calcItemTotal(it), 0);
   }
 
-  function handleBarcodeScan(e: React.KeyboardEvent) {
-    if (e.key !== "Enter" || !barcodeInput.trim()) return;
-    e.preventDefault();
-    const code = barcodeInput.trim();
+  function handleBarcodeSubmit(code: string) {
+    if (!code) return;
+    if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
     const matched = products.find(p => p.code === code || p.barcode === code);
     if (matched) {
       const existingIdx = items.findIndex(it => it.productId === matched.id);
@@ -325,6 +325,12 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     }
     setBarcodeInput("");
     barcodeRef.current?.focus();
+  }
+
+  function handleBarcodeScan(e: React.KeyboardEvent) {
+    if (e.key !== "Enter" || !barcodeInput.trim()) return;
+    e.preventDefault();
+    handleBarcodeSubmit(barcodeInput.trim());
   }
 
   function handleSubmit() {
@@ -546,7 +552,16 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
                   placeholder="สแกนบาร์โค้ด หรือพิมพ์รหัสสินค้าแล้วกด Enter..."
                   className={`pl-10 h-9 text-sm transition-colors ${barcodeFlash ? "bg-green-100 border-green-400" : "border-blue-300 focus:border-blue-500"}`}
                   value={barcodeInput}
-                  onChange={e => setBarcodeInput(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setBarcodeInput(val);
+                    if (barcodeDebounceRef.current) clearTimeout(barcodeDebounceRef.current);
+                    if (val.trim().length >= 2) {
+                      barcodeDebounceRef.current = setTimeout(() => {
+                        handleBarcodeSubmit(val.trim());
+                      }, 300);
+                    }
+                  }}
                   onKeyDown={handleBarcodeScan}
                   autoFocus
                 />
