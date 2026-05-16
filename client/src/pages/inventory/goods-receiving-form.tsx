@@ -253,19 +253,23 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
 
   function handleProductSelect(idx: number, productId: string) {
     const p = products.find(pr => pr.id === Number(productId));
-    if (p) {
-      const newItems = [...items];
-      newItems[idx] = {
-        ...newItems[idx],
-        productId: p.id,
-        productCode: p.code || "",
-        productName: p.name,
-        unit: p.unit || "ชิ้น",
-        unitCost: String(p.cost || "0"),
-        trackLots: (p as any).trackLots,
-      };
-      setItems(newItems);
+    if (!p) return;
+    const rawTrackLots = (p as any).trackLots;
+    if (rawTrackLots !== true && rawTrackLots !== false) {
+      toast({ title: `ข้อมูลสินค้า "${p.name}" ไม่สมบูรณ์ (trackLots ไม่ถูกต้อง) — กรุณา refresh หน้า`, variant: "destructive" });
+      return;
     }
+    const newItems = [...items];
+    newItems[idx] = {
+      ...newItems[idx],
+      productId: p.id,
+      productCode: p.code || "",
+      productName: p.name,
+      unit: p.unit || "ชิ้น",
+      unitCost: String(p.cost || "0"),
+      trackLots: rawTrackLots,
+    };
+    setItems(newItems);
   }
 
   function updateItem(idx: number, field: keyof GRItemForm, value: string) {
@@ -314,6 +318,13 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
         setItems(newItems);
         toast({ title: `เพิ่มจำนวน "${matched.name}" เป็น ${current + 1}` });
       } else {
+        const rawTrackLots = (matched as any).trackLots;
+        if (rawTrackLots !== true && rawTrackLots !== false) {
+          toast({ title: `ข้อมูลสินค้า "${matched.name}" ไม่สมบูรณ์ (trackLots ไม่ถูกต้อง) — กรุณา refresh หน้า`, variant: "destructive" });
+          setBarcodeInput("");
+          barcodeRef.current?.focus();
+          return;
+        }
         const firstEmpty = items.findIndex(it => !it.productId && !it.productName);
         const newItem: GRItemForm = {
           productId: matched.id,
@@ -325,7 +336,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
           lotNumber: "",
           manufacturingDate: "",
           expiryDate: "",
-          trackLots: (matched as any).trackLots,
+          trackLots: rawTrackLots,
         };
         if (firstEmpty >= 0) {
           const newItems = [...items];

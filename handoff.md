@@ -185,17 +185,40 @@ The amber sub-row (lot number + วันผลิต + วันหมดอา
 1. Dropdown select → `handleProductSelect` → sets `trackLots: (p as any).trackLots` ✅ was working
 2. Barcode scan → `handleBarcodeScan` → was NOT setting trackLots ❌ FIXED 2026-05-16
 
-**Fix applied:** `handleBarcodeScan` newItem now includes:
+**Fix applied:** Both `handleBarcodeScan` and `handleProductSelect` now:
 ```typescript
-lotNumber: "",
-manufacturingDate: "",
-expiryDate: "",
-trackLots: (matched as any).trackLots,
+const rawTrackLots = (matched as any).trackLots;
+if (rawTrackLots !== true && rawTrackLots !== false) {
+  toast({ title: `ข้อมูลสินค้า "${matched.name}" ไม่สมบูรณ์ (trackLots ไม่ถูกต้อง) — กรุณา refresh หน้า`, variant: "destructive" });
+  // clean up and return — do NOT proceed
+  return;
+}
+// Now rawTrackLots is guaranteed boolean — no wildcard possible
+trackLots: rawTrackLots,
 ```
 
-**Why `(matched as any).trackLots`:** The `Product` type from `@shared/schema` infers `trackLots` but the cast exists because at time of writing the type import path didn't expose it cleanly. If Kai sees a TS error here, check the Product type definition in shared/schema.ts.
+**⚠️ NO FALLBACK RULE — what it actually means (พี่ช้าง's exact teaching):**
+NO FALLBACK does NOT just mean "don't write `|| false`".
+It means: **every possible case must be explicitly handled. If something falls outside your if-clause, it MUST be treated as an ERROR — not silently accepted.**
 
-**⚠️ NO FALLBACK RULE:** Never write `trackLots || false`. The value from DB is the truth — if it's undefined, let it be undefined. The UI check `{item.trackLots && ...}` handles falsy correctly without needing an explicit fallback. Same rule applies in `handleProductSelect`.
+Bad (wildcard still possible):
+```typescript
+trackLots: (matched as any).trackLots || false   // undefined → silently becomes false
+trackLots: (matched as any).trackLots            // undefined → silently passes through
+```
+
+Correct:
+```typescript
+const rawTrackLots = (matched as any).trackLots;
+if (rawTrackLots !== true && rawTrackLots !== false) {
+  // unexpected value → treat as ERROR, surface to user, stop execution
+  toast({ ..., variant: "destructive" });
+  return;
+}
+// only reach here when rawTrackLots is guaranteed boolean
+```
+
+The same rule applies everywhere: switch statements must have `default: throw new Error(...)`, if-chains must handle every path explicitly, and any unexpected value must fail loudly — never silently continue.
 
 **If พี่ทราย reports lot fields still not showing after scan:** Check that the product itself has `trackLots = true` in the DB. Go to: คลังสินค้า → สินค้า → แก้ไขสินค้า → แท็บ "คลังสินค้า/ผลิต" → สวิตช์ "ติดตามล็อตการผลิต / วันหมดอายุ" ต้องเปิดอยู่
 
