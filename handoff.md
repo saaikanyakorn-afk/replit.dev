@@ -135,6 +135,28 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 | P3 | app-extra.tsx + not-found.tsx + infra-machines.tsx | พี่ช้าง authorize |
 | P4 | ENTRY #006: orphan stock_movements cleanup | พี่ช้าง authorize |
 | P5 | Migrate 92 `products.active` query sites to split tables | พี่ช้าง authorize — future sprint |
+| P6 | bwip-js barcode image rendering — พี่ทราย deciding use case (label only vs PDF embed vs both) | พี่ทราย decision |
+
+---
+
+### 📦 bwip-js LIBRARY NOTES (2026-05-16 — พี่ช้าง instruction)
+
+**What it is:** Barcode Writer in Pure JavaScript — renders barcode numbers into actual barcode images (PNG/SVG). Supports 100+ standards including EAN-13, CODE128, QR, etc.
+
+**Current state:** NOT installed. System currently uses `jsbarcode` (CODE128, frontend-only) + `qrcode` (QR codes).
+
+**If we install it:**
+- `npm install bwip-js` — pure JS, zero native dependencies
+- ✅ Works on **Linux** (aaPanel, linux-prod-01) — no extra OS packages needed
+- ✅ Works on **Windows** (etaxerp.com server) — pure JS, no native binaries, same `npm install`
+- No recompile needed on either OS — unlike sharp/canvas which need native bindings
+- Server restart required after `npm install` (pm2 restart etax-center)
+- **Both servers need the install** — Windows (etaxerp.com) AND any future Linux prod server
+
+**Deployment checklist addition (if P6 is approved):**
+- [ ] `npm install bwip-js` on etaxerp.com (Windows) before pm2 restart
+- [ ] Verify `node_modules/bwip-js` present on server after install
+- [ ] Include in any future Linux prod deploy runbook
 
 ---
 
