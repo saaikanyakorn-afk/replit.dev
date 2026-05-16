@@ -879,6 +879,116 @@ export async function runProductSplitMigration(db: any) {
 }
 
 // =============================================================================
+// MES (Manufacturing Execution System) TABLES — added 2026-05-16
+// =============================================================================
+export const mesWorkOrders = pgTable("mes_work_orders", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").notNull(),
+  woNo: varchar("wo_no", { length: 50 }).notNull(),
+  productName: varchar("product_name", { length: 200 }).notNull(),
+  model: varchar("model", { length: 100 }),
+  bomId: integer("bom_id"),
+  quantity: integer("quantity").notNull().default(1),
+  status: varchar("status", { length: 30 }).notNull().default("draft"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: integer("created_by"),
+  createdByName: varchar("created_by_name", { length: 100 }),
+});
+
+export const mesUnits = pgTable("mes_units", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").notNull(),
+  workOrderId: integer("work_order_id").notNull(),
+  unitNo: integer("unit_no").notNull(),
+  masterQr: varchar("master_qr", { length: 100 }).notNull().unique(),
+  currentProcess: integer("current_process").notNull().default(0),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const mesProcessLogs = pgTable("mes_process_logs", {
+  id: serial("id").primaryKey(),
+  unitId: integer("unit_id").notNull(),
+  processNo: integer("process_no").notNull(),
+  employeeQr: varchar("employee_qr", { length: 100 }),
+  employeeName: varchar("employee_name", { length: 100 }),
+  action: varchar("action", { length: 30 }).notNull().default("complete"),
+  notes: text("notes"),
+  loggedAt: timestamp("logged_at").defaultNow(),
+});
+
+export const mesCellAssignments = pgTable("mes_cell_assignments", {
+  id: serial("id").primaryKey(),
+  unitId: integer("unit_id").notNull(),
+  cellSerial: varchar("cell_serial", { length: 100 }).notNull(),
+  slotNo: integer("slot_no"),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  assignedByQr: varchar("assigned_by_qr", { length: 100 }),
+  assignedByName: varchar("assigned_by_name", { length: 100 }),
+});
+
+export const mesBalanceRecords = pgTable("mes_balance_records", {
+  id: serial("id").primaryKey(),
+  unitId: integer("unit_id").notNull(),
+  employeeQr: varchar("employee_qr", { length: 100 }),
+  employeeName: varchar("employee_name", { length: 100 }),
+  beforeValues: jsonb("before_values"),
+  afterValues: jsonb("after_values"),
+  imageUrl: varchar("image_url", { length: 500 }),
+  notes: text("notes"),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+});
+
+export async function runMesTablesMigration(db: any) {
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS mes_work_orders (
+      id SERIAL PRIMARY KEY, company_id INT NOT NULL,
+      wo_no VARCHAR(50) NOT NULL, product_name VARCHAR(200) NOT NULL,
+      model VARCHAR(100), bom_id INT, quantity INT NOT NULL DEFAULT 1,
+      status VARCHAR(30) NOT NULL DEFAULT 'draft', notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(), created_by INT, created_by_name VARCHAR(100)
+    )
+  `));
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS mes_units (
+      id SERIAL PRIMARY KEY, company_id INT NOT NULL,
+      work_order_id INT NOT NULL, unit_no INT NOT NULL,
+      master_qr VARCHAR(100) NOT NULL UNIQUE,
+      current_process INT NOT NULL DEFAULT 0,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `));
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS mes_process_logs (
+      id SERIAL PRIMARY KEY, unit_id INT NOT NULL, process_no INT NOT NULL,
+      employee_qr VARCHAR(100), employee_name VARCHAR(100),
+      action VARCHAR(30) NOT NULL DEFAULT 'complete', notes TEXT,
+      logged_at TIMESTAMP DEFAULT NOW()
+    )
+  `));
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS mes_cell_assignments (
+      id SERIAL PRIMARY KEY, unit_id INT NOT NULL,
+      cell_serial VARCHAR(100) NOT NULL, slot_no INT,
+      assigned_at TIMESTAMP DEFAULT NOW(),
+      assigned_by_qr VARCHAR(100), assigned_by_name VARCHAR(100)
+    )
+  `));
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS mes_balance_records (
+      id SERIAL PRIMARY KEY, unit_id INT NOT NULL,
+      employee_qr VARCHAR(100), employee_name VARCHAR(100),
+      before_values JSONB, after_values JSONB,
+      image_url VARCHAR(500), notes TEXT,
+      recorded_at TIMESTAMP DEFAULT NOW()
+    )
+  `));
+  console.log("[MES] ✅ MES tables created/verified");
+}
+
+// =============================================================================
 // INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12) — ❌ CANCELLED
 // Approach changed 2026-05-12: user inputs วันที่เริ่มต้นสต๊อก at Excel import
 // time via product-import-export.tsx date picker. Backfill not needed.

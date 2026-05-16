@@ -32,6 +32,11 @@ const ExchangeRateSettings = lazy(() => import("@/pages/settings/exchange-rate-s
 // [inventory-triggers] /settings/inventory-triggers — app-extra module required
 const InventoryTriggersPage = lazy(() => import("@/pages/settings/inventory-triggers"));
 
+// [mes] MES — Manufacturing Execution System — added 2026-05-16
+const MesWorkOrders = lazy(() => import("@/pages/manufacturing/mes-work-orders"));
+const MesUnitDetail = lazy(() => import("@/pages/manufacturing/mes-unit-detail"));
+const MesScanStation = lazy(() => import("@/pages/manufacturing/mes-scan-station"));
+
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 9999, overflow: "auto" }}>
@@ -72,6 +77,18 @@ function matchExchangeRate(location: string): boolean {
 // [inventory-triggers] Exact match for /settings/inventory-triggers
 function matchInventoryTriggers(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/settings/inventory-triggers";
+}
+
+// [mes] MES route matchers
+function matchMesWorkOrders(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/mes/work-orders";
+}
+function matchMesUnitDetail(location: string): string | null {
+  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/mes\/work-orders\/(\d+)$/);
+  return m ? m[1] : null;
+}
+function matchMesScan(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/mes/scan";
 }
 
 export default function AppExtra() {
@@ -117,6 +134,9 @@ export default function AppExtra() {
   const bnShareToken = matchBillingNoteShare(location);
   const isExchangeRate = matchExchangeRate(location);
   const isInventoryTriggers = matchInventoryTriggers(location);
+  const isMesWorkOrders = matchMesWorkOrders(location);
+  const mesUnitDetailId = matchMesUnitDetail(location);
+  const isMesScan = matchMesScan(location);
 
   if (pdfId) {
     return (
@@ -175,6 +195,39 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <InventoryTriggersPage />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [mes] MES Work Orders list
+  if (isMesWorkOrders) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <MesWorkOrders />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [mes] MES Unit Detail / Work Order detail
+  if (mesUnitDetailId) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <MesUnitDetail idProp={mesUnitDetailId} />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [mes] MES Scan Station — full-screen dark UI for workers
+  if (isMesScan) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <MesScanStation />
         </Suspense>
       </FullPageOverlay>
     );

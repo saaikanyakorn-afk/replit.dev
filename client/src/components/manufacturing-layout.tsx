@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Factory, LayoutDashboard, ClipboardList, Barcode, Search,
-  Wrench, ChevronDown, ChevronRight, ArrowLeft, Settings2, Package
+  Wrench, ChevronDown, ChevronRight, ArrowLeft, Settings2, Package, ScanLine, ListChecks
 } from "lucide-react";
 
 const HREF_TO_SUB_KEY: Record<string, string> = {
@@ -17,6 +17,8 @@ const HREF_TO_SUB_KEY: Record<string, string> = {
   "/manufacturing/serial-numbers": "manufacturing/serial-numbers",
   "/manufacturing/traceability": "manufacturing/traceability",
   "/manufacturing/calibration": "manufacturing/calibration",
+  "/manufacturing/mes/work-orders": "manufacturing/mes/work-orders",
+  "/manufacturing/mes/scan": "manufacturing/mes/scan",
 };
 
 interface NavItem {
@@ -46,6 +48,13 @@ const MFG_NAV: { label: string; icon: any; href: string; children?: NavItem[] }[
     label: "ISO & เครื่องมือ", icon: Settings2, href: "/manufacturing/calibration",
     children: [
       { label: "เครื่องมือวัด (Calibration)", href: "/manufacturing/calibration", icon: Wrench },
+    ],
+  },
+  {
+    label: "MES (ติดตามการผลิต)", icon: ScanLine, href: "/manufacturing/mes/work-orders",
+    children: [
+      { label: "ใบสั่งผลิต MES", href: "/manufacturing/mes/work-orders", icon: ListChecks },
+      { label: "สถานียิง QR", href: "/manufacturing/mes/scan", icon: ScanLine },
     ],
   },
 ];

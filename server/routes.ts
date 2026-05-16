@@ -16,6 +16,7 @@ import { registerImportBatchRoutes } from "./routes/import-batch-routes";
 import { registerPdfTemplateRoutes, seedDefaultPdfTemplates } from "./routes/pdf-template-routes";
 import { registerManufacturingRoutes } from "./routes/manufacturing-routes";
 import { registerManufacturingModuleRoutes } from "./routes/manufacturing-module-routes";
+import { registerMesRoutes } from "./routes/mes-routes";
 import { registerExpenseRoutes } from "./routes/expense-routes";
 import { registerFixedAssetsRoutes } from "./routes/fixed-assets-routes";
 import { registerPosRoutes } from "./routes/pos-routes";
@@ -156,6 +157,7 @@ export async function registerRoutes(
   seedDefaultPdfTemplates();
   registerManufacturingRoutes(app);
   registerManufacturingModuleRoutes(app);
+  registerMesRoutes(app);
   registerExpenseRoutes(app);
   registerFixedAssetsRoutes(app);
   registerPosRoutes(app);
