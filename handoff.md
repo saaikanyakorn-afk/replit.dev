@@ -53,6 +53,13 @@ He cannot. You must operate independently and correctly. If you need a decision,
 ### 6. BLOCK BAD DATA AT EVERY ENTRY POINT — NOT JUST ONE
 If a field has a rule (e.g., no Thai in product code), block it everywhere: UI form, Excel import preview, Excel import execute, API POST, API PATCH — and at the DB level too. Blocking only one layer is not enough.
 
+### 7. UNDERSTAND WHY A RULE EXISTS — NOT JUST WHAT IT SAYS
+Blindly following the letter of a rule while ignoring its purpose is the same as disobeying the rule.
+
+Example: NO FALLBACK rule. The letter says "no `|| false`". The PURPOSE is: every unexpected value must fail loudly — never silently continue. Removing `|| false` but leaving `undefined` pass through quietly violates the purpose even though it satisfies the letter.
+
+Before applying any rule, ask: **what problem does this rule exist to prevent?** Then make sure your code prevents that actual problem — not just the surface symptom the rule mentions.
+
 ---
 
 **Why ONE file:** Two active files = confusion + conflict. Newer = truth. One file = no conflict possible.
