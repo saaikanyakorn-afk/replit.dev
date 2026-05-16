@@ -67,7 +67,7 @@ This file has two sections:
 
 | # | Blocker | Who must act |
 |---|---------|-------------|
-| B1 | github-dev push blocked — Secret Scanning found PAT in star-wars.txt | พี่ช้าง allow at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
+| B1 | github-dev push blocked — Secret Scanning found leaked PAT in a committed file | พี่ช้าง allow at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
 | B2 | VAT rate feature requires `schema.ts` change | พี่ช้าง must modify first |
 
 ---
