@@ -537,17 +537,18 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
                 เพิ่มรายการ
               </Button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" onClick={() => barcodeRef.current?.focus()}>
               <div className="relative flex-1 max-w-md">
                 <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   ref={barcodeRef}
                   data-testid="input-barcode-scan"
                   placeholder="สแกนบาร์โค้ด หรือพิมพ์รหัสสินค้าแล้วกด Enter..."
-                  className={`pl-10 h-9 text-sm transition-colors ${barcodeFlash ? "bg-green-100 border-green-400" : ""}`}
+                  className={`pl-10 h-9 text-sm transition-colors ${barcodeFlash ? "bg-green-100 border-green-400" : "border-blue-300 focus:border-blue-500"}`}
                   value={barcodeInput}
                   onChange={e => setBarcodeInput(e.target.value)}
                   onKeyDown={handleBarcodeScan}
+                  autoFocus
                 />
                 {barcodeFlash && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 text-xs font-medium animate-pulse">
@@ -555,7 +556,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
                   </span>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">สแกนบาร์โค้ดเพื่อเพิ่มสินค้าอัตโนมัติ</p>
+              <p className="text-xs text-muted-foreground cursor-pointer select-none">🔵 พร้อมสแกน — คลิกที่นี่แล้วยิง QR</p>
             </div>
           </CardHeader>
           <CardContent className="p-0">
