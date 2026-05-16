@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzle-orm";
-import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders } from "@shared/schema";
+import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
@@ -1829,9 +1829,15 @@ app.get("/api/goods-receivings/:id", requireAuth, requireModule("inventory"), as
 
 app.post("/api/goods-receivings", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
+    console.log("[POST /api/goods-receivings] body:", JSON.stringify(req.body, null, 2));
     const { companyId, grDate, vendorId, vendorName, poReference, poId, notes, items } = req.body;
     if (!companyId || !grDate || !items || items.length === 0) {
       return res.status(400).json({ message: "companyId, grDate, items required" });
+    }
+    for (const it of items) {
+      if (!it.productId) return res.status(400).json({ message: `รายการ "${it.productName}" ไม่มี productId — กรุณาเลือกสินค้าจากรายการ` });
+      if (!it.productName) return res.status(400).json({ message: "productName required" });
+      if (!it.quantity) return res.status(400).json({ message: "quantity required" });
     }
     let validatedPoId: number | null = null;
     if (poId) {
@@ -1880,7 +1886,7 @@ app.post("/api/goods-receivings", requireAuth, requireModule("inventory"), async
 
     const savedItems = await db.select().from(goodsReceivingItems).where(eq(goodsReceivingItems.goodsReceivingId, gr.id));
     res.status(201).json({ ...gr, items: savedItems });
-  } catch (err: any) { res.status(400).json({ message: err.message }); }
+  } catch (err: any) { console.error("[POST /api/goods-receivings] ERROR:", err); res.status(400).json({ message: err.message }); }
 });
 
 app.patch("/api/goods-receivings/:id", requireAuth, requireModule("inventory"), async (req, res) => {

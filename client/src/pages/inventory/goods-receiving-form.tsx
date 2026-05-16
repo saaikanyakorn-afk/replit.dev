@@ -357,9 +357,18 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
   }
 
   function handleSubmit() {
+    if (!companyId) {
+      toast({ title: "ไม่พบข้อมูลบริษัท", description: "กรุณา refresh หน้าแล้วลองใหม่", variant: "destructive" });
+      return;
+    }
     const validItems = items.filter(it => it.productName);
     if (validItems.length === 0) {
       toast({ title: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ", variant: "destructive" });
+      return;
+    }
+    const missingProductId = validItems.find(it => !it.productId);
+    if (missingProductId) {
+      toast({ title: `สินค้า "${missingProductId.productName}" ไม่มี productId`, description: "กรุณาเลือกสินค้าจากรายการแทนการพิมพ์ชื่อเอง", variant: "destructive" });
       return;
     }
 

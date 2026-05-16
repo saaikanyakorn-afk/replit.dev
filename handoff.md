@@ -105,6 +105,9 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 | S3 | GR barcode scan: detect Thai keyboard → block + red border + BIG red warning banner | `client/src/pages/inventory/goods-receiving-form.tsx` | ✅ dev |
 | S4 | GR barcode scan: fix lot tracking — `handleBarcodeScan` now sets `trackLots`, `lotNumber`, `manufacturingDate`, `expiryDate` on new item | `client/src/pages/inventory/goods-receiving-form.tsx` | ✅ dev |
 | S5 | QR encode logic fixed — Thai code+barcode→encode barcode; Thai code+no barcode→error label; no code→error label; English code→encode code. No `||` chains. | `client/src/pages/inventory/barcode-labels.tsx` | ✅ dev |
+| S6 | GR POST 400 fix — added `goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems` to import in `products-routes.ts` line 8. Previously `goodsReceivings is not defined` error. | `server/routes/products-routes.ts` | ✅ dev |
+| S7 | GR POST debug — added `console.log(req.body)` + `console.error` on catch + explicit per-item productId/quantity validation with human-readable Thai error messages to POST handler (TEMPORARY — remove before production push) | `server/routes/products-routes.ts` ~line 1835 | 🔄 DEBUG |
+| S8 | GR form handleSubmit — added frontend guards: (1) `!companyId` → toast "ไม่พบข้อมูลบริษัท" + return; (2) `!it.productId` for any valid item → toast "สินค้า ... ไม่มี productId" + return | `client/src/pages/inventory/goods-receiving-form.tsx` handleSubmit ~line 362 | ✅ dev |
 
 **Key user guidance given this session (for context):**
 - ใบรับสินค้า GR อยู่ที่ `/inventory/receiving` — sidebar link เพิ่งเพิ่ม (S1)
