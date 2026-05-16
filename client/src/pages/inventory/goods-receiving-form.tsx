@@ -84,7 +84,12 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
   const [loaded, setLoaded] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState("");
   const [barcodeFlash, setBarcodeFlash] = useState(false);
+  const [keyboardWarning, setKeyboardWarning] = useState(false);
   const barcodeRef = useRef<HTMLInputElement>(null);
+
+  function isThai(str: string) {
+    return /[ก-๙]/.test(str);
+  }
 
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", companyId],
@@ -290,6 +295,15 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     if (e.key !== "Enter" || !barcodeInput.trim()) return;
     e.preventDefault();
     const code = barcodeInput.trim();
+
+    if (isThai(code)) {
+      setKeyboardWarning(true);
+      setBarcodeInput("");
+      barcodeRef.current?.focus();
+      return;
+    }
+
+    setKeyboardWarning(false);
     const matched = products.find(p => p.code === code || p.barcode === code);
     if (matched) {
       const existingIdx = items.findIndex(it => it.productId === matched.id);
@@ -308,6 +322,10 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
           unit: matched.unit || "ชิ้น",
           quantity: "1",
           unitCost: String(matched.cost || "0"),
+          lotNumber: "",
+          manufacturingDate: "",
+          expiryDate: "",
+          trackLots: (matched as any).trackLots || false,
         };
         if (firstEmpty >= 0) {
           const newItems = [...items];
@@ -537,26 +555,51 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
                 เพิ่มรายการ
               </Button>
             </div>
-            <div className="flex items-center gap-2" onClick={() => barcodeRef.current?.focus()}>
-              <div className="relative flex-1 max-w-md">
-                <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  ref={barcodeRef}
-                  data-testid="input-barcode-scan"
-                  placeholder="สแกนบาร์โค้ด หรือพิมพ์รหัสสินค้าแล้วกด Enter..."
-                  className={`pl-10 h-9 text-sm transition-colors ${barcodeFlash ? "bg-green-100 border-green-400" : "border-blue-300 focus:border-blue-500"}`}
-                  value={barcodeInput}
-                  onChange={e => setBarcodeInput(e.target.value)}
-                  onKeyDown={handleBarcodeScan}
-                  autoFocus
-                />
-                {barcodeFlash && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 text-xs font-medium animate-pulse">
-                    เพิ่มแล้ว!
-                  </span>
-                )}
+            <div className="flex flex-col gap-1.5" onClick={() => barcodeRef.current?.focus()}>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 max-w-md">
+                  <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    ref={barcodeRef}
+                    data-testid="input-barcode-scan"
+                    placeholder="สแกนบาร์โค้ด หรือพิมพ์รหัสสินค้าแล้วกด Enter..."
+                    className={`pl-10 h-9 text-sm transition-colors ${
+                      keyboardWarning
+                        ? "bg-red-50 border-red-500 focus:border-red-500"
+                        : barcodeFlash
+                        ? "bg-green-100 border-green-400"
+                        : "border-blue-300 focus:border-blue-500"
+                    }`}
+                    value={barcodeInput}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (isThai(val)) {
+                        setKeyboardWarning(true);
+                      } else {
+                        setKeyboardWarning(false);
+                      }
+                      setBarcodeInput(val);
+                    }}
+                    onKeyDown={handleBarcodeScan}
+                    autoFocus
+                  />
+                  {barcodeFlash && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 text-xs font-medium animate-pulse">
+                      เพิ่มแล้ว!
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground cursor-pointer select-none hidden sm:block">🔵 พร้อมสแกน — คลิกที่นี่แล้วยิง QR</p>
               </div>
-              <p className="text-xs text-muted-foreground cursor-pointer select-none">🔵 พร้อมสแกน — คลิกที่นี่แล้วยิง QR</p>
+              {keyboardWarning && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-md max-w-md" data-testid="warning-keyboard-layout">
+                  <span className="text-lg">⚠️</span>
+                  <div>
+                    <p className="text-sm font-bold">Keyboard ภาษาไทย — สแกนไม่ได้!</p>
+                    <p className="text-xs">กรุณาเปลี่ยน Keyboard เป็น EN ก่อนสแกน (ดูที่ Taskbar มุมขวาล่าง)</p>
+                  </div>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-0">

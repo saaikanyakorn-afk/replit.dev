@@ -218,3 +218,21 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 | 2026-05-07 | ENTRY #002 — DROP bot_api_key from general_settings | ✅ |
 | 2026-05-07 | ENTRY #001 — expense currency columns deployed | ✅ |
 | 2026-04-30 | Warehouse column migration (ENTRY v85) | ✅ |
+
+---
+## Session Update 2026-05-16 (Keyboard warning + Lot tracking fix)
+
+### ปัญหาที่พบ
+1. **Keyboard layout issue**: Windows Thai keyboard → scanner ส่ง garbled Thai chars แทน ASCII (e.g. "Cell 18650" → "จำสาตูดจ")
+2. **Lot tracking ไม่แสดงใน GR**: สินค้า trackLots=true แต่ `handleBarcodeScan` ไม่ได้ set `trackLots` ใน newItem
+
+### สิ่งที่แก้ไข (`goods-receiving-form.tsx`)
+- เพิ่ม `isThai()` helper + `keyboardWarning` state
+- `handleBarcodeScan`: ถ้า code มี Thai → block + clear + set warning (ไม่ search สินค้า)
+- `handleBarcodeScan`: newItem ตอนนี้ set `trackLots`, `lotNumber`, `manufacturingDate`, `expiryDate` ครบ
+- barcode input `onChange`: detect Thai realtime → กรอบแดงทันที
+- แสดง BIG red banner เมื่อ keyboard ผิด พร้อมคำแนะนำ "ดูที่ Taskbar มุมขวาล่าง"
+- บน mobile: ซ่อน "พร้อมสแกน" text (`hidden sm:block`)
+
+### Note
+Browser ไม่สามารถ force OS keyboard layout ได้ → ใช้ detection + warning แทนตาม direction พี่ช้าง
