@@ -57,9 +57,9 @@ This file has two sections:
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-16 (this session — Kai)
-**Production status:** Deploy #66 ✅ complete — online 84.4mb
-**Pending work:** None confirmed — see NEEDS VERIFICATION below
+**Last verified:** 2026-05-16 — พี่ทราย confirmed: ค่าใช้จ่าย, อัตราแลกเปลี่ยน, AP Billing ใช้งานได้ปกติทั้งหมด
+**Production status:** Last known deploy #75 (2026-05-15) ✅
+**Pending work:** None — clean slate
 
 ---
 
@@ -72,21 +72,6 @@ This file has two sections:
 
 ---
 
-### NEEDS VERIFICATION (handoff-active.md 2026-05-13 vs handoff.md 2026-05-15 conflict)
-
-handoff-active.md listed these as pending push — but Deploy #66 (2026-05-15) may have included some of them.
-**Kai must verify actual production state before treating any of these as pending.**
-
-| ID | Item | Files | Claimed status in old handoff |
-|----|------|-------|-------------------------------|
-| V1 | ค่าใช้จ่าย/เงินสดย่อย 400 error | expense-routes.ts | Pushed to github-production, waiting server |
-| V2 | ปุ่มเลิกใช้งาน/เปิดใช้งานสินค้า | inventory-list.tsx | Pushed — BUT also in Deploy #66 ✅ → likely done |
-| V3 | ปุ่มดึงอัตราแลกเปลี่ยน | expense.tsx | Pushed to github-production, waiting server |
-| V4 | AP billing fixes (C1-C5) | ap-billing.tsx, related-docs-dialog.tsx, sales-docs-routes.ts, payments.tsx, billing-notes-routes.ts | Dev only, not pushed |
-| V5 | D1-D7 items (2026-05-12) | various | Push status unknown |
-
----
-
 ### PARKED — waiting for decision
 
 | ID | Item | Waiting for |
@@ -96,7 +81,6 @@ handoff-active.md listed these as pending push — but Deploy #66 (2026-05-15) m
 | P3 | app-extra.tsx + not-found.tsx + infra-machines.tsx | พี่ช้าง authorize |
 | P4 | ENTRY #006: orphan stock_movements cleanup | พี่ช้าง authorize |
 | P5 | Migrate 92 `products.active` query sites to split tables | พี่ช้าง authorize — future sprint |
-| P6 | E1: พี่ทราย verify active/inactive product split on production | พี่ทราย verify |
 
 ---
 
@@ -116,6 +100,10 @@ handoff-active.md listed these as pending push — but Deploy #66 (2026-05-15) m
 
 | Date | What | Result |
 |------|------|--------|
+| 2026-05-16 | พี่ทราย verified: ค่าใช้จ่าย/เงินสดย่อย, ปุ่มดึงอัตราแลกเปลี่ยน, AP Billing ใช้งานได้ปกติ — baseline confirmed | ✅ |
+| 2026-05-15 | Deploy #75 — related-docs dialog แสดง QO↔SO↔TIV ครบ chain | ✅ |
+| 2026-05-15 | Deploy #74 — revert related-docs navigate กลับ listPath เสมอ | ✅ |
+| 2026-05-15 | Deploy #73 — TIV paymentMethod cash/credit toggle fix | ✅ |
 | 2026-05-15 | Deploy #66 — innerJoin migration (92→0 products.active queries in 8 files) + 6 other fixes | ✅ production online 84.4mb |
 | 2026-05-13 | ENTRY #005 loop closed — ADD_DEFAULT_VAT_RATE flag confirmed on production | ✅ |
 | 2026-05-13 | AP billing bugs fixed (dev only) — related-docs, ดูบัญชี, delete RC/PV | dev ✅ not pushed |
