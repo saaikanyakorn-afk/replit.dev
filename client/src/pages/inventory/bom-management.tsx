@@ -12,8 +12,9 @@ import type { Product } from "@shared/schema";
 import { formatDate } from "@/lib/format";
 
 import { useDateSettings } from "@/hooks/use-date-settings";
-export default function BomManagement(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }> } & Record<string, any>) {
+export default function BomManagement(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }>; basePath?: string } & Record<string, any>) {
   const LayoutComponent = props.Wrapper || Layout;
+  const basePath = props.basePath || "/inventory/bom";
   const { selectedCompanyId } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -102,7 +103,7 @@ export default function BomManagement(props: { Wrapper?: React.ComponentType<{ c
               <RefreshCw className={`h-4 w-4 mr-1.5 ${recalcMutation.isPending ? "animate-spin" : ""}`} />
               {recalcMutation.isPending ? "กำลังคำนวณ..." : "คำนวณสต็อกย้อนหลัง"}
             </Button>
-            <Button data-testid="button-create-bom" onClick={() => navigate("/inventory/bom/new")}>
+            <Button data-testid="button-create-bom" onClick={() => navigate(`${basePath}/new`)}>
               <Package className="h-4 w-4 mr-2" /> สร้าง BOM
             </Button>
           </div>
@@ -153,7 +154,7 @@ export default function BomManagement(props: { Wrapper?: React.ComponentType<{ c
                       <TableCell className="text-right">{Number(bom.yieldQty).toFixed(2)} {bom.unit}</TableCell>
                       <TableCell>{formatDate(bom.createdAt, dateEra, dateFmt)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" data-testid={`button-edit-bom-${bom.id}`} onClick={() => navigate(`/inventory/bom/edit/${bom.id}`)}>
+                        <Button variant="ghost" size="sm" data-testid={`button-edit-bom-${bom.id}`} onClick={() => navigate(`${basePath}/edit/${bom.id}`)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="sm" data-testid={`button-delete-bom-${bom.id}`} onClick={() => { if (confirm("ยืนยันลบ BOM นี้?")) deleteMutation.mutate(bom.id); }}>

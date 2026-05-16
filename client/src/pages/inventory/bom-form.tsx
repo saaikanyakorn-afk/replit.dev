@@ -20,7 +20,9 @@ type BomForm = { productId: number | ""; name: string; version: string; yieldQty
 const emptyForm: BomForm = { productId: "", name: "", version: "1.0", yieldQty: "1", unit: "ชิ้น", notes: "", status: "draft", lines: [] };
 const emptyLine: BomLine = { componentProductId: "", quantity: "1", unit: "ชิ้น", wastePercent: "0" };
 
-export default function BomFormPage() {
+export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }>; basePath?: string } = {}) {
+  const LayoutComponent = props.Wrapper || Layout;
+  const basePath = props.basePath || "/inventory/bom";
   const { selectedCompanyId } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -79,7 +81,7 @@ export default function BomFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bom"] });
       toast({ title: "สร้าง BOM สำเร็จ", variant: "success" as any });
-      navigate("/inventory/bom");
+      navigate(basePath);
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });
@@ -98,7 +100,7 @@ export default function BomFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bom"] });
       toast({ title: "แก้ไข BOM สำเร็จ", variant: "success" as any });
-      navigate("/inventory/bom");
+      navigate(basePath);
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });
@@ -148,11 +150,11 @@ export default function BomFormPage() {
   }
 
   return (
-    <Layout>
+    <LayoutComponent>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button data-testid="button-back" variant="ghost" size="icon" onClick={() => navigate("/inventory/bom")}>
+            <Button data-testid="button-back" variant="ghost" size="icon" onClick={() => navigate(basePath)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <Package className="h-5 w-5 text-primary" />
@@ -161,7 +163,7 @@ export default function BomFormPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button data-testid="button-cancel" variant="outline" onClick={() => navigate("/inventory/bom")}>ยกเลิก</Button>
+            <Button data-testid="button-cancel" variant="outline" onClick={() => navigate(basePath)}>ยกเลิก</Button>
             <Button data-testid="button-save" className="gap-2" onClick={handleSubmit}
               disabled={createMutation.isPending || updateMutation.isPending}>
               <Save className="h-4 w-4" />
@@ -294,7 +296,7 @@ export default function BomFormPage() {
         </Card>
 
         <div className="flex items-center justify-end gap-2 pb-4">
-          <Button variant="outline" onClick={() => navigate("/inventory/bom")} data-testid="button-cancel-bottom">ยกเลิก</Button>
+          <Button variant="outline" onClick={() => navigate(basePath)} data-testid="button-cancel-bottom">ยกเลิก</Button>
           <Button className="gap-2" onClick={handleSubmit}
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-save-bottom">
@@ -303,6 +305,6 @@ export default function BomFormPage() {
           </Button>
         </div>
       </div>
-    </Layout>
+    </LayoutComponent>
   );
 }

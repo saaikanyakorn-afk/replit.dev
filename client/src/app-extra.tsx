@@ -42,6 +42,10 @@ const MesScanStation = lazy(() => import("@/pages/manufacturing/mes-scan-station
 // /manufacturing/orders/form and /manufacturing/orders/form/:id
 const ManufacturingForm = lazy(() => import("@/pages/inventory/manufacturing-form"));
 
+// [mfg-bom] BOM form inside ManufacturingLayout
+// /manufacturing/bom/new and /manufacturing/bom/edit/:id
+const BomFormPage = lazy(() => import("@/pages/inventory/bom-form"));
+
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 9999, overflow: "auto" }}>
@@ -90,6 +94,15 @@ function matchMfgOrdersForm(location: string): boolean {
 }
 function matchMfgOrdersFormEdit(location: string): string | null {
   const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/orders\/form\/(\d+)$/);
+  return m ? m[1] : null;
+}
+
+// [mfg-bom] BOM form route matchers
+function matchMfgBomNew(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/bom/new";
+}
+function matchMfgBomEdit(location: string): string | null {
+  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/bom\/edit\/(\d+)$/);
   return m ? m[1] : null;
 }
 
@@ -150,6 +163,8 @@ export default function AppExtra() {
   const isInventoryTriggers = matchInventoryTriggers(location);
   const isMfgOrdersForm = matchMfgOrdersForm(location);
   const mfgOrdersFormEditId = matchMfgOrdersFormEdit(location);
+  const isMfgBomNew = matchMfgBomNew(location);
+  const mfgBomEditId = matchMfgBomEdit(location);
   const isMesWorkOrders = matchMesWorkOrders(location);
   const mesUnitDetailId = matchMesUnitDetail(location);
   const isMesScan = matchMesScan(location);
@@ -233,6 +248,28 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <ManufacturingForm Wrapper={ManufacturingLayout as any} basePath="/manufacturing/orders" />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [mfg-bom] BOM form — create new (inside ManufacturingLayout)
+  if (isMfgBomNew) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <BomFormPage Wrapper={ManufacturingLayout as any} basePath="/manufacturing/bom" />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [mfg-bom] BOM form — edit existing (inside ManufacturingLayout)
+  if (mfgBomEditId) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <BomFormPage Wrapper={ManufacturingLayout as any} basePath="/manufacturing/bom" />
         </Suspense>
       </FullPageOverlay>
     );
