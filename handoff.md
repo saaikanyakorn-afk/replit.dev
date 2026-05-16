@@ -340,6 +340,10 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 
 | Date | What | Result |
 |------|------|--------|
+| 2026-05-16 | GR POST 201 confirmed — body shows companyId:3721, items×3, lot tracking ✅ — POST /api/goods-receivings ทำงานแล้ว | ✅ dev |
+| 2026-05-16 | goods-receiving-list.tsx crash fix — `dateFormat` → `dateFmt` (typo — useDateSettings returns dateFmt, not dateFormat) | ✅ dev |
+| 2026-05-16 | GR imports fix — goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems ใน products-routes.ts (S6) | ✅ dev |
+| 2026-05-16 | GR frontend guards — companyId undefined → toast; productId missing → toast (S8) | ✅ dev |
 | 2026-05-16 | Added ใบรับสินค้า (GR) to inventory sidebar nav | ✅ dev |
 | 2026-05-16 | Fixed QR Code not showing when printing barcode labels (canvas→img) | ✅ dev |
 | 2026-05-16 | BOM routing fixed — stays in ManufacturingLayout, basePath+Wrapper props | ✅ dev |

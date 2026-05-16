@@ -1829,7 +1829,6 @@ app.get("/api/goods-receivings/:id", requireAuth, requireModule("inventory"), as
 
 app.post("/api/goods-receivings", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
-    console.log("[POST /api/goods-receivings] body:", JSON.stringify(req.body, null, 2));
     const { companyId, grDate, vendorId, vendorName, poReference, poId, notes, items } = req.body;
     if (!companyId || !grDate || !items || items.length === 0) {
       return res.status(400).json({ message: "companyId, grDate, items required" });

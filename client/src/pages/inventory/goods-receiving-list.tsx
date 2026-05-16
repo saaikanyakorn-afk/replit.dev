@@ -204,7 +204,7 @@ export default function GoodsReceivingList(props: { Wrapper?: React.ComponentTyp
                               {gr.grNo || gr.documentNo || `-`}
                             </button>
                           </TableCell>
-                          <TableCell className="text-sm">{formatDate(gr.grDate, dateEra, dateFormat)}</TableCell>
+                          <TableCell className="text-sm">{formatDate(gr.grDate, dateEra, dateFmt)}</TableCell>
                           <TableCell className="text-sm">{gr.vendorName || "-"}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{gr.poRef || gr.purchaseOrderNo || "-"}</TableCell>
                           <TableCell className="text-right tabular-nums text-sm">{Number(gr.totalQty || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</TableCell>
