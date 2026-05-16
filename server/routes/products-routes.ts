@@ -311,6 +311,7 @@ app.post("/api/products/import/preview", requireAuth, requireModule("inventory")
 
       const issues: string[] = [];
       if (!mapped.code) issues.push("ไม่มีรหัสสินค้า");
+      else if (/[ก-๙]/.test(mapped.code)) issues.push(`รหัสสินค้า "${mapped.code}" มีภาษาไทย — รหัสต้องเป็นภาษาอังกฤษหรือตัวเลขเท่านั้น`);
       if (!mapped.name) issues.push("ไม่มีชื่อสินค้า");
       const isExistingProduct = mapped.code && existingCodes.has(mapped.code);
       const isInactiveProduct = mapped.code && !isExistingProduct && inactiveCodes.has(mapped.code);
@@ -454,6 +455,7 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
     const uniqueProducts = new Map<string, any>();
     for (const p of productList) {
       if (!p.code || !p.name || allBlockedCodes.has(p.code)) continue;
+      if (/[ก-๙]/.test(p.code)) continue;
       if (!uniqueProducts.has(p.code)) {
         uniqueProducts.set(p.code, {
           companyId,
