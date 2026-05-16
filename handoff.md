@@ -104,6 +104,7 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 | S2 | Fixed QR Code not printing — canvas → img conversion before print window opens | `client/src/pages/inventory/barcode-labels.tsx` handlePrint() | ✅ dev |
 | S3 | GR barcode scan: detect Thai keyboard → block + red border + BIG red warning banner | `client/src/pages/inventory/goods-receiving-form.tsx` | ✅ dev |
 | S4 | GR barcode scan: fix lot tracking — `handleBarcodeScan` now sets `trackLots`, `lotNumber`, `manufacturingDate`, `expiryDate` on new item | `client/src/pages/inventory/goods-receiving-form.tsx` | ✅ dev |
+| S5 | QR encode logic fixed — Thai code+barcode→encode barcode; Thai code+no barcode→error label; no code→error label; English code→encode code. No `||` chains. | `client/src/pages/inventory/barcode-labels.tsx` | ✅ dev |
 
 **Key user guidance given this session (for context):**
 - ใบรับสินค้า GR อยู่ที่ `/inventory/receiving` — sidebar link เพิ่งเพิ่ม (S1)
@@ -153,8 +154,15 @@ The ONLY real fix is telling users to switch keyboard to EN before scanning. A r
 - Instead: QR encode the **barcode** field (numeric EAN-13) for Thai-code products
 - Logic: Thai code → encode barcode (if exists); no barcode → show error; English code → encode code
 
-**Current QR encode logic (barcode-labels.tsx ~line 530):**
-⚠️ AS OF 2026-05-16: this logic was confirmed as the business requirement but the barcode-labels.tsx encode was NOT yet updated to implement Thai→barcode fallback. If พี่ทราย reports that scanning a Thai-code product QR gives wrong result → THIS IS THE REMAINING FIX NEEDED.
+**QR encode logic (barcode-labels.tsx ~line 531) — FIXED 2026-05-16:**
+Every case handled explicitly — NO FALLBACK:
+```
+code = Thai + barcode exists  → QR encode barcode (numeric EAN-13, safe for any keyboard layout)
+code = Thai + no barcode      → ❌ error label: "รหัสสินค้าภาษาไทย ไม่มีบาร์โค้ด ไม่สามารถสร้าง QR ได้"
+code = null/undefined         → ❌ error label: "ไม่มีรหัสสินค้า ไม่สามารถสร้าง QR ได้"
+code = English/ASCII          → QR encode code directly
+```
+No `||` chains. Each branch returns explicitly. No wildcard can pass through silently.
 
 **New product validation (already in place):**
 - `product-form.tsx`: blocks Thai input in code field (new products only)
@@ -335,6 +343,7 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 | 2026-05-16 | Lot Traceability QR system built — traceability.tsx, lot-trace API, QR button on MO | ✅ dev |
 | 2026-05-16 | GR barcode scan: Thai keyboard detection — block + red border + red warning banner (decision: browser cannot force OS layout) | ✅ dev |
 | 2026-05-16 | GR barcode scan: fix lot tracking — handleBarcodeScan now sets trackLots/lotNumber/manufacturingDate/expiryDate (was missing, dropdown was fine) | ✅ dev |
+| 2026-05-16 | QR encode: Thai code+barcode→encode barcode; Thai code+no barcode→error; no code→error; English→encode code. All cases explicit, no `\|\|` chains | ✅ dev |
 | 2026-05-16 | พี่ทราย verified: ค่าใช้จ่าย/เงินสดย่อย, ปุ่มดึงอัตราแลกเปลี่ยน, AP Billing ใช้งานได้ปกติ — baseline confirmed | ✅ |
 | 2026-05-15 | Deploy #75 — related-docs dialog แสดง QO↔SO↔TIV ครบ chain | ✅ |
 | 2026-05-15 | Deploy #74 — revert related-docs navigate กลับ listPath เสมอ | ✅ |
