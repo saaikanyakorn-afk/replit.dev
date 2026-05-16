@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +36,9 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: any }> = 
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-700", icon: null },
 };
 
-export default function ManufacturingForm() {
+export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ children: ReactNode }>; basePath?: string } = {}) {
+  const LayoutComponent = props.Wrapper || Layout;
+  const basePath = props.basePath || "/inventory/manufacturing";
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -220,7 +222,7 @@ export default function ManufacturingForm() {
       const data = await r.json();
       toast({ title: editId ? "บันทึกแล้ว" : "สร้างใบสั่งผลิตแล้ว" });
       qc.invalidateQueries({ queryKey: ["/api/manufacturing-orders"] });
-      if (!editId) navigate(`/inventory/manufacturing/form/${data.id}`);
+      if (!editId) navigate(`${basePath}/form/${data.id}`);
     },
     onError: (err: any) => toast({ title: "บันทึกไม่สำเร็จ", description: err.message, variant: "destructive" }),
   });
@@ -314,11 +316,11 @@ export default function ManufacturingForm() {
   }, [lines, plannedQty, productCostMap, moStatus, moData]);
 
   return (
-    <Layout>
+    <LayoutComponent>
       <div className="space-y-4 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/inventory/manufacturing")} data-testid="button-back">
+            <Button variant="ghost" size="sm" onClick={() => navigate(basePath)} data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <Factory className="h-6 w-6" style={{ color: "#fb9678" }} />
@@ -669,7 +671,7 @@ export default function ManufacturingForm() {
 
         {!isReadOnly && (
           <div className="flex items-center justify-end gap-2 pb-4">
-            <Button variant="outline" onClick={() => navigate("/inventory/manufacturing")} data-testid="button-cancel-bottom">ย้อนกลับ</Button>
+            <Button variant="outline" onClick={() => navigate(basePath)} data-testid="button-cancel-bottom">ย้อนกลับ</Button>
             <Button onClick={() => saveMutation.mutate()} disabled={!productId || saveMutation.isPending} data-testid="button-save-mo-bottom">
               <Save className="h-4 w-4 mr-1" /> บันทึก
             </Button>
@@ -755,6 +757,6 @@ export default function ManufacturingForm() {
           </div>
         </DialogContent>
       </Dialog>
-    </Layout>
+    </LayoutComponent>
   );
 }

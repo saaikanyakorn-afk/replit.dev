@@ -21,8 +21,9 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-700" },
 };
 
-export default function ManufacturingList(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }> } & Record<string, any>) {
+export default function ManufacturingList(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }>; basePath?: string } & Record<string, any>) {
   const LayoutComponent = props.Wrapper || Layout;
+  const basePath = props.basePath || "/inventory/manufacturing";
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -73,7 +74,7 @@ export default function ManufacturingList(props: { Wrapper?: React.ComponentType
           <Button
             className="gap-2"
             style={{ backgroundColor: "#fb9678" }}
-            onClick={() => navigate("/inventory/manufacturing/form")}
+            onClick={() => navigate(`${basePath}/form`)}
             data-testid="button-create-mo"
           >
             <Plus className="h-4 w-4" /> สร้างใบสั่งผลิต
@@ -143,7 +144,7 @@ export default function ManufacturingList(props: { Wrapper?: React.ComponentType
                     <TableRow
                       key={o.id}
                       className="cursor-pointer hover:bg-gray-50"
-                      onClick={() => navigate(`/inventory/manufacturing/form/${o.id}`)}
+                      onClick={() => navigate(`${basePath}/form/${o.id}`)}
                       data-testid={`row-mo-${o.id}`}
                     >
                       <TableCell className="font-mono text-sm font-medium" style={{ color: "#fb9678" }}>

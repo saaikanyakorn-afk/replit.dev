@@ -21,6 +21,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
+import ManufacturingLayout from "@/components/manufacturing-layout";
 
 const CreditNotePdf = lazy(() => import("@/pages/sales/credit-note-pdf"));
 const CreditNoteShare = lazy(() => import("@/pages/sales/credit-note-share"));
@@ -36,6 +37,10 @@ const InventoryTriggersPage = lazy(() => import("@/pages/settings/inventory-trig
 const MesWorkOrders = lazy(() => import("@/pages/manufacturing/mes-work-orders"));
 const MesUnitDetail = lazy(() => import("@/pages/manufacturing/mes-unit-detail"));
 const MesScanStation = lazy(() => import("@/pages/manufacturing/mes-scan-station"));
+
+// [mfg-form] Manufacturing order form inside ManufacturingLayout
+// /manufacturing/orders/form and /manufacturing/orders/form/:id
+const ManufacturingForm = lazy(() => import("@/pages/inventory/manufacturing-form"));
 
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
@@ -77,6 +82,15 @@ function matchExchangeRate(location: string): boolean {
 // [inventory-triggers] Exact match for /settings/inventory-triggers
 function matchInventoryTriggers(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/settings/inventory-triggers";
+}
+
+// [mfg-form] Manufacturing order form matchers
+function matchMfgOrdersForm(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/orders/form";
+}
+function matchMfgOrdersFormEdit(location: string): string | null {
+  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/orders\/form\/(\d+)$/);
+  return m ? m[1] : null;
 }
 
 // [mes] MES route matchers
@@ -134,6 +148,8 @@ export default function AppExtra() {
   const bnShareToken = matchBillingNoteShare(location);
   const isExchangeRate = matchExchangeRate(location);
   const isInventoryTriggers = matchInventoryTriggers(location);
+  const isMfgOrdersForm = matchMfgOrdersForm(location);
+  const mfgOrdersFormEditId = matchMfgOrdersFormEdit(location);
   const isMesWorkOrders = matchMesWorkOrders(location);
   const mesUnitDetailId = matchMesUnitDetail(location);
   const isMesScan = matchMesScan(location);
@@ -195,6 +211,28 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <InventoryTriggersPage />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [mfg-form] Manufacturing order form — create new (inside ManufacturingLayout)
+  if (isMfgOrdersForm) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingForm Wrapper={ManufacturingLayout as any} basePath="/manufacturing/orders" />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [mfg-form] Manufacturing order form — edit existing (inside ManufacturingLayout)
+  if (mfgOrdersFormEditId) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingForm Wrapper={ManufacturingLayout as any} basePath="/manufacturing/orders" />
         </Suspense>
       </FullPageOverlay>
     );
