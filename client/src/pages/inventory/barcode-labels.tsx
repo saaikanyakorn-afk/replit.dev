@@ -527,12 +527,7 @@ export default function BarcodeLabels(props: { Wrapper?: React.ComponentType<{ c
                           <div className="label-barcode" style={{ maxWidth: "100%", overflow: "hidden", display: "flex", justifyContent: "center" }}>
                             {codeType === "qrcode" ? (
                               <QRCodeImage
-                                value={(() => {
-                                  const isAscii = (s: string) => /^[\x20-\x7E]+$/.test(s);
-                                  if (item.product.barcode && isAscii(item.product.barcode)) return item.product.barcode;
-                                  if (item.product.code && isAscii(item.product.code)) return item.product.code;
-                                  return String(item.product.id);
-                                })()}
+                                value={item.product.code || item.product.barcode || ""}
                                 size={Math.min(currentLabelSize.width - 20, currentLabelSize.height - 30)}
                               />
                             ) : (
