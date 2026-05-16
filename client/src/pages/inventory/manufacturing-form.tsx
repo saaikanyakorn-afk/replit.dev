@@ -52,6 +52,7 @@ export default function ManufacturingForm() {
   const [unit, setUnit] = useState("ชิ้น");
   const [lotNumber, setLotNumber] = useState("");
   const [mfgDate, setMfgDate] = useState(new Date().toISOString().slice(0, 10));
+  const [shelfLife, setShelfLife] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<MOLine[]>([]);
@@ -64,6 +65,7 @@ export default function ManufacturingForm() {
   const [completedQty, setCompletedQty] = useState("");
   const [completeLot, setCompleteLot] = useState("");
   const [completeMfgDate, setCompleteMfgDate] = useState("");
+  const [completeShelfLife, setCompleteShelfLife] = useState("");
   const [completeExpDate, setCompleteExpDate] = useState("");
 
   const { data: boms = [] } = useQuery<any[]>({
@@ -115,6 +117,10 @@ export default function ManufacturingForm() {
       setLotNumber(moDetail.lotNumber || "");
       setMfgDate(moDetail.manufacturingDate || "");
       setExpiryDate(moDetail.expiryDate || "");
+      if (moDetail.expiryDate && moDetail.manufacturingDate) {
+        const diff = Math.round((new Date(moDetail.expiryDate).getTime() - new Date(moDetail.manufacturingDate).getTime()) / 86400000);
+        if (diff > 0) setShelfLife(String(diff));
+      }
       setNotes(moDetail.notes || "");
       setMoStatus(moDetail.status);
       setMoData(moDetail);
@@ -132,6 +138,22 @@ export default function ManufacturingForm() {
       }
     }
   }, [moDetail]);
+
+  useEffect(() => {
+    if (mfgDate && shelfLife && Number(shelfLife) > 0) {
+      const d = new Date(mfgDate);
+      d.setDate(d.getDate() + Number(shelfLife));
+      setExpiryDate(d.toISOString().slice(0, 10));
+    }
+  }, [mfgDate, shelfLife]);
+
+  useEffect(() => {
+    if (completeMfgDate && completeShelfLife && Number(completeShelfLife) > 0) {
+      const d = new Date(completeMfgDate);
+      d.setDate(d.getDate() + Number(completeShelfLife));
+      setCompleteExpDate(d.toISOString().slice(0, 10));
+    }
+  }, [completeMfgDate, completeShelfLife]);
 
   const handleBomSelect = (bId: string) => {
     if (bId === "none") {
@@ -250,6 +272,7 @@ export default function ManufacturingForm() {
     setCompletedQty(plannedQty);
     setCompleteLot(lotNumber);
     setCompleteMfgDate(mfgDate);
+    setCompleteShelfLife(shelfLife);
     setCompleteExpDate(expiryDate);
     setCompleteDialogOpen(true);
   };
@@ -463,9 +486,38 @@ export default function ManufacturingForm() {
                 )}
               </div>
               <div>
-                <Label className="text-xs">วันหมดอายุ</Label>
-                {isReadOnly ? (
-                  <Input value={expiryDate ? formatDate(expiryDate, dateEra, dateFmt) : ""} disabled data-testid="input-expiry-date" />
+                <Label className="text-xs">อายุการใช้งาน (วัน)</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={shelfLife}
+                    onChange={e => {
+                      setShelfLife(e.target.value);
+                      if (!e.target.value) setExpiryDate("");
+                    }}
+                    placeholder="เช่น 365"
+                    disabled={isReadOnly}
+                    className="pr-10"
+                    data-testid="input-shelf-life"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">วัน</span>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">
+                  วันหมดอายุ
+                  {shelfLife && !isReadOnly && (
+                    <span className="ml-1 text-cyan-600 font-normal">(คำนวณอัตโนมัติ)</span>
+                  )}
+                </Label>
+                {isReadOnly || shelfLife ? (
+                  <Input
+                    value={expiryDate ? formatDate(expiryDate, dateEra, dateFmt) : ""}
+                    disabled
+                    className={shelfLife && !isReadOnly ? "bg-cyan-50 border-cyan-200 text-cyan-800" : ""}
+                    data-testid="input-expiry-date"
+                  />
                 ) : (
                   <DatePicker value={expiryDate} onChange={setExpiryDate} dateEra={dateEra} dateFormat={dateFmt} data-testid="input-expiry-date" />
                 )}
@@ -649,15 +701,45 @@ export default function ManufacturingForm() {
               <Label className="text-xs">เลขล็อตสินค้าสำเร็จรูป</Label>
               <Input value={completeLot} onChange={e => setCompleteLot(e.target.value)} placeholder="สร้างอัตโนมัติจากเลขที่ใบสั่งผลิต" data-testid="input-complete-lot" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">วันผลิต</Label>
-                <DatePicker value={completeMfgDate} onChange={setCompleteMfgDate} dateEra={dateEra} dateFormat={dateFmt} data-testid="input-complete-mfg" />
+            <div>
+              <Label className="text-xs">วันผลิต</Label>
+              <DatePicker value={completeMfgDate} onChange={setCompleteMfgDate} dateEra={dateEra} dateFormat={dateFmt} data-testid="input-complete-mfg" />
+            </div>
+            <div>
+              <Label className="text-xs">อายุการใช้งาน (วัน)</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min="1"
+                  value={completeShelfLife}
+                  onChange={e => {
+                    setCompleteShelfLife(e.target.value);
+                    if (!e.target.value) setCompleteExpDate("");
+                  }}
+                  placeholder="เช่น 365"
+                  className="pr-10"
+                  data-testid="input-complete-shelf-life"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">วัน</span>
               </div>
-              <div>
-                <Label className="text-xs">วันหมดอายุ</Label>
+            </div>
+            <div>
+              <Label className="text-xs">
+                วันหมดอายุ
+                {completeShelfLife && (
+                  <span className="ml-1 text-cyan-600 font-normal">(คำนวณอัตโนมัติ)</span>
+                )}
+              </Label>
+              {completeShelfLife ? (
+                <Input
+                  value={completeExpDate ? formatDate(completeExpDate, dateEra, dateFmt) : ""}
+                  disabled
+                  className="bg-cyan-50 border-cyan-200 text-cyan-800"
+                  data-testid="input-complete-exp"
+                />
+              ) : (
                 <DatePicker value={completeExpDate} onChange={setCompleteExpDate} dateEra={dateEra} dateFormat={dateFmt} data-testid="input-complete-exp" />
-              </div>
+              )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setCompleteDialogOpen(false)}>ยกเลิก</Button>
