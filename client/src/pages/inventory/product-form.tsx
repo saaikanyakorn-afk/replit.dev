@@ -350,13 +350,18 @@ export default function ProductForm(props: { Wrapper?: React.ComponentType<{ chi
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label>รหัสสินค้า *</Label>
-                <Input data-testid="input-code" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="P001"
+                <Input data-testid="input-code" value={form.code} onChange={e => {
+                  const val = e.target.value;
+                  if (/[ก-๙]/.test(val)) return;
+                  setForm(f => ({ ...f, code: val }));
+                }} placeholder="P001"
                   className={codeDup.length > 0 ? "border-red-500 focus-visible:ring-red-500" : ""} />
                 {codeDup.length > 0 && (
                   <p data-testid="text-code-duplicate" className="text-xs text-red-600 mt-1 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" /> รหัสนี้ถูกใช้แล้ว: {codeDup[0].name} ({codeDup[0].code})
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground mt-1">ใช้ได้เฉพาะภาษาอังกฤษ ตัวเลข และเครื่องหมาย (A-Z, 0-9) เพื่อให้ QR Code ทำงานได้</p>
               </div>
               <div>
                 <Label>บาร์โค้ด</Label>

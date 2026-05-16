@@ -526,10 +526,16 @@ export default function BarcodeLabels(props: { Wrapper?: React.ComponentType<{ c
                           )}
                           <div className="label-barcode" style={{ maxWidth: "100%", overflow: "hidden", display: "flex", justifyContent: "center" }}>
                             {codeType === "qrcode" ? (
+                              /[ก-๙]/.test(item.product.code || "") ? (
+                                <div style={{ fontSize: 8, color: "#cc0000", textAlign: "center", padding: "4px 2px", border: "1px solid #cc0000", borderRadius: 4, margin: 2 }}>
+                                  ❌ รหัสสินค้ามีภาษาไทย<br />ไม่สามารถสร้าง QR ได้<br />กรุณาแก้รหัสเป็นภาษาอังกฤษ
+                                </div>
+                              ) : (
                               <QRCodeImage
                                 value={item.product.code || item.product.barcode || ""}
                                 size={Math.min(currentLabelSize.width - 20, currentLabelSize.height - 30)}
                               />
+                              )
                             ) : (
                               item.product.barcode && (
                                 <BarcodeImage
