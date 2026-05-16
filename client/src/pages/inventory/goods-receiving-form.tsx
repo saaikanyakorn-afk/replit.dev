@@ -262,7 +262,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
         productName: p.name,
         unit: p.unit || "ชิ้น",
         unitCost: String(p.cost || "0"),
-        trackLots: (p as any).trackLots || false,
+        trackLots: (p as any).trackLots,
       };
       setItems(newItems);
     }
@@ -325,7 +325,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
           lotNumber: "",
           manufacturingDate: "",
           expiryDate: "",
-          trackLots: (matched as any).trackLots || false,
+          trackLots: (matched as any).trackLots,
         };
         if (firstEmpty >= 0) {
           const newItems = [...items];
