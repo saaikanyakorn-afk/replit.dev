@@ -645,6 +645,9 @@ export function registerManufacturingRoutes(app: Express) {
       const moId = Number(req.params.id);
       const companyId = Number(req.query.companyId);
       if (!companyId) return res.status(400).json({ message: "companyId required" });
+      const [mo] = await db.select().from(manufacturingOrders)
+        .where(and(eq(manufacturingOrders.id, moId), eq(manufacturingOrders.companyId, companyId)));
+      if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
       const rows = await db.execute(sql.raw(`
         SELECT id, mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at
         FROM mo_process_logs WHERE mo_id = ${moId} ORDER BY logged_at ASC

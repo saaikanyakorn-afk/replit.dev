@@ -154,8 +154,12 @@ export default function ProcessScanStation() {
   const resetAll = () => {
     setEmployeeQr("");
     setEmployeeName("");
+    setMoInput("");
+    setMoData(null);
+    setSelectedStep(null);
+    setQtyPassed("");
+    setNotes("");
     setStep("employee");
-    resetToMo();
   };
 
   const doneLogsForStep = (stepNo: number) =>

@@ -65,6 +65,10 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
 
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [qrPrintOpen, setQrPrintOpen] = useState(false);
+  const [logStepDialogOpen, setLogStepDialogOpen] = useState(false);
+  const [logStepNo, setLogStepNo] = useState<string>("");
+  const [logStepQty, setLogStepQty] = useState("1");
+  const [logStepNotes, setLogStepNotes] = useState("");
   const [completedQty, setCompletedQty] = useState("");
   const [completeLot, setCompleteLot] = useState("");
   const [completeMfgDate, setCompleteMfgDate] = useState("");
@@ -740,14 +744,24 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                   )}
                 </CardTitle>
                 {moStatus === "in_progress" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => navigate(`/manufacturing/process-scan`)}
-                    data-testid="button-go-process-scan"
-                  >
-                    <QrCode className="h-4 w-4 mr-1" /> Scan Station
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setLogStepNo(""); setLogStepQty(moData?.plannedQty || "1"); setLogStepNotes(""); setLogStepDialogOpen(true); }}
+                      data-testid="button-log-process-step"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> บันทึกขั้นตอน
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(`/manufacturing/process-scan`)}
+                      data-testid="button-go-process-scan"
+                    >
+                      <QrCode className="h-4 w-4 mr-1" /> Scan Station
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardHeader>
@@ -1027,6 +1041,89 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                 data-testid="button-confirm-complete"
               >
                 {completeMutation.isPending ? "กำลังดำเนินการ..." : "ยืนยันผลิตเสร็จ"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={logStepDialogOpen} onOpenChange={setLogStepDialogOpen}>
+        <DialogContent className="max-w-sm z-[200] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5 text-cyan-600" /> บันทึกขั้นตอนการผลิต
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-sm font-medium">ขั้นตอน <span className="text-red-500">*</span></Label>
+              <Select value={logStepNo} onValueChange={setLogStepNo}>
+                <SelectTrigger data-testid="select-log-step" className="mt-1">
+                  <SelectValue placeholder="เลือกขั้นตอน..." />
+                </SelectTrigger>
+                <SelectContent className="z-[10000]">
+                  {bomProcessSteps.map((ps: any) => (
+                    <SelectItem key={ps.step_no} value={String(ps.step_no)}>
+                      P{ps.step_no}: {ps.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">จำนวนที่ผ่าน</Label>
+              <Input
+                type="number"
+                value={logStepQty}
+                onChange={e => setLogStepQty(e.target.value)}
+                className="mt-1"
+                min="0"
+                data-testid="input-log-step-qty"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">หมายเหตุ</Label>
+              <Textarea
+                value={logStepNotes}
+                onChange={e => setLogStepNotes(e.target.value)}
+                className="mt-1"
+                rows={2}
+                placeholder="หมายเหตุเพิ่มเติม..."
+                data-testid="input-log-step-notes"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setLogStepDialogOpen(false)} data-testid="button-cancel-log-step">ยกเลิก</Button>
+              <Button
+                disabled={!logStepNo}
+                data-testid="button-confirm-log-step"
+                onClick={async () => {
+                  if (!logStepNo || !editId) return;
+                  const ps = bomProcessSteps.find((p: any) => String(p.step_no) === logStepNo);
+                  const r = await fetch(`/api/manufacturing-orders/${editId}/process-logs`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      companyId: selectedCompanyId,
+                      stepNo: Number(logStepNo),
+                      stepName: ps?.name || `ขั้นตอน ${logStepNo}`,
+                      qtyPassed: Number(logStepQty) || 0,
+                      notes: logStepNotes || undefined,
+                      loggedByName: user?.fullName || user?.username || undefined,
+                    }),
+                  });
+                  if (r.ok) {
+                    toast({ title: "บันทึกขั้นตอนเรียบร้อย" });
+                    qc.invalidateQueries({ queryKey: ["/api/manufacturing-orders", editId, "process-logs", selectedCompanyId] });
+                    setLogStepDialogOpen(false);
+                  } else {
+                    const err = await r.json();
+                    toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
+                  }
+                }}
+              >
+                บันทึก
               </Button>
             </div>
           </div>
