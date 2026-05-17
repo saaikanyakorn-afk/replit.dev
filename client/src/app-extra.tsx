@@ -41,6 +41,14 @@ const MesScanStation = lazy(() => import("@/pages/manufacturing/mes-scan-station
 // [material-issue] เบิกวัตถุดิบ — added 2026-05-17
 const MaterialIssueList = lazy(() => import("@/pages/inventory/material-issue-list"));
 const MaterialIssueForm = lazy(() => import("@/pages/inventory/material-issue-form"));
+
+// [production-finish] ใบรับสินค้าสำเร็จรูป WIP→FG — added 2026-05-17
+const ProductionFinishList = lazy(() => import("@/pages/manufacturing/production-finish-list"));
+const ProductionFinishForm = lazy(() => import("@/pages/manufacturing/production-finish-form"));
+
+// [ncr] Non-Conformance Report — added 2026-05-17
+const NcrList = lazy(() => import("@/pages/manufacturing/ncr-list"));
+const NcrForm = lazy(() => import("@/pages/manufacturing/ncr-form"));
 const EmployeeQRPage = lazy(() => import("@/pages/inventory/employee-qr"));
 
 // [mfg-form] Manufacturing order form inside ManufacturingLayout
@@ -152,6 +160,30 @@ function matchMfgEmployeeQR(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/employee-qr";
 }
 
+// [production-finish] route matchers
+function matchProductionFinishList(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/production-finish";
+}
+function matchProductionFinishForm(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/production-finish/form";
+}
+function matchProductionFinishFormEdit(location: string): number | null {
+  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/production-finish\/form\/(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
+
+// [ncr] route matchers
+function matchNcrList(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/ncr";
+}
+function matchNcrForm(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/ncr/form";
+}
+function matchNcrFormEdit(location: string): number | null {
+  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/ncr\/form\/(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
+
 export default function AppExtra() {
   const { user, loading } = useAuth();
   const [location, setLocation] = useLocation();
@@ -210,6 +242,12 @@ export default function AppExtra() {
   const isMfgMaterialIssueForm = matchMfgMaterialIssueForm(location);
   const mfgMaterialIssueFormEditId = matchMfgMaterialIssueFormEdit(location);
   const isMfgEmployeeQR = matchMfgEmployeeQR(location);
+  const isProductionFinishList = matchProductionFinishList(location);
+  const isProductionFinishForm = matchProductionFinishForm(location);
+  const productionFinishFormEditId = matchProductionFinishFormEdit(location);
+  const isNcrList = matchNcrList(location);
+  const isNcrForm = matchNcrForm(location);
+  const ncrFormEditId = matchNcrFormEdit(location);
 
   if (pdfId) {
     return (
@@ -435,6 +473,84 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <EmployeeQRPage />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [production-finish] ใบรับสินค้าสำเร็จรูป WIP→FG — list
+  if (isProductionFinishList) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <ProductionFinishList urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [production-finish] สร้างใบรับ — new form
+  if (isProductionFinishForm) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <ProductionFinishForm urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [production-finish] view/confirm existing receipt
+  if (productionFinishFormEditId) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <ProductionFinishForm idProp={productionFinishFormEditId} urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [ncr] รายการ NCR — list
+  if (isNcrList) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <NcrList urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [ncr] สร้าง NCR — new form
+  if (isNcrForm) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <NcrForm urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [ncr] view/edit existing NCR
+  if (ncrFormEditId) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <NcrForm idProp={ncrFormEditId} urlBase="/manufacturing" />
+          </ManufacturingLayout>
         </Suspense>
       </FullPageOverlay>
     );

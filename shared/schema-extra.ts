@@ -1026,6 +1026,78 @@ export async function runMaterialIssueMigration(db: any) {
 }
 
 // =============================================================================
+// PRODUCTION FINISH TABLES (ENTRY #011, 2026-05-17)
+// production_receipts + production_receipt_items — ใบรับสินค้าสำเร็จรูป WIP→FG
+// History: db/schema-history.md ENTRY #011
+// =============================================================================
+export async function runProductionFinishMigration(db: any) {
+  const FLAG = "CREATE_PRODUCTION_FINISH_TABLES_20260517";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS production_receipts (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER NOT NULL REFERENCES companies(id),
+      receipt_no TEXT NOT NULL,
+      mo_id INTEGER REFERENCES manufacturing_orders(id),
+      received_by_user_id INTEGER REFERENCES users(id),
+      received_at TIMESTAMP DEFAULT NOW(),
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'draft'
+    )`));
+    await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS production_receipt_items (
+      id SERIAL PRIMARY KEY,
+      production_receipt_id INTEGER NOT NULL REFERENCES production_receipts(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL,
+      product_name TEXT NOT NULL,
+      lot_number TEXT,
+      mfg_date DATE,
+      exp_date DATE,
+      quantity NUMERIC NOT NULL,
+      unit TEXT NOT NULL DEFAULT 'ชิ้น',
+      unit_cost NUMERIC NOT NULL DEFAULT 0
+    )`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ production_receipts + production_receipt_items created");
+  } catch (e: any) {
+    console.error("[migration] ❌ runProductionFinishMigration FAILED:", e.message);
+  }
+}
+
+// =============================================================================
+// NCR REPORTS TABLE (ENTRY #012, 2026-05-17)
+// ncr_reports — Non-Conformance Report บันทึกของเสีย/Reject ในกระบวนการผลิต
+// History: db/schema-history.md ENTRY #012
+// =============================================================================
+export async function runNcrMigration(db: any) {
+  const FLAG = "CREATE_NCR_REPORTS_TABLE_20260517";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS ncr_reports (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER NOT NULL REFERENCES companies(id),
+      ncr_no TEXT NOT NULL,
+      mo_id INTEGER REFERENCES manufacturing_orders(id),
+      product_id INTEGER REFERENCES products(id),
+      product_name TEXT NOT NULL,
+      defect_qty NUMERIC NOT NULL DEFAULT 0,
+      defect_type TEXT NOT NULL DEFAULT 'other',
+      description TEXT,
+      corrective_action TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      created_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      closed_at TIMESTAMP
+    )`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ ncr_reports created");
+  } catch (e: any) {
+    console.error("[migration] ❌ runNcrMigration FAILED:", e.message);
+  }
+}
+
+// =============================================================================
 // INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12) — ❌ CANCELLED
 // Approach changed 2026-05-12: user inputs วันที่เริ่มต้นสต๊อก at Excel import
 // time via product-import-export.tsx date picker. Backfill not needed.

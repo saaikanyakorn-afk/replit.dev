@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Factory, LayoutDashboard, ClipboardList, Barcode, Search,
   Wrench, ChevronDown, ChevronRight, ArrowLeft, Settings2, Package, ScanLine, ListChecks,
-  PackageOpen, QrCode
+  PackageOpen, QrCode, PackageCheck, ShieldAlert, AlertCircle
 } from "lucide-react";
 
 const HREF_TO_SUB_KEY: Record<string, string> = {
@@ -23,6 +23,10 @@ const HREF_TO_SUB_KEY: Record<string, string> = {
   "/manufacturing/material-issues": "manufacturing/material-issues",
   "/manufacturing/material-issue/form": "manufacturing/material-issues",
   "/manufacturing/employee-qr": "manufacturing/employee-qr",
+  "/manufacturing/production-finish": "manufacturing/production-finish",
+  "/manufacturing/production-finish/form": "manufacturing/production-finish",
+  "/manufacturing/ncr": "manufacturing/ncr",
+  "/manufacturing/ncr/form": "manufacturing/ncr",
 };
 
 interface NavItem {
@@ -67,6 +71,20 @@ const MFG_NAV: { label: string; icon: any; href: string; children?: NavItem[] }[
       { label: "รายการใบเบิก", href: "/manufacturing/material-issues", icon: ClipboardList },
       { label: "สร้างใบเบิก", href: "/manufacturing/material-issue/form", icon: PackageOpen },
       { label: "QR บัตรพนักงาน", href: "/manufacturing/employee-qr", icon: QrCode },
+    ],
+  },
+  {
+    label: "รับสำเร็จรูป (FG)", icon: PackageCheck, href: "/manufacturing/production-finish",
+    children: [
+      { label: "รายการใบรับ", href: "/manufacturing/production-finish", icon: ClipboardList },
+      { label: "สร้างใบรับ", href: "/manufacturing/production-finish/form", icon: PackageCheck },
+    ],
+  },
+  {
+    label: "QC & ของเสีย (NCR)", icon: ShieldAlert, href: "/manufacturing/ncr",
+    children: [
+      { label: "รายการ NCR", href: "/manufacturing/ncr", icon: AlertCircle },
+      { label: "สร้าง NCR", href: "/manufacturing/ncr/form", icon: ShieldAlert },
     ],
   },
 ];

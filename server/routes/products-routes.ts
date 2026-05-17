@@ -5,7 +5,7 @@ import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzl
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
-import { runMaterialIssueMigration } from "@shared/schema-extra";
+import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { parsePagination, paginatedResponse } from "./pagination";
@@ -45,6 +45,12 @@ export function registerProductsRoutes(app: Express) {
   // });
   runMaterialIssueMigration(db).catch((err: any) => {
     console.error("[migration] ❌ runMaterialIssueMigration failed:", err.message);
+  });
+  runProductionFinishMigration(db).catch((err: any) => {
+    console.error("[migration] ❌ runProductionFinishMigration failed:", err.message);
+  });
+  runNcrMigration(db).catch((err: any) => {
+    console.error("[migration] ❌ runNcrMigration failed:", err.message);
   });
 
 // ==================== Product Categories ====================
@@ -2992,6 +2998,289 @@ app.delete("/api/material-issues/:id", requireAuth, requireModule("inventory"), 
     await db.execute(sql.raw(`DELETE FROM material_issue_items WHERE material_issue_id = ${id}`));
     await db.execute(sql.raw(`DELETE FROM material_issues WHERE id = ${id}`));
     res.json({ message: "ลบใบเบิกวัตถุดิบสำเร็จ" });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+// ==================== Production Finish (ใบรับสินค้าสำเร็จรูป) ====================
+
+async function getNextProductionReceiptNo(companyId: number): Promise<string> {
+  const year = new Date().getFullYear();
+  const rows = await db.execute(sql.raw(
+    `SELECT COALESCE(MAX(CAST(NULLIF(SPLIT_PART(receipt_no, '-', 3), '') AS INTEGER)), 0) AS max_seq
+     FROM production_receipts WHERE company_id = ${companyId} AND receipt_no LIKE 'PF-${year}-%'`
+  ));
+  if (!rows.rows.length) throw new Error(`[PF-SEQ] MAX query returned 0 rows — companyId=${companyId}`);
+  const seq = Number((rows.rows[0] as any).max_seq || 0) + 1;
+  return `PF-${year}-${String(seq).padStart(5, "0")}`;
+}
+
+app.get("/api/production-receipts", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const moId = req.query.moId ? Number(req.query.moId) : null;
+    let q = `SELECT pr.*, (SELECT COUNT(*) FROM production_receipt_items WHERE production_receipt_id = pr.id) AS item_count
+             FROM production_receipts pr WHERE pr.company_id = ${companyId}`;
+    if (moId && !isNaN(moId) && moId > 0) q += ` AND pr.mo_id = ${moId}`;
+    q += ` ORDER BY pr.id DESC`;
+    const rows = await db.execute(sql.raw(q));
+    res.json(rows.rows);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.get("/api/production-receipts/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`SELECT * FROM production_receipts WHERE id = ${id}`));
+    if (!rows.rows.length) return res.status(404).json({ message: "ไม่พบใบรับสำเร็จรูป" });
+    const receipt = rows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(receipt.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const items = await db.execute(sql.raw(`SELECT * FROM production_receipt_items WHERE production_receipt_id = ${id} ORDER BY id`));
+    res.json({ ...receipt, items: items.rows });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.post("/api/production-receipts", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const { companyId: rawCompanyId, moId, receivedByUserId, notes, items } = req.body;
+    const companyId = Number(rawCompanyId);
+    if (!companyId || isNaN(companyId)) return res.status(400).json({ message: "companyId required" });
+    if (!items || !Array.isArray(items) || items.length === 0) return res.status(400).json({ message: "ต้องมีรายการอย่างน้อย 1 รายการ" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    // Validate moId
+    if (moId !== null && moId !== undefined) {
+      const moNum = Number(moId);
+      if (!moNum || isNaN(moNum)) throw new Error(`[PF] moId ต้องเป็นตัวเลข`);
+      const moCheck = await db.execute(sql.raw(`SELECT id FROM manufacturing_orders WHERE id = ${moNum} AND company_id = ${companyId} LIMIT 1`));
+      if (!moCheck.rows.length) throw new Error(`[PF] moId=${moNum} ไม่พบหรือไม่ใช่ของบริษัทนี้`);
+    }
+    // Validate receivedByUserId
+    let validatedReceivedBy: number | null = null;
+    if (receivedByUserId !== null && receivedByUserId !== undefined) {
+      const uid = Number(receivedByUserId);
+      if (!uid || isNaN(uid)) throw new Error(`[PF] receivedByUserId ต้องเป็นตัวเลข`);
+      const uCheck = await db.execute(sql.raw(`SELECT id, role, allowed_company_ids FROM users WHERE id = ${uid} AND active = true LIMIT 1`));
+      if (!uCheck.rows.length) throw new Error(`[PF] userId=${uid} ไม่พบหรือบัญชีถูกปิด`);
+      const u = uCheck.rows[0] as any;
+      const allowed: number[] = Array.isArray(u.allowed_company_ids) ? u.allowed_company_ids : [];
+      if (u.role !== "superadmin" && !allowed.includes(companyId)) throw new Error(`[PF] userId=${uid} ไม่มีสิทธิ์ในบริษัทนี้`);
+      validatedReceivedBy = uid;
+    }
+    // Validate all items before any write
+    type PFItem = { productId: number; productName: string; lotNumber: string | null; mfgDate: string | null; expDate: string | null; qty: number; unit: string; unitCost: number; };
+    const validated: PFItem[] = [];
+    for (const item of items) {
+      if (!item.productId) throw new Error(`[PF-ITEM] productId ไม่ครบ`);
+      if (!item.productName) throw new Error(`[PF-ITEM] productName ไม่ครบ — productId=${item.productId}`);
+      if (!item.quantity || Number(item.quantity) <= 0) throw new Error(`[PF-ITEM] quantity ต้องมากกว่า 0 — productId=${item.productId}`);
+      if (!item.unit) throw new Error(`[PF-ITEM] unit ไม่ครบ — productId=${item.productId}`);
+      const pid = Number(item.productId);
+      const pCheck = await db.execute(sql.raw(`SELECT id FROM products WHERE id = ${pid} AND company_id = ${companyId} LIMIT 1`));
+      if (!pCheck.rows.length) throw new Error(`[PF-ITEM] productId=${pid} ไม่ใช่ของบริษัทนี้`);
+      validated.push({ productId: pid, productName: String(item.productName), lotNumber: item.lotNumber || null, mfgDate: item.mfgDate || null, expDate: item.expDate || null, qty: Number(item.quantity), unit: String(item.unit), unitCost: Number(item.unitCost || 0) });
+    }
+    const receiptNo = await getNextProductionReceiptNo(companyId);
+    const moIdSql = (moId === null || moId === undefined) ? "NULL" : Number(moId);
+    const receivedBySql = validatedReceivedBy !== null ? validatedReceivedBy : "NULL";
+    const notesSql = (notes === null || notes === undefined || String(notes).trim() === "") ? "NULL" : `'${String(notes).replace(/'/g, "''")}'`;
+    let created: any;
+    await db.transaction(async (tx) => {
+      const r = await tx.execute(sql.raw(`INSERT INTO production_receipts (company_id, receipt_no, mo_id, received_by_user_id, notes, status) VALUES (${companyId}, '${receiptNo}', ${moIdSql}, ${receivedBySql}, ${notesSql}, 'draft') RETURNING *`));
+      created = r.rows[0] as any;
+      const rid = Number(created.id);
+      for (const vi of validated) {
+        const lotSql = vi.lotNumber ? `'${vi.lotNumber.replace(/'/g, "''")}'` : "NULL";
+        const mfgSql = vi.mfgDate ? `'${vi.mfgDate}'` : "NULL";
+        const expSql = vi.expDate ? `'${vi.expDate}'` : "NULL";
+        await tx.execute(sql.raw(`INSERT INTO production_receipt_items (production_receipt_id, product_id, product_name, lot_number, mfg_date, exp_date, quantity, unit, unit_cost) VALUES (${rid}, ${vi.productId}, '${vi.productName.replace(/'/g, "''")}', ${lotSql}, ${mfgSql}, ${expSql}, ${vi.qty}, '${vi.unit.replace(/'/g, "''")}', ${vi.unitCost})`));
+      }
+    });
+    res.json({ ...created, receiptNo });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.post("/api/production-receipts/:id/confirm", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`SELECT * FROM production_receipts WHERE id = ${id}`));
+    if (!rows.rows.length) return res.status(404).json({ message: "ไม่พบใบรับสำเร็จรูป" });
+    const receipt = rows.rows[0] as any;
+    const companyId = Number(receipt.company_id);
+    const receiptNo = String(receipt.receipt_no);
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    if (receipt.status !== "draft") return res.status(400).json({ message: `สถานะ "${receipt.status}" ไม่สามารถยืนยันได้` });
+    const itemRows = await db.execute(sql.raw(`SELECT * FROM production_receipt_items WHERE production_receipt_id = ${id} ORDER BY id`));
+    const items = itemRows.rows as any[];
+    if (!items.length) return res.status(400).json({ message: "ใบรับไม่มีรายการสินค้า" });
+    // Pre-flight: validate all products belong to company
+    for (const item of items) {
+      const pid = Number(item.product_id);
+      const pc = await db.execute(sql.raw(`SELECT id FROM products WHERE id = ${pid} AND company_id = ${companyId} LIMIT 1`));
+      if (!pc.rows.length) throw new Error(`[PF-CONFIRM] productId=${pid} ไม่ใช่ของบริษัทนี้ — item.id=${item.id}`);
+    }
+    const createdBy = Number((req.user as any)?.id) || null;
+    const createdBySql = createdBy ? createdBy : "NULL";
+    const notesText = `รับสำเร็จรูป ${receiptNo}`.replace(/'/g, "''");
+    await db.transaction(async (tx) => {
+      // Atomic status lock
+      const locked = await tx.execute(sql.raw(`UPDATE production_receipts SET status = 'confirmed', received_at = NOW() WHERE id = ${id} AND status = 'draft' RETURNING id`));
+      if (!locked.rows.length) throw new Error(`[PF-CONFIRM] ใบรับ id=${id} ถูกยืนยันไปแล้วหรือมีการประมวลผลพร้อมกัน`);
+      let totalQty = 0;
+      for (const item of items) {
+        const pid = Number(item.product_id);
+        const qty = Number(item.quantity);
+        const unitCost = Number(item.unit_cost || 0);
+        const totalCost = qty * unitCost;
+        totalQty += qty;
+        // Create product lot (FG)
+        let lotId: number | null = null;
+        if (item.lot_number) {
+          const lotSql = `'${String(item.lot_number).replace(/'/g, "''")}'`;
+          const mfgSql = item.mfg_date ? `'${item.mfg_date}'` : "NULL";
+          const expSql = item.exp_date ? `'${item.exp_date}'` : "NULL";
+          const lotR = await tx.execute(sql.raw(`INSERT INTO product_lots (company_id, product_id, lot_number, manufacturing_date, expiry_date, quantity, unit_cost, status) VALUES (${companyId}, ${pid}, ${lotSql}, ${mfgSql}, ${expSql}, ${qty}, ${unitCost}, 'active') RETURNING id`));
+          lotId = Number((lotR.rows[0] as any).id);
+        }
+        const lotIdSql = lotId !== null ? lotId : "NULL";
+        // Update product_stock
+        const stockRow = await tx.execute(sql.raw(`SELECT CAST(quantity AS NUMERIC) AS q FROM product_stock WHERE company_id = ${companyId} AND product_id = ${pid} LIMIT 1`));
+        const currentQty = stockRow.rows.length > 0 ? Number((stockRow.rows[0] as any).q || 0) : 0;
+        await tx.execute(sql.raw(`INSERT INTO product_stock (company_id, product_id, quantity) VALUES (${companyId}, ${pid}, ${currentQty + qty}) ON CONFLICT (company_id, product_id) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`));
+        // Stock movement
+        await tx.execute(sql.raw(`INSERT INTO stock_movements (company_id, product_id, lot_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, reference_no, notes, created_by) VALUES (${companyId}, ${pid}, ${lotIdSql}, 'production_finish', ${qty}, ${unitCost}, ${totalCost}, 'production_receipt', ${id}, '${receiptNo.replace(/'/g, "''")}', '${notesText}', ${createdBySql})`));
+      }
+      // Update MO completed_qty if linked
+      if (receipt.mo_id) {
+        await tx.execute(sql.raw(`UPDATE manufacturing_orders SET completed_qty = CAST(COALESCE(completed_qty, 0) AS NUMERIC) + ${totalQty} WHERE id = ${Number(receipt.mo_id)}`));
+      }
+    });
+    res.json({ message: "ยืนยันการรับสินค้าสำเร็จรูปสำเร็จ", receiptNo });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.delete("/api/production-receipts/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`SELECT * FROM production_receipts WHERE id = ${id}`));
+    if (!rows.rows.length) return res.status(404).json({ message: "ไม่พบใบรับสำเร็จรูป" });
+    const receipt = rows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(receipt.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    if (receipt.status === "confirmed") return res.status(400).json({ message: "ไม่สามารถลบใบรับที่ยืนยันแล้ว" });
+    await db.execute(sql.raw(`DELETE FROM production_receipt_items WHERE production_receipt_id = ${id}`));
+    await db.execute(sql.raw(`DELETE FROM production_receipts WHERE id = ${id}`));
+    res.json({ message: "ลบใบรับสำเร็จรูปสำเร็จ" });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+// ==================== NCR (Non-Conformance Report) ====================
+
+async function getNextNcrNo(companyId: number): Promise<string> {
+  const year = new Date().getFullYear();
+  const rows = await db.execute(sql.raw(
+    `SELECT COALESCE(MAX(CAST(NULLIF(SPLIT_PART(ncr_no, '-', 3), '') AS INTEGER)), 0) AS max_seq
+     FROM ncr_reports WHERE company_id = ${companyId} AND ncr_no LIKE 'NCR-${year}-%'`
+  ));
+  if (!rows.rows.length) throw new Error(`[NCR-SEQ] MAX query returned 0 rows`);
+  const seq = Number((rows.rows[0] as any).max_seq || 0) + 1;
+  return `NCR-${year}-${String(seq).padStart(5, "0")}`;
+}
+
+app.get("/api/ncr-reports", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const moId = req.query.moId ? Number(req.query.moId) : null;
+    let q = `SELECT * FROM ncr_reports WHERE company_id = ${companyId}`;
+    if (moId && !isNaN(moId) && moId > 0) q += ` AND mo_id = ${moId}`;
+    q += ` ORDER BY id DESC`;
+    const rows = await db.execute(sql.raw(q));
+    res.json(rows.rows);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.get("/api/ncr-reports/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`SELECT * FROM ncr_reports WHERE id = ${id}`));
+    if (!rows.rows.length) return res.status(404).json({ message: "ไม่พบ NCR" });
+    const ncr = rows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(ncr.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    res.json(ncr);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.post("/api/ncr-reports", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const { companyId: rawCompanyId, moId, productId, productName, defectQty, defectType, description, correctiveAction } = req.body;
+    const companyId = Number(rawCompanyId);
+    if (!companyId || isNaN(companyId)) return res.status(400).json({ message: "companyId required" });
+    if (!productName || String(productName).trim() === "") return res.status(400).json({ message: "productName required" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    if (moId !== null && moId !== undefined) {
+      const moNum = Number(moId);
+      if (!moNum || isNaN(moNum)) throw new Error(`[NCR] moId ต้องเป็นตัวเลข`);
+      const moCheck = await db.execute(sql.raw(`SELECT id FROM manufacturing_orders WHERE id = ${moNum} AND company_id = ${companyId} LIMIT 1`));
+      if (!moCheck.rows.length) throw new Error(`[NCR] moId=${moNum} ไม่พบหรือไม่ใช่ของบริษัทนี้`);
+    }
+    if (productId !== null && productId !== undefined) {
+      const pid = Number(productId);
+      const pc = await db.execute(sql.raw(`SELECT id FROM products WHERE id = ${pid} AND company_id = ${companyId} LIMIT 1`));
+      if (!pc.rows.length) throw new Error(`[NCR] productId=${pid} ไม่ใช่ของบริษัทนี้`);
+    }
+    const ncrNo = await getNextNcrNo(companyId);
+    const createdBy = Number((req.user as any)?.id) || null;
+    const moIdSql = (moId === null || moId === undefined) ? "NULL" : Number(moId);
+    const productIdSql = (productId === null || productId === undefined) ? "NULL" : Number(productId);
+    const defectTypeSafe = ["dimension", "surface", "function", "material", "other"].includes(defectType) ? defectType : "other";
+    const descSql = description ? `'${String(description).replace(/'/g, "''")}'` : "NULL";
+    const caSql = correctiveAction ? `'${String(correctiveAction).replace(/'/g, "''")}'` : "NULL";
+    const qty = Number(defectQty || 0);
+    const created = await db.execute(sql.raw(`INSERT INTO ncr_reports (company_id, ncr_no, mo_id, product_id, product_name, defect_qty, defect_type, description, corrective_action, status, created_by) VALUES (${companyId}, '${ncrNo}', ${moIdSql}, ${productIdSql}, '${String(productName).replace(/'/g, "''")}', ${qty}, '${defectTypeSafe}', ${descSql}, ${caSql}, 'open', ${createdBy || "NULL"}) RETURNING *`));
+    res.json({ ...created.rows[0], ncrNo });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.patch("/api/ncr-reports/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`SELECT * FROM ncr_reports WHERE id = ${id}`));
+    if (!rows.rows.length) return res.status(404).json({ message: "ไม่พบ NCR" });
+    const ncr = rows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(ncr.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const { status, correctiveAction, description } = req.body;
+    const validStatuses = ["open", "in_progress", "closed"];
+    if (status && !validStatuses.includes(status)) return res.status(400).json({ message: `status ต้องเป็น: ${validStatuses.join(", ")}` });
+    const newStatus = status || ncr.status;
+    const closedAt = newStatus === "closed" && ncr.status !== "closed" ? "NOW()" : (ncr.closed_at ? `'${ncr.closed_at}'` : "NULL");
+    const caSql = correctiveAction !== undefined ? `'${String(correctiveAction).replace(/'/g, "''")}'` : `'${String(ncr.corrective_action || "").replace(/'/g, "''")}'`;
+    const descSql = description !== undefined ? `'${String(description).replace(/'/g, "''")}'` : (ncr.description ? `'${String(ncr.description).replace(/'/g, "''")}'` : "NULL");
+    const updated = await db.execute(sql.raw(`UPDATE ncr_reports SET status = '${newStatus}', corrective_action = ${caSql}, description = ${descSql}, closed_at = ${closedAt} WHERE id = ${id} RETURNING *`));
+    res.json(updated.rows[0]);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.delete("/api/ncr-reports/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`SELECT * FROM ncr_reports WHERE id = ${id}`));
+    if (!rows.rows.length) return res.status(404).json({ message: "ไม่พบ NCR" });
+    const ncr = rows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(ncr.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    if (ncr.status === "closed") return res.status(400).json({ message: "ไม่สามารถลบ NCR ที่ปิดแล้ว" });
+    await db.execute(sql.raw(`DELETE FROM ncr_reports WHERE id = ${id}`));
+    res.json({ message: "ลบ NCR สำเร็จ" });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
