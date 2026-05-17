@@ -20,7 +20,7 @@ type BomForm = { productId: number | ""; name: string; version: string; yieldQty
 const emptyForm: BomForm = { productId: "", name: "", version: "1.0", yieldQty: "1", unit: "ชิ้น", notes: "", status: "draft", lines: [] };
 const emptyLine: BomLine = { componentProductId: "", quantity: "1", unit: "ชิ้น", wastePercent: "0" };
 
-export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }>; basePath?: string } = {}) {
+export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }>; basePath?: string; editIdProp?: string | null } = {}) {
   const LayoutComponent = props.Wrapper || Layout;
   const basePath = props.basePath || "/inventory/bom";
   const { selectedCompanyId } = useCompany();
@@ -28,7 +28,7 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const params = useParams<{ id: string }>();
-  const editingId = params.id ? Number(params.id) : null;
+  const editingId = props.editIdProp ? Number(props.editIdProp) : (params.id ? Number(params.id) : null);
 
   const [form, setForm] = useState<BomForm>({ ...emptyForm });
 

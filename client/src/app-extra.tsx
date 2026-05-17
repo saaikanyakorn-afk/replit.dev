@@ -349,7 +349,7 @@ export default function AppExtra() {
     return (
       <FullPageOverlay>
         <Suspense fallback={null}>
-          <BomFormPage Wrapper={ManufacturingLayout as any} basePath="/manufacturing/bom" />
+          <BomFormPage Wrapper={ManufacturingLayout as any} basePath="/manufacturing/bom" editIdProp={mfgBomEditId} />
         </Suspense>
       </FullPageOverlay>
     );
