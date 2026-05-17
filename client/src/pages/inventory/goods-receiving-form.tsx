@@ -220,12 +220,14 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/goods-receivings", data);
-      return res.json();
+      const res = await fetch("/api/goods-receivings", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(data) });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || "บันทึกไม่สำเร็จ");
+      return body;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
-      toast({ title: "สร้างใบรับสินค้าสำเร็จ", variant: "success" as any });
+      toast({ title: "สร้างใบรับสินค้าสำเร็จ" });
       navigate(recvBasePath);
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
@@ -233,12 +235,14 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await apiRequest("PATCH", `/api/goods-receivings/${id}`, data);
-      return res.json();
+      const res = await fetch(`/api/goods-receivings/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(data) });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || "อัปเดตไม่สำเร็จ");
+      return body;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
-      toast({ title: "อัพเดทใบรับสินค้าสำเร็จ", variant: "success" as any });
+      toast({ title: "อัปเดตใบรับสินค้าสำเร็จ" });
       navigate(recvBasePath);
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
