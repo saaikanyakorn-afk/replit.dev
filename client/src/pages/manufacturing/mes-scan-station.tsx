@@ -211,7 +211,7 @@ export default function MesScanStation() {
               <Button
                 type="button"
                 variant="outline"
-                className="md:hidden shrink-0 gap-1.5 h-12"
+                className="shrink-0 gap-1.5 h-12"
                 onClick={() => setEmpCameraOpen(true)}
                 aria-label="สแกนด้วยกล้อง"
                 data-testid="button-emp-camera-scan"
@@ -251,7 +251,7 @@ export default function MesScanStation() {
               <Button
                 type="button"
                 variant="outline"
-                className="md:hidden shrink-0 gap-1.5 h-12"
+                className="shrink-0 gap-1.5 h-12"
                 onClick={() => setUnitCameraOpen(true)}
                 aria-label="สแกนด้วยกล้อง"
                 data-testid="button-unit-camera-scan"
@@ -346,7 +346,7 @@ export default function MesScanStation() {
               <Button
                 type="button"
                 variant="outline"
-                className="md:hidden shrink-0 gap-1.5 h-12 border-purple-300 text-purple-600"
+                className="shrink-0 gap-1.5 h-12 border-purple-300 text-purple-600"
                 onClick={() => setCellCameraOpen(true)}
                 aria-label="สแกนด้วยกล้อง"
                 data-testid="button-cell-camera-scan"

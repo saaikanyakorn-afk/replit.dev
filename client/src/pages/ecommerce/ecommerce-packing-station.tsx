@@ -170,7 +170,7 @@ export default function EcommercePackingStation() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="md:hidden shrink-0 gap-1 h-9"
+                    className="shrink-0 gap-1 h-9"
                     onClick={() => setQrCameraOpen(true)}
                     aria-label="สแกนด้วยกล้อง"
                     data-testid="button-camera-scan"

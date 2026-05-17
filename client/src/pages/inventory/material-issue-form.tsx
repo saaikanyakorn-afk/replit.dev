@@ -731,7 +731,7 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
               <Button
                 type="button"
                 variant="outline"
-                className="md:hidden shrink-0 gap-1.5"
+                className="shrink-0 gap-1.5"
                 onClick={() => setEmpCameraOpen(true)}
                 aria-label="สแกนด้วยกล้อง"
                 data-testid="button-emp-camera-scan"
@@ -868,7 +868,7 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
               <Button
                 type="button"
                 variant="outline"
-                className="md:hidden shrink-0 gap-1.5"
+                className="shrink-0 gap-1.5"
                 onClick={() => setProductCameraOpen(true)}
                 aria-label="สแกนด้วยกล้อง"
                 data-testid="button-product-camera-scan"

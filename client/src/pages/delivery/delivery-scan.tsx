@@ -101,7 +101,7 @@ export default function DeliveryScan() {
               <Button
                 type="button"
                 variant="outline"
-                className="md:hidden shrink-0 gap-1.5 h-12"
+                className="shrink-0 gap-1.5 h-12"
                 onClick={() => setCameraOpen(true)}
                 aria-label="สแกนด้วยกล้อง"
                 data-testid="button-camera-scan"
