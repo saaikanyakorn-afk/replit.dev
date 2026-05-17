@@ -73,12 +73,17 @@ export default function GoodsReceivingList(props: { Wrapper?: React.ComponentTyp
 
   const approveMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/goods-receivings/${id}/approve`);
-      return res.json();
+      const res = await fetch(`/api/goods-receivings/${id}/approve`, { method: "POST", credentials: "include" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "อนุมัติไม่สำเร็จ");
+      return body;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
-      toast({ title: "อนุมัติใบรับสินค้าสำเร็จ", variant: "success" as any });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-lots"] });
+      toast({ title: "อนุมัติใบรับสินค้าสำเร็จ" });
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });
@@ -91,6 +96,9 @@ export default function GoodsReceivingList(props: { Wrapper?: React.ComponentTyp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-lots"] });
       toast({ title: "ลบใบรับสินค้าสำเร็จ" });
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),

@@ -533,6 +533,10 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
       if (!res.ok) throw new Error(data.message || "อนุมัติไม่สำเร็จ");
       toast({ title: "อนุมัติใบรับสินค้าสำเร็จ", description: "สต๊อกถูกอัปเดตแล้ว" });
       setForm(prev => ({ ...prev, status: "approved" }));
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-lots"] });
     } catch (err: any) {
       toast({ title: "ข้อผิดพลาด", description: err.message, variant: "destructive" });
     } finally {
