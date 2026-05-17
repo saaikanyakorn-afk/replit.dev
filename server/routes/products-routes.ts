@@ -2745,18 +2745,12 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
     if (!items || !Array.isArray(items) || items.length === 0) return res.status(400).json({ message: "ต้องมีรายการอย่างน้อย 1 รายการ" });
     const ac = await checkDocOwnership(companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
-    const issueNo = await getNextMaterialIssueNo(companyId);
-    const moIdSql = (moId === null || moId === undefined) ? "NULL" : Number(moId);
-    const issuedByUserIdSql = (issuedByUserId === null || issuedByUserId === undefined) ? "NULL" : Number(issuedByUserId);
-    const notesSql = (notes === null || notes === undefined || String(notes).trim() === "") ? "NULL" : `'${String(notes).replace(/'/g, "''")}'`;
-    const created = await db.execute(sql.raw(`
-      INSERT INTO material_issues (company_id, issue_no, mo_id, issued_by_user_id, notes, status)
-      VALUES (${companyId}, '${issueNo}', ${moIdSql}, ${issuedByUserIdSql}, ${notesSql}, 'draft')
-      RETURNING *
-    `));
-    const issue = created.rows[0] as any;
+
+    // ── Phase 1: validate ALL items before any DB write (fail fast, no partial state) ──
+    type ValidatedItem = { productId: number; productName: string; lotId: number | null; lotNumber: string | null; qty: number; unit: string; lotIdSql: number | "NULL"; lotNumberSql: string; };
+    const validatedItems: ValidatedItem[] = [];
     for (const item of items) {
-      if (!item.productId) throw new Error(`[MAT-ISSUE-ITEM] productId ไม่ครบ — productName="${item.productName}" — กรุณาเลือกสินค้าจากรายการ`);
+      if (!item.productId) throw new Error(`[MAT-ISSUE-ITEM] productId ไม่ครบ — productName="${item.productName}"`);
       if (!item.productName) throw new Error(`[MAT-ISSUE-ITEM] productName ไม่ครบ — productId=${item.productId}`);
       if (!item.quantity || Number(item.quantity) <= 0) throw new Error(`[MAT-ISSUE-ITEM] quantity ต้องมากกว่า 0 — productId=${item.productId}`);
       if (!item.unit) throw new Error(`[MAT-ISSUE-ITEM] unit ไม่ครบ — productId=${item.productId}`);
@@ -2770,16 +2764,42 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
           throw new Error(`[MAT-ISSUE-ITEM] lotId=${item.lotId} ไม่ตรงกับ productId=${itemProductId} หรือ companyId=${companyId} — ข้อมูล QR ไม่ถูกต้อง`);
         }
       }
-      const lotIdSql = (item.lotId === null || item.lotId === undefined) ? "NULL" : Number(item.lotId);
-      const lotNumberSql = (item.lotNumber === null || item.lotNumber === undefined || String(item.lotNumber).trim() === "") ? "NULL" : `'${String(item.lotNumber).replace(/'/g, "''")}'`;
-      await db.execute(sql.raw(`
-        INSERT INTO material_issue_items (material_issue_id, product_id, product_name, lot_id, lot_number, quantity, unit)
-        VALUES (${Number(issue.id)}, ${itemProductId}, '${String(item.productName).replace(/'/g, "''")}',
-          ${lotIdSql}, ${lotNumberSql},
-          ${Number(item.quantity)}, '${String(item.unit).replace(/'/g, "''")}')
-      `));
+      validatedItems.push({
+        productId: itemProductId,
+        productName: String(item.productName),
+        lotId: (item.lotId === null || item.lotId === undefined) ? null : Number(item.lotId),
+        lotNumber: (item.lotNumber === null || item.lotNumber === undefined || String(item.lotNumber).trim() === "") ? null : String(item.lotNumber),
+        qty: Number(item.quantity),
+        unit: String(item.unit),
+        lotIdSql: (item.lotId === null || item.lotId === undefined) ? "NULL" : Number(item.lotId),
+        lotNumberSql: (item.lotNumber === null || item.lotNumber === undefined || String(item.lotNumber).trim() === "") ? "NULL" : `'${String(item.lotNumber).replace(/'/g, "''")}'`,
+      });
     }
-    res.json({ ...issue, issueNo });
+
+    // ── Phase 2: all writes in a single transaction (atomic — all or nothing) ──
+    const issueNo = await getNextMaterialIssueNo(companyId);
+    const moIdSql = (moId === null || moId === undefined) ? "NULL" : Number(moId);
+    const issuedByUserIdSql = (issuedByUserId === null || issuedByUserId === undefined) ? "NULL" : Number(issuedByUserId);
+    const notesSql = (notes === null || notes === undefined || String(notes).trim() === "") ? "NULL" : `'${String(notes).replace(/'/g, "''")}'`;
+
+    let createdIssue: any;
+    await db.transaction(async (tx) => {
+      const created = await tx.execute(sql.raw(`
+        INSERT INTO material_issues (company_id, issue_no, mo_id, issued_by_user_id, notes, status)
+        VALUES (${companyId}, '${issueNo}', ${moIdSql}, ${issuedByUserIdSql}, ${notesSql}, 'draft')
+        RETURNING *
+      `));
+      createdIssue = created.rows[0] as any;
+      const issueId = Number(createdIssue.id);
+      for (const vi of validatedItems) {
+        await tx.execute(sql.raw(`
+          INSERT INTO material_issue_items (material_issue_id, product_id, product_name, lot_id, lot_number, quantity, unit)
+          VALUES (${issueId}, ${vi.productId}, '${vi.productName.replace(/'/g, "''")}',
+            ${vi.lotIdSql}, ${vi.lotNumberSql}, ${vi.qty}, '${vi.unit.replace(/'/g, "''")}')
+        `));
+      }
+    });
+    res.json({ ...createdIssue, issueNo });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
@@ -2831,20 +2851,29 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
     const notesText = `เบิกวัตถุดิบ ${issueNo}`.replace(/'/g, "''");
 
     await db.transaction(async (tx) => {
+      // ── Atomic status transition (FIRST write — prevents race/double-confirm) ──
+      // If two concurrent requests both pass pre-flight, only ONE will get a row back here.
+      const locked = await tx.execute(sql.raw(
+        `UPDATE material_issues SET status = 'confirmed', issued_at = NOW() WHERE id = ${id} AND status = 'draft' RETURNING id`
+      ));
+      if (!locked.rows.length) {
+        throw new Error(`[MAT-ISSUE-CONFIRM] ใบเบิก id=${id} ถูกยืนยันไปแล้วหรือมีการประมวลผลพร้อมกัน — กรุณา refresh หน้า`);
+      }
+
       for (const item of items) {
         const productId = Number(item.product_id);
         const qty = Number(item.quantity);
         const lotId = item.lot_id ? Number(item.lot_id) : null;
         const lotIdSql = lotId !== null ? lotId : "NULL";
 
-        // Deduct lot quantity (no GREATEST — throw on underflow was already checked in pre-flight)
+        // Deduct lot quantity (no GREATEST — sufficiency was checked in Phase 2 pre-flight)
         if (lotId !== null) {
           await tx.execute(sql.raw(
             `UPDATE product_lots SET quantity = CAST(quantity AS NUMERIC) - ${qty} WHERE id = ${lotId}`
           ));
         }
 
-        // Insert stock movement (includes lot_id directly — no separate UPDATE needed)
+        // Insert stock movement (lot_id included directly — no separate UPDATE needed)
         await tx.execute(sql.raw(`
           INSERT INTO stock_movements
             (company_id, product_id, lot_id, movement_type, quantity, unit_cost, total_cost,
@@ -2866,11 +2895,6 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
           ON CONFLICT (company_id, product_id) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()
         `));
       }
-
-      // Mark issue confirmed
-      await tx.execute(sql.raw(
-        `UPDATE material_issues SET status = 'confirmed', issued_at = NOW() WHERE id = ${id}`
-      ));
     });
 
     res.json({ message: "ยืนยันการเบิกวัตถุดิบสำเร็จ", issueNo });
