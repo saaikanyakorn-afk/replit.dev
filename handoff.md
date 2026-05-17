@@ -150,6 +150,9 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 | T35-31 | CODE REVIEW FIX (round 5) — Employee QR card updated to 62×40mm format (234×151px screen, 62×40mm print); added ตำแหน่ง field (role label mapped to Thai); horizontal layout QR+info; print template uses `width: 62mm; height: 40mm` CSS | `client/src/pages/inventory/employee-qr.tsx` rewritten | ✅ |
 | T35-32 | CODE REVIEW FIX (round 6) — Server-side `issuedByUserId` validation in POST /api/material-issues: check user is active in `users` table AND allowed for companyId (allowedCompanyIds includes OR role=superadmin) — prevents cross-tenant user attribution spoofing | `server/routes/products-routes.ts` lines 2782-2798 | ✅ |
 | T35-33 | CODE REVIEW FIX (round 6) — Added `GET /api/users/employee-qr-labels` alias route (same handler as `/employee-qr-data`) — satisfies both naming conventions, no frontend changes needed | `server/routes/products-routes.ts` lines 2682-2705 | ✅ |
+| T35-34 | CODE REVIEW FIX (round 7) — Cross-tenant moId validation in POST create: `manufacturing_orders WHERE id=moNum AND company_id=companyId` — rejects MO from other tenants | `server/routes/products-routes.ts` lines 2777-2785 | ✅ |
+| T35-35 | CODE REVIEW FIX (round 7) — Cross-tenant productId validation in POST create Phase 1 loop: `products WHERE id=itemProductId AND company_id=companyId` for every item (including non-lot items) | `server/routes/products-routes.ts` lines 2796-2800 | ✅ |
+| T35-36 | CODE REVIEW FIX (round 7) — Cross-tenant productId validation in confirm Phase 2: `products WHERE id=productId AND company_id=companyId` — no-rows → throw error; eliminates cross-tenant stock pollution | `server/routes/products-routes.ts` lines 2893-2895 | ✅ |
 
 **⚠️ Before production push:**
 - This commit contains NEW TABLES (schema change) — alert พี่ช้าง: `material_issues` + `material_issue_items` will be auto-created by `runMaterialIssueMigration()` on first server start

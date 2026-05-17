@@ -2771,6 +2771,16 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
     const ac = await checkDocOwnership(companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
 
+    // ── Validate moId company ownership (if provided) ──
+    if (moId !== null && moId !== undefined) {
+      const moNum = Number(moId);
+      if (!moNum || isNaN(moNum)) throw new Error(`[MAT-ISSUE-MO] moId ต้องเป็นตัวเลข — ค่าที่ได้รับ: ${moId}`);
+      const moCheck = await db.execute(sql.raw(
+        `SELECT id FROM manufacturing_orders WHERE id = ${moNum} AND company_id = ${companyId} LIMIT 1`
+      ));
+      if (!moCheck.rows.length) throw new Error(`[MAT-ISSUE-MO] moId=${moNum} ไม่พบหรือไม่ใช่ของบริษัท companyId=${companyId} — ข้อมูลไม่ถูกต้อง`);
+    }
+
     // ── Phase 1: validate ALL items before any DB write (fail fast, no partial state) ──
     type ValidatedItem = { productId: number; productName: string; lotId: number | null; lotNumber: string | null; qty: number; unit: string; lotIdSql: number | "NULL"; lotNumberSql: string; };
     const validatedItems: ValidatedItem[] = [];
@@ -2780,6 +2790,11 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
       if (!item.quantity || Number(item.quantity) <= 0) throw new Error(`[MAT-ISSUE-ITEM] quantity ต้องมากกว่า 0 — productId=${item.productId}`);
       if (!item.unit) throw new Error(`[MAT-ISSUE-ITEM] unit ไม่ครบ — productId=${item.productId}`);
       const itemProductId = Number(item.productId);
+      // Validate product belongs to this company (prevents cross-tenant product reference)
+      const productOwner = await db.execute(sql.raw(
+        `SELECT id FROM products WHERE id = ${itemProductId} AND company_id = ${companyId} LIMIT 1`
+      ));
+      if (!productOwner.rows.length) throw new Error(`[MAT-ISSUE-ITEM] productId=${itemProductId} ไม่พบหรือไม่ใช่ของบริษัท companyId=${companyId} — ข้อมูลไม่ถูกต้อง`);
       // Validate lot belongs to this product and company (security: prevent cross-product lot deduction)
       if (item.lotId !== null && item.lotId !== undefined) {
         const lotValidate = await db.execute(sql.raw(
@@ -2872,8 +2887,10 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
       const qty = Number(item.quantity);
       if (!productId) throw new Error(`[MAT-ISSUE-CONFIRM] product_id null — item.id=${item.id}`);
       if (qty <= 0) throw new Error(`[MAT-ISSUE-CONFIRM] quantity=${qty} ไม่ถูกต้อง — item.id=${item.id} productId=${productId}`);
-      const prodRows = await db.execute(sql.raw(`SELECT track_lots FROM products WHERE id = ${productId} LIMIT 1`));
-      if (prodRows.rows.length > 0 && (prodRows.rows[0] as any).track_lots === true && !item.lot_id) {
+      // Validate product belongs to this company (cross-tenant reference guard)
+      const prodRows = await db.execute(sql.raw(`SELECT track_lots FROM products WHERE id = ${productId} AND company_id = ${companyId} LIMIT 1`));
+      if (!prodRows.rows.length) throw new Error(`[MAT-ISSUE-CONFIRM] productId=${productId} ไม่พบหรือไม่ใช่ของบริษัท companyId=${companyId} — item.id=${item.id}`);
+      if ((prodRows.rows[0] as any).track_lots === true && !item.lot_id) {
         throw new Error(`[MAT-ISSUE-CONFIRM] สินค้า productId=${productId} ต้องระบุ Lot — item.id=${item.id} — กรุณาแก้ไขใบเบิกก่อนยืนยัน`);
       }
       if (item.lot_id) {
