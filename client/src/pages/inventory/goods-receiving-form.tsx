@@ -218,6 +218,13 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     }
   }, [isNew, editingId, companyId, loaded]);
 
+  // Auto-select default warehouse when creating new GR
+  useEffect(() => {
+    if (!isNew || !warehouses.length || form.warehouseId) return;
+    const def = warehouses.find((w: any) => w.isDefault);
+    if (def) setForm(prev => ({ ...prev, warehouseId: def.id }));
+  }, [isNew, warehouses, form.warehouseId]);
+
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch("/api/goods-receivings", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(data) });
