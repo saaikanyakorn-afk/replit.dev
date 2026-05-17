@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import ThaiDateInput from "@/components/thai-date-input";
 import { useDateSettings } from "@/hooks/use-date-settings";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,10 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Search, AlertTriangle, Clock, CalendarX, Trash2, Pencil, X, Check } from "lucide-react";
+import { Package, Search, AlertTriangle, Clock, CalendarX, Trash2, Pencil, X, Check, ChevronDown, ChevronRight, History, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 function fmtDate(d: string | null): string {
   if (!d) return "-";
@@ -30,6 +31,105 @@ const EXPIRY_COLORS: Record<string, { bg: string; text: string; label: string }>
   ok: { bg: "bg-green-50", text: "text-green-700", label: "ปกติ" },
 };
 
+interface IssueHistoryItem {
+  issue_id: number;
+  issue_no: string;
+  issued_at: string | null;
+  status: string;
+  quantity: string | number;
+  unit: string;
+  issued_by_name: string | null;
+  mo_no: string | null;
+  mo_id: number | null;
+}
+
+function IssueHistoryPanel({ lotId, companyId, urlBase }: { lotId: number; companyId: number; urlBase: string }) {
+  const [, navigate] = useLocation();
+  const { data: history = [], isLoading } = useQuery<IssueHistoryItem[]>({
+    queryKey: ["/api/product-lots/issue-history", lotId, companyId],
+    queryFn: async () => {
+      const r = await fetch(`/api/product-lots/${lotId}/issue-history?companyId=${companyId}`, { credentials: "include" });
+      return r.ok ? r.json() : [];
+    },
+    enabled: !!companyId,
+  });
+
+  if (isLoading) {
+    return (
+      <TableRow>
+        <TableCell colSpan={9} className="bg-blue-50/40 px-6 py-3 text-sm text-gray-400">กำลังโหลดประวัติ...</TableCell>
+      </TableRow>
+    );
+  }
+
+  return (
+    <TableRow data-testid={`row-issue-history-${lotId}`}>
+      <TableCell colSpan={9} className="bg-slate-50/60 p-0">
+        <div className="px-6 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <History className="h-3.5 w-3.5 text-slate-500" />
+            <span className="text-xs font-semibold text-slate-600">ประวัติการเบิก</span>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{history.length} รายการ</Badge>
+          </div>
+          {history.length === 0 ? (
+            <p className="text-xs text-gray-400 py-1">ยังไม่มีประวัติการเบิกสำหรับล็อตนี้</p>
+          ) : (
+            <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+              <Table>
+                <TableHeader className="bg-slate-100">
+                  <TableRow className="h-8">
+                    <TableHead className="text-[11px] font-medium text-slate-500 py-0">เลขที่ใบเบิก</TableHead>
+                    <TableHead className="text-[11px] font-medium text-slate-500 py-0">วันที่</TableHead>
+                    <TableHead className="text-[11px] font-medium text-slate-500 py-0 text-right">จำนวนที่เบิก</TableHead>
+                    <TableHead className="text-[11px] font-medium text-slate-500 py-0">ผู้เบิก</TableHead>
+                    <TableHead className="text-[11px] font-medium text-slate-500 py-0">MO ที่ผูก</TableHead>
+                    <TableHead className="text-[11px] font-medium text-slate-500 py-0">สถานะ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((item) => (
+                    <TableRow key={item.issue_id} data-testid={`row-history-item-${item.issue_id}`} className="h-8 hover:bg-slate-50">
+                      <TableCell className="py-1">
+                        <button
+                          data-testid={`link-issue-no-${item.issue_id}`}
+                          className="text-xs font-mono text-blue-600 hover:underline flex items-center gap-1"
+                          onClick={() => navigate(`${urlBase}/material-issue/form/${item.issue_id}`)}
+                        >
+                          {item.issue_no}
+                          <ExternalLink className="h-3 w-3 opacity-60" />
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-xs py-1 text-slate-600">{item.issued_at ? fmtDate(item.issued_at) : "-"}</TableCell>
+                      <TableCell className="text-xs py-1 text-right tabular-nums font-medium">
+                        {fmtQty(item.quantity)} <span className="text-gray-400">{item.unit}</span>
+                      </TableCell>
+                      <TableCell className="text-xs py-1 text-slate-600">{item.issued_by_name || "-"}</TableCell>
+                      <TableCell className="text-xs py-1">
+                        {item.mo_no ? (
+                          <span className="font-mono text-slate-700">{item.mo_no}</span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-1">
+                        {item.status === "confirmed" ? (
+                          <Badge className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0 border-0">ยืนยันแล้ว</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">ร่าง</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export default function ProductLotsPage() {
   const { selectedCompany } = useCompany();
   const companyId = selectedCompany?.id;
@@ -41,6 +141,9 @@ export default function ProductLotsPage() {
   const [expiryDays, setExpiryDays] = useState("30");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>({});
+  const [expandedLotId, setExpandedLotId] = useState<number | null>(null);
+
+  const urlBase = "/inventory";
 
   const { data: lots = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/product-lots", companyId],
@@ -64,7 +167,7 @@ export default function ProductLotsPage() {
 
   const updateLot = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const r = await apiRequest("PATCH", `/api/product-lots/${id}?companyId=${selectedCompanyId}`, data);
+      const r = await apiRequest("PATCH", `/api/product-lots/${id}?companyId=${companyId}`, data);
       return r.json();
     },
     onSuccess: () => {
@@ -76,7 +179,7 @@ export default function ProductLotsPage() {
   });
 
   const deleteLot = useMutation({
-    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/product-lots/${id}?companyId=${selectedCompanyId}`); },
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/product-lots/${id}?companyId=${companyId}`); },
     onSuccess: () => {
       toast({ title: "ลบล็อตแล้ว" });
       qc.invalidateQueries({ queryKey: ["/api/product-lots"] });
@@ -94,6 +197,10 @@ export default function ProductLotsPage() {
 
   const activeLots = filteredLots.filter((l: any) => Number(l.quantity) > 0);
   const emptyLots = filteredLots.filter((l: any) => Number(l.quantity) <= 0);
+
+  function toggleExpand(lotId: number) {
+    setExpandedLotId(prev => prev === lotId ? null : lotId);
+  }
 
   return (
     <Layout>
@@ -135,6 +242,7 @@ export default function ProductLotsPage() {
                   <Table>
                     <TableHeader className="bg-slate-50">
                       <TableRow className="h-10">
+                        <TableHead className="w-8"></TableHead>
                         <TableHead className="text-xs font-medium text-slate-600">เลขล็อต</TableHead>
                         <TableHead className="text-xs font-medium text-slate-600">สินค้า</TableHead>
                         <TableHead className="text-xs font-medium text-slate-600 w-24 text-right">คงเหลือ</TableHead>
@@ -147,84 +255,102 @@ export default function ProductLotsPage() {
                     </TableHeader>
                     <TableBody>
                       {isLoading ? (
-                        <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-400">กำลังโหลด...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-400">กำลังโหลด...</TableCell></TableRow>
                       ) : filteredLots.length === 0 ? (
-                        <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-400">ยังไม่มีข้อมูลล็อต</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-400">ยังไม่มีข้อมูลล็อต</TableCell></TableRow>
                       ) : filteredLots.map((lot: any) => {
                         const isEditing = editingId === lot.id;
+                        const isExpanded = expandedLotId === lot.id;
                         const daysLeft = lot.expiryDate ? Math.ceil((new Date(lot.expiryDate).getTime() - Date.now()) / 86400000) : null;
                         const level = daysLeft === null ? null : daysLeft <= 0 ? "expired" : daysLeft <= 7 ? "critical" : daysLeft <= 30 ? "warning" : "ok";
                         return (
-                          <TableRow key={lot.id} data-testid={`row-lot-${lot.id}`} className={`hover:bg-slate-50/50 ${level === "expired" ? "bg-red-50/30" : level === "critical" ? "bg-red-50/20" : ""}`}>
-                            <TableCell className="text-sm font-mono font-medium">
-                              {isEditing ? (
-                                <Input value={editForm.lotNumber} onChange={e => setEditForm({ ...editForm, lotNumber: e.target.value })} className="h-7 text-xs w-28" />
-                              ) : lot.lotNumber}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm text-slate-800">{lot.productName}</div>
-                              <div className="text-[11px] text-gray-400">{lot.productCode}</div>
-                            </TableCell>
-                            <TableCell className="text-right text-sm tabular-nums">
-                              {fmtQty(lot.quantity)} <span className="text-[11px] text-gray-400">{lot.productUnit}</span>
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {isEditing ? (
-                                <ThaiDateInput value={editForm.manufacturingDate || ""} onChange={(v: string) => setEditForm({ ...editForm, manufacturingDate: v })} dateEra={dateEra} dateFmt={dateFmt} className="h-7 text-xs" />
-                              ) : fmtDate(lot.manufacturingDate)}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {isEditing ? (
-                                <ThaiDateInput value={editForm.expiryDate || ""} onChange={(v: string) => setEditForm({ ...editForm, expiryDate: v })} dateEra={dateEra} dateFmt={dateFmt} className="h-7 text-xs" />
-                              ) : (
-                                <div className="flex items-center gap-1.5">
-                                  {fmtDate(lot.expiryDate)}
-                                  {level && (
-                                    <Badge className={`text-[9px] px-1 py-0 ${EXPIRY_COLORS[level].bg} ${EXPIRY_COLORS[level].text} border-0`}>
-                                      {daysLeft! <= 0 ? "หมดอายุ" : `${daysLeft} วัน`}
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={`text-[10px] ${Number(lot.quantity) > 0 ? "border-green-200 text-green-700" : "border-gray-200 text-gray-500"}`}>
-                                {Number(lot.quantity) > 0 ? "มีสต็อก" : "หมด"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-sm tabular-nums">
-                              {Number(lot.unitCost || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}
-                            </TableCell>
-                            <TableCell>
-                              {isEditing ? (
-                                <div className="flex items-center gap-1">
-                                  <button className="p-1 rounded hover:bg-green-50" onClick={() => updateLot.mutate({ id: lot.id, data: editForm })}>
-                                    <Check className="w-4 h-4 text-green-600" />
-                                  </button>
-                                  <button className="p-1 rounded hover:bg-gray-100" onClick={() => setEditingId(null)}>
-                                    <X className="w-4 h-4 text-gray-400" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    className="p-1 rounded hover:bg-blue-50"
-                                    title="แก้ไข"
-                                    onClick={() => { setEditingId(lot.id); setEditForm({ lotNumber: lot.lotNumber, manufacturingDate: lot.manufacturingDate || "", expiryDate: lot.expiryDate || "" }); }}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5 text-blue-500" />
-                                  </button>
-                                  <button
-                                    className="p-1 rounded hover:bg-red-50"
-                                    title="ลบ"
-                                    onClick={() => { if (confirm("ลบล็อตนี้?")) deleteLot.mutate(lot.id); }}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                                  </button>
-                                </div>
-                              )}
-                            </TableCell>
-                          </TableRow>
+                          <Fragment key={lot.id}>
+                            <TableRow data-testid={`row-lot-${lot.id}`} className={`hover:bg-slate-50/50 ${level === "expired" ? "bg-red-50/30" : level === "critical" ? "bg-red-50/20" : ""}`}>
+                              <TableCell className="px-2">
+                                <button
+                                  data-testid={`button-expand-lot-${lot.id}`}
+                                  className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                                  title="ดูประวัติการเบิก"
+                                  onClick={() => toggleExpand(lot.id)}
+                                >
+                                  {isExpanded
+                                    ? <ChevronDown className="w-3.5 h-3.5" />
+                                    : <ChevronRight className="w-3.5 h-3.5" />}
+                                </button>
+                              </TableCell>
+                              <TableCell className="text-sm font-mono font-medium">
+                                {isEditing ? (
+                                  <Input value={editForm.lotNumber} onChange={e => setEditForm({ ...editForm, lotNumber: e.target.value })} className="h-7 text-xs w-28" />
+                                ) : lot.lotNumber}
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-sm text-slate-800">{lot.productName}</div>
+                                <div className="text-[11px] text-gray-400">{lot.productCode}</div>
+                              </TableCell>
+                              <TableCell className="text-right text-sm tabular-nums">
+                                {fmtQty(lot.quantity)} <span className="text-[11px] text-gray-400">{lot.productUnit}</span>
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {isEditing ? (
+                                  <ThaiDateInput value={editForm.manufacturingDate || ""} onChange={(v: string) => setEditForm({ ...editForm, manufacturingDate: v })} dateEra={dateEra} dateFmt={dateFmt} className="h-7 text-xs" />
+                                ) : fmtDate(lot.manufacturingDate)}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {isEditing ? (
+                                  <ThaiDateInput value={editForm.expiryDate || ""} onChange={(v: string) => setEditForm({ ...editForm, expiryDate: v })} dateEra={dateEra} dateFmt={dateFmt} className="h-7 text-xs" />
+                                ) : (
+                                  <div className="flex items-center gap-1.5">
+                                    {fmtDate(lot.expiryDate)}
+                                    {level && (
+                                      <Badge className={`text-[9px] px-1 py-0 ${EXPIRY_COLORS[level].bg} ${EXPIRY_COLORS[level].text} border-0`}>
+                                        {daysLeft! <= 0 ? "หมดอายุ" : `${daysLeft} วัน`}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={`text-[10px] ${Number(lot.quantity) > 0 ? "border-green-200 text-green-700" : "border-gray-200 text-gray-500"}`}>
+                                  {Number(lot.quantity) > 0 ? "มีสต็อก" : "หมด"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right text-sm tabular-nums">
+                                {Number(lot.unitCost || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}
+                              </TableCell>
+                              <TableCell>
+                                {isEditing ? (
+                                  <div className="flex items-center gap-1">
+                                    <button className="p-1 rounded hover:bg-green-50" onClick={() => updateLot.mutate({ id: lot.id, data: editForm })}>
+                                      <Check className="w-4 h-4 text-green-600" />
+                                    </button>
+                                    <button className="p-1 rounded hover:bg-gray-100" onClick={() => setEditingId(null)}>
+                                      <X className="w-4 h-4 text-gray-400" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      className="p-1 rounded hover:bg-blue-50"
+                                      title="แก้ไข"
+                                      onClick={() => { setEditingId(lot.id); setEditForm({ lotNumber: lot.lotNumber, manufacturingDate: lot.manufacturingDate || "", expiryDate: lot.expiryDate || "" }); }}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5 text-blue-500" />
+                                    </button>
+                                    <button
+                                      className="p-1 rounded hover:bg-red-50"
+                                      title="ลบ"
+                                      onClick={() => { if (confirm("ลบล็อตนี้?")) deleteLot.mutate(lot.id); }}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                                    </button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <IssueHistoryPanel key={`history-${lot.id}`} lotId={lot.id} companyId={companyId!} urlBase={urlBase} />
+                            )}
+                          </Fragment>
                         );
                       })}
                     </TableBody>

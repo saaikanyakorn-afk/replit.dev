@@ -2247,6 +2247,36 @@ app.delete("/api/product-lots/:id", requireAuth, requireModule("inventory"), asy
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
+app.get("/api/product-lots/:id/issue-history", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const lotId = Number(req.params.id);
+    const companyId = Number(req.query.companyId);
+    if (!lotId) return res.status(400).json({ message: "lotId required" });
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const [lot] = await db.select({ id: productLots.id }).from(productLots).where(and(eq(productLots.id, lotId), eq(productLots.companyId, companyId)));
+    if (!lot) return res.status(404).json({ message: "ไม่พบล็อต" });
+    const rows = await db.execute(sql`
+      SELECT
+        mi.id AS issue_id,
+        mi.issue_no,
+        mi.issued_at,
+        mi.status,
+        mii.quantity,
+        mii.unit,
+        u.name AS issued_by_name,
+        mo.mo_no,
+        mo.id AS mo_id
+      FROM material_issue_items mii
+      JOIN material_issues mi ON mi.id = mii.material_issue_id AND mi.company_id = ${companyId}
+      LEFT JOIN users u ON u.id = mi.issued_by_user_id
+      LEFT JOIN manufacturing_orders mo ON mo.id = mi.mo_id
+      WHERE mii.lot_id = ${lotId}
+      ORDER BY mi.issued_at DESC, mi.id DESC
+    `);
+    res.json(rows.rows || []);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
 // ============ Goods Requisition (ใบเบิกสินค้า) ============
 
 app.get("/api/goods-requisitions", requireAuth, requireModule("inventory"), async (req, res) => {
