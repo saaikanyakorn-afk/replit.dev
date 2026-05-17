@@ -525,6 +525,35 @@ export function registerManufacturingRoutes(app: Express) {
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
 
+  // [issued-summary] GET /api/manufacturing-orders/:id/issued-summary — รวมยอดเบิกวัตถุดิบต่อ MO เปรียบกับ BOM
+  app.get("/api/manufacturing-orders/:id/issued-summary", requireAuth, requireModule("inventory"), async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const companyId = Number(req.query.companyId);
+      if (!companyId) return res.status(400).json({ message: "companyId required" });
+
+      const [mo] = await db.select().from(manufacturingOrders)
+        .where(and(eq(manufacturingOrders.id, id), eq(manufacturingOrders.companyId, companyId)));
+      if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
+
+      const rows = await db.execute(sql.raw(`
+        SELECT mii.product_id, SUM(mii.quantity::numeric) AS total_qty
+        FROM material_issue_items mii
+        JOIN material_issues mi ON mi.id = mii.material_issue_id
+        WHERE mi.mo_id = ${id} AND mi.status = 'confirmed' AND mi.company_id = ${companyId}
+        GROUP BY mii.product_id
+      `));
+
+      const issuedMap = new Map<number, number>();
+      for (const r of rows.rows as any[]) {
+        const existing = issuedMap.get(Number(r.product_id)) || 0;
+        issuedMap.set(Number(r.product_id), existing + Number(r.total_qty));
+      }
+
+      res.json({ issuedMap: Object.fromEntries(issuedMap) });
+    } catch (err: any) { res.status(400).json({ message: err.message }); }
+  });
+
   // [lot-trace] GET /api/manufacturing-orders/lot-trace — ตรวจสอบย้อนกลับจาก Lot สินค้าสำเร็จรูป
   app.get("/api/manufacturing-orders/lot-trace", requireAuth, requireModule("inventory"), async (req, res) => {
     try {

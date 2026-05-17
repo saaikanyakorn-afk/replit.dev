@@ -110,6 +110,16 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
     enabled: !!editId && !!selectedCompanyId && (moStatus === "in_progress" || moStatus === "completed"),
   });
 
+  const { data: issuedSummary } = useQuery<{ issuedMap: Record<string, number> }>({
+    queryKey: ["/api/manufacturing-orders", editId, "issued-summary", selectedCompanyId],
+    queryFn: async () => {
+      const r = await fetch(`/api/manufacturing-orders/${editId}/issued-summary?companyId=${selectedCompanyId}`, { credentials: "include" });
+      if (!r.ok) return { issuedMap: {} };
+      return r.json();
+    },
+    enabled: !!editId && !!selectedCompanyId && (moStatus === "in_progress" || moStatus === "completed"),
+  });
+
   const { data: moDetail } = useQuery<any>({
     queryKey: ["/api/manufacturing-orders", editId, selectedCompanyId],
     queryFn: async () => {
@@ -710,6 +720,58 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              {lines.length > 0 && (
+                <div className="px-4 pb-3 border-b">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">สรุปยอดเบิกเทียบ BOM</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead className="text-xs">วัตถุดิบ</TableHead>
+                        <TableHead className="text-right text-xs">ต้องใช้</TableHead>
+                        <TableHead className="text-right text-xs">เบิกแล้ว</TableHead>
+                        <TableHead className="text-right text-xs">คงเหลือ</TableHead>
+                        <TableHead className="text-center text-xs w-10">สถานะ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lines.map((line, idx) => {
+                        const required = Number(line.requiredQty) || 0;
+                        const issued = issuedSummary?.issuedMap?.[String(line.componentProductId)] || 0;
+                        const remaining = Math.max(0, required - issued);
+                        const isFulfilled = issued >= required;
+                        return (
+                          <TableRow key={idx} data-testid={`row-bom-summary-${line.componentProductId}`}>
+                            <TableCell className="text-sm py-2">
+                              <span className="font-medium">{line.componentName}</span>
+                              {line.componentCode && <span className="text-xs text-slate-400 ml-1">({line.componentCode})</span>}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-sm py-2" data-testid={`text-bom-required-${line.componentProductId}`}>
+                              {required.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-sm py-2" data-testid={`text-bom-issued-${line.componentProductId}`}>
+                              <span className={issued > 0 ? "text-blue-700 font-medium" : "text-slate-400"}>
+                                {issued.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-sm py-2" data-testid={`text-bom-remaining-${line.componentProductId}`}>
+                              <span className={isFulfilled ? "text-green-600" : "text-amber-600 font-medium"}>
+                                {isFulfilled ? "0" : remaining.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center py-2" data-testid={`text-bom-status-${line.componentProductId}`}>
+                              {isFulfilled ? (
+                                <span className="text-green-600 text-base" title="เบิกครบแล้ว">✓</span>
+                              ) : (
+                                <span className="text-amber-500 text-base" title="ยังเบิกไม่ครบ">⚠</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
               {materialIssues.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6" data-testid="text-no-material-issues">
                   ยังไม่มีใบเบิกวัตถุดิบสำหรับใบสั่งผลิตนี้
