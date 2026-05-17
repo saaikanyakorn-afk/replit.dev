@@ -145,6 +145,17 @@ export default function ProductLotsPage() {
 
   const urlBase = "/inventory";
 
+  const { data: companySettings } = useQuery<{ lotLowStockThreshold?: number }>({
+    queryKey: ["/api/settings/general", companyId],
+    queryFn: async () => {
+      if (!companyId) return {};
+      const r = await fetch(`/api/settings/general?companyId=${companyId}`, { credentials: "include" });
+      if (!r.ok) return {};
+      return r.json();
+    },
+    enabled: !!companyId,
+  });
+
   const { data: lots = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/product-lots", companyId],
     queryFn: async () => {
@@ -263,6 +274,12 @@ export default function ProductLotsPage() {
                         const isExpanded = expandedLotId === lot.id;
                         const daysLeft = lot.expiryDate ? Math.ceil((new Date(lot.expiryDate).getTime() - Date.now()) / 86400000) : null;
                         const level = daysLeft === null ? null : daysLeft <= 0 ? "expired" : daysLeft <= 7 ? "critical" : daysLeft <= 30 ? "warning" : "ok";
+                        const qty = Number(lot.quantity);
+                        const productThreshold = lot.productLowStockThreshold ?? 0;
+                        const companyThreshold = companySettings?.lotLowStockThreshold ?? 10;
+                        const threshold = productThreshold > 0 ? productThreshold : companyThreshold;
+                        const isOutOfStock = qty <= 0;
+                        const isLowStock = !isOutOfStock && qty < threshold;
                         return (
                           <Fragment key={lot.id}>
                             <TableRow data-testid={`row-lot-${lot.id}`} className={`hover:bg-slate-50/50 ${level === "expired" ? "bg-red-50/30" : level === "critical" ? "bg-red-50/20" : ""}`}>
@@ -310,9 +327,18 @@ export default function ProductLotsPage() {
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Badge variant="outline" className={`text-[10px] ${Number(lot.quantity) > 0 ? "border-green-200 text-green-700" : "border-gray-200 text-gray-500"}`}>
-                                  {Number(lot.quantity) > 0 ? "มีสต็อก" : "หมด"}
-                                </Badge>
+                                <div className="flex flex-wrap gap-1">
+                                  {isOutOfStock ? (
+                                    <Badge data-testid={`badge-out-of-stock-${lot.id}`} className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-0">หมดสต็อก</Badge>
+                                  ) : isLowStock ? (
+                                    <>
+                                      <Badge variant="outline" className="text-[10px] border-green-200 text-green-700">มีสต็อก</Badge>
+                                      <Badge data-testid={`badge-low-stock-${lot.id}`} className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-600 border-0">ใกล้หมด</Badge>
+                                    </>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] border-green-200 text-green-700">มีสต็อก</Badge>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-right text-sm tabular-nums">
                                 {Number(lot.unitCost || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}

@@ -2147,10 +2147,10 @@ app.get("/api/product-lots", requireAuth, requireModule("inventory"), async (req
     const rows = await db.select().from(productLots).where(and(...conditions)).orderBy(desc(productLots.createdAt));
     const productIds = [...new Set(rows.map(r => r.productId))];
     const prods = productIds.length > 0
-      ? await db.select({ id: products.id, name: products.name, code: products.code, unit: products.unit }).from(products).where(inArray(products.id, productIds))
+      ? await db.select({ id: products.id, name: products.name, code: products.code, unit: products.unit, lowStockThreshold: products.lowStockThreshold }).from(products).where(inArray(products.id, productIds))
       : [];
     const prodMap = new Map(prods.map(p => [p.id, p]));
-    res.json(rows.map(r => ({ ...r, productName: prodMap.get(r.productId)?.name || "", productCode: prodMap.get(r.productId)?.code || "", productUnit: prodMap.get(r.productId)?.unit || "ชิ้น" })));
+    res.json(rows.map(r => ({ ...r, productName: prodMap.get(r.productId)?.name || "", productCode: prodMap.get(r.productId)?.code || "", productUnit: prodMap.get(r.productId)?.unit || "ชิ้น", productLowStockThreshold: prodMap.get(r.productId)?.lowStockThreshold ?? 0 })));
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
