@@ -303,7 +303,11 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
     onSuccess: (data) => {
       toast({ title: "บันทึกใบเบิกสำเร็จ", description: `เลขที่ ${data.issueNo || data.issue_no}` });
       queryClient.invalidateQueries({ queryKey: ["/api/material-issues"] });
-      navigate(`${urlBase}/material-issues`);
+      if (urlMoId) {
+        navigate(`${urlBase}/manufacturing/form/${urlMoId}`);
+      } else {
+        navigate(`${urlBase}/material-issues`);
+      }
     },
     onError: (e: Error) => toast({ title: "ข้อผิดพลาด", description: e.message, variant: "destructive" }),
   });
