@@ -59,6 +59,9 @@ const ManufacturingForm = lazy(() => import("@/pages/inventory/manufacturing-for
 // /manufacturing/bom/new and /manufacturing/bom/edit/:id
 const BomFormPage = lazy(() => import("@/pages/inventory/bom-form"));
 
+// [process-scan] Process Scan Station — scan employee + MO + log step
+const ProcessScanStation = lazy(() => import("@/pages/manufacturing/process-scan-station"));
+
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 9999, overflow: "auto" }}>
@@ -175,6 +178,11 @@ function matchProductionFinishFormEdit(location: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+// [process-scan] Process Scan Station matcher
+function matchProcessScan(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/process-scan";
+}
+
 // [ncr] route matchers
 function matchNcrList(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/ncr";
@@ -252,6 +260,7 @@ export default function AppExtra() {
   const isNcrList = matchNcrList(location);
   const isNcrForm = matchNcrForm(location);
   const ncrFormEditId = matchNcrFormEdit(location);
+  const isProcessScan = matchProcessScan(location);
 
   if (pdfId) {
     return (
@@ -566,6 +575,17 @@ export default function AppExtra() {
           <ManufacturingLayout>
             <NcrForm idProp={ncrFormEditId} urlBase="/manufacturing" />
           </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [process-scan] Process Scan Station — full-screen for workers
+  if (isProcessScan) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ProcessScanStation />
         </Suspense>
       </FullPageOverlay>
     );

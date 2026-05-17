@@ -1129,6 +1129,45 @@ export async function runNcrMigration(db: any) {
 }
 
 // =============================================================================
+// BOM PROCESS STEPS + MO PROCESS LOGS (ENTRY #013, 2026-05-17)
+// bom_process_steps — ขั้นตอนการผลิตต่อ BOM
+// mo_process_logs   — บันทึกความคืบหน้าต่อใบสั่งผลิต
+// History: db/schema-history.md ENTRY #013
+// =============================================================================
+export async function runBomProcessStepsMigration(db: any) {
+  const FLAG = "CREATE_BOM_PROCESS_STEPS_AND_MO_PROCESS_LOGS_20260517";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS bom_process_steps (
+      id SERIAL PRIMARY KEY,
+      bom_id INTEGER NOT NULL REFERENCES bom_headers(id) ON DELETE CASCADE,
+      step_no INTEGER NOT NULL DEFAULT 1,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`));
+    await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS idx_bom_process_steps_bom_id ON bom_process_steps(bom_id)`));
+    await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS mo_process_logs (
+      id SERIAL PRIMARY KEY,
+      mo_id INTEGER NOT NULL REFERENCES manufacturing_orders(id) ON DELETE CASCADE,
+      step_no INTEGER NOT NULL,
+      step_name TEXT NOT NULL,
+      qty_passed NUMERIC DEFAULT 0,
+      notes TEXT,
+      logged_by_employee_id INTEGER,
+      logged_by_name TEXT,
+      logged_at TIMESTAMP DEFAULT NOW()
+    )`));
+    await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS idx_mo_process_logs_mo_id ON mo_process_logs(mo_id)`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ bom_process_steps + mo_process_logs created");
+  } catch (e: any) {
+    console.error("[migration] ❌ runBomProcessStepsMigration FAILED:", e.message);
+  }
+}
+
+// =============================================================================
 // INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12) — ❌ CANCELLED
 // Approach changed 2026-05-12: user inputs วันที่เริ่มต้นสต๊อก at Excel import
 // time via product-import-export.tsx date picker. Backfill not needed.

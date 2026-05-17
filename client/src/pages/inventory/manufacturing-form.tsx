@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink } from "lucide-react";
+import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer } from "lucide-react";
 import { useState, useEffect, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
@@ -64,6 +64,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
   const [targetWarehouseId, setTargetWarehouseId] = useState<string>("");
 
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [qrPrintOpen, setQrPrintOpen] = useState(false);
   const [completedQty, setCompletedQty] = useState("");
   const [completeLot, setCompleteLot] = useState("");
   const [completeMfgDate, setCompleteMfgDate] = useState("");
@@ -98,6 +99,27 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
       return r.json();
     },
     enabled: !!selectedCompanyId,
+  });
+
+  const { data: processLogs = [] } = useQuery<any[]>({
+    queryKey: ["/api/manufacturing-orders", editId, "process-logs", selectedCompanyId],
+    queryFn: async () => {
+      const r = await fetch(`/api/manufacturing-orders/${editId}/process-logs?companyId=${selectedCompanyId}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!editId && !!selectedCompanyId,
+  });
+
+  const { data: bomProcessSteps = [] } = useQuery<any[]>({
+    queryKey: ["/api/bom", bomId, "process-steps"],
+    queryFn: async () => {
+      if (!bomId) return [];
+      const r = await fetch(`/api/bom/${bomId}/process-steps`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!bomId,
   });
 
   const { data: materialIssues = [] } = useQuery<any[]>({
@@ -386,6 +408,15 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
               <Badge className="bg-blue-100 text-blue-700 gap-1 py-1.5 px-3">
                 <BookOpen className="h-3.5 w-3.5" /> บันทึกบัญชีแล้ว
               </Badge>
+            )}
+            {editId && moData?.orderNo && (
+              <Button
+                variant="outline"
+                onClick={() => setQrPrintOpen(true)}
+                data-testid="button-print-mo-qr"
+              >
+                <Printer className="h-4 w-4 mr-1" /> พิมพ์ QR MO
+              </Button>
             )}
             {editId && moStatus === "completed" && (
               <Button
@@ -698,6 +729,86 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
           </Card>
         )}
 
+        {editId && bomProcessSteps.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ListChecks className="h-4 w-4 text-cyan-600" /> ความคืบหน้าขั้นตอนการผลิต
+                  {processLogs.length > 0 && (
+                    <Badge className="bg-cyan-100 text-cyan-700 text-xs">{processLogs.length} บันทึก</Badge>
+                  )}
+                </CardTitle>
+                {moStatus === "in_progress" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/manufacturing/process-scan`)}
+                    data-testid="button-go-process-scan"
+                  >
+                    <QrCode className="h-4 w-4 mr-1" /> Scan Station
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2 flex-wrap">
+                {bomProcessSteps.map((ps: any) => {
+                  const logsForStep = processLogs.filter((l: any) => Number(l.step_no) === Number(ps.step_no));
+                  const done = logsForStep.length > 0;
+                  return (
+                    <div
+                      key={ps.step_no}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${done ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-gray-50 border-gray-200 text-gray-500"}`}
+                      data-testid={`badge-process-step-${ps.step_no}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${done ? "bg-emerald-500 text-white" : "bg-gray-300 text-gray-600"}`}>
+                        {done ? "✓" : ps.step_no}
+                      </div>
+                      {ps.name}
+                    </div>
+                  );
+                })}
+              </div>
+              {processLogs.length > 0 && (
+                <div className="border rounded-lg overflow-hidden mt-2">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-xs py-2">ขั้นตอน</TableHead>
+                        <TableHead className="text-xs py-2">ผู้บันทึก</TableHead>
+                        <TableHead className="text-right text-xs py-2">จำนวน</TableHead>
+                        <TableHead className="text-xs py-2">หมายเหตุ</TableHead>
+                        <TableHead className="text-right text-xs py-2">เวลา</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {processLogs.map((log: any, idx: number) => (
+                        <TableRow key={idx} data-testid={`row-process-log-${idx}`}>
+                          <TableCell className="py-2 text-sm font-medium text-cyan-700">
+                            P{log.step_no}: {log.step_name}
+                          </TableCell>
+                          <TableCell className="py-2 text-sm text-gray-600">{log.logged_by_name || "—"}</TableCell>
+                          <TableCell className="py-2 text-right tabular-nums text-sm">{log.qty_passed || 0}</TableCell>
+                          <TableCell className="py-2 text-xs text-gray-400">{log.notes || "—"}</TableCell>
+                          <TableCell className="py-2 text-right text-xs text-gray-400">
+                            {log.logged_at ? new Date(log.logged_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              {processLogs.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-3" data-testid="text-no-process-logs">
+                  ยังไม่มีบันทึกขั้นตอน — พนักงานสามารถบันทึกได้ที่ Scan Station
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {editId && (moStatus === "in_progress" || moStatus === "completed") && (
           <Card>
             <CardHeader className="pb-3">
@@ -918,6 +1029,37 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                 {completeMutation.isPending ? "กำลังดำเนินการ..." : "ยืนยันผลิตเสร็จ"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={qrPrintOpen} onOpenChange={setQrPrintOpen}>
+        <DialogContent className="max-w-sm z-[200]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-cyan-600" /> QR Code ใบสั่งผลิต
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="bg-white border-2 border-gray-200 rounded-xl p-4" id="mo-qr-container">
+              {moData?.orderNo && (
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(moData.orderNo)}`}
+                  alt={`QR ${moData.orderNo}`}
+                  className="w-48 h-48"
+                />
+              )}
+              <p className="text-center font-mono font-bold mt-2 text-sm">{moData?.orderNo}</p>
+              <p className="text-center text-xs text-gray-500">{moData?.productName || ""}</p>
+            </div>
+            <p className="text-xs text-gray-400 text-center">นำ QR นี้ไปใช้ที่ Scan Station เพื่อบันทึกขั้นตอนการผลิต</p>
+            <Button
+              className="w-full"
+              onClick={() => window.print()}
+              data-testid="button-print-qr"
+            >
+              <Printer className="h-4 w-4 mr-2" /> พิมพ์ QR
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

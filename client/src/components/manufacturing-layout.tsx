@@ -27,6 +27,7 @@ const HREF_TO_SUB_KEY: Record<string, string> = {
   "/manufacturing/production-finish/form": "manufacturing/production-finish",
   "/manufacturing/ncr": "manufacturing/ncr",
   "/manufacturing/ncr/form": "manufacturing/ncr",
+  "/manufacturing/process-scan": "manufacturing/process-scan",
 };
 
 interface NavItem {
@@ -87,6 +88,7 @@ const MFG_NAV: { label: string; icon: any; href: string; children?: NavItem[] }[
       { label: "สร้าง NCR", href: "/manufacturing/ncr/form", icon: ShieldAlert },
     ],
   },
+  { label: "Scan Station (ขั้นตอน)", icon: ListChecks, href: "/manufacturing/process-scan" },
 ];
 
 export default function ManufacturingLayout({ children }: { children: React.ReactNode }) {

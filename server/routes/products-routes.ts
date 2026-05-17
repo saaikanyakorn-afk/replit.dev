@@ -5,7 +5,7 @@ import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzl
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
-import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration, runLotLowStockThresholdMigration, runWarehouseColumnsForMfgMigration } from "@shared/schema-extra";
+import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration, runLotLowStockThresholdMigration, runWarehouseColumnsForMfgMigration, runBomProcessStepsMigration } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { parsePagination, paginatedResponse } from "./pagination";
@@ -57,6 +57,9 @@ export function registerProductsRoutes(app: Express) {
   });
   runWarehouseColumnsForMfgMigration(db).catch((err: any) => {
     console.error("[migration] ❌ runWarehouseColumnsForMfgMigration failed:", err.message);
+  });
+  runBomProcessStepsMigration(db).catch((err: any) => {
+    console.error("[migration] ❌ runBomProcessStepsMigration failed:", err.message);
   });
 
 // ==================== Product Categories ====================
@@ -1175,6 +1178,32 @@ app.delete("/api/bom/:id", requireAuth, requireModule("inventory"), async (req, 
   try {
     await storage.deleteBomHeader(Number(req.params.id));
     res.json({ success: true });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+// ===== BOM Process Steps =====
+app.get("/api/bom/:id/process-steps", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const bomId = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`SELECT id, bom_id, step_no, name, description FROM bom_process_steps WHERE bom_id = ${bomId} ORDER BY step_no ASC`));
+    res.json((rows as any).rows || []);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.post("/api/bom/:id/process-steps", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const bomId = Number(req.params.id);
+    const steps: { stepNo: number; name: string; description?: string }[] = req.body.steps;
+    if (!Array.isArray(steps)) return res.status(400).json({ message: "steps array required" });
+    await db.execute(sql.raw(`DELETE FROM bom_process_steps WHERE bom_id = ${bomId}`));
+    for (const s of steps) {
+      if (!s.name?.trim()) continue;
+      const name = s.name.replace(/'/g, "''");
+      const desc = s.description ? `'${s.description.replace(/'/g, "''")}'` : "NULL";
+      await db.execute(sql.raw(`INSERT INTO bom_process_steps (bom_id, step_no, name, description) VALUES (${bomId}, ${s.stepNo}, '${name}', ${desc})`));
+    }
+    const saved = await db.execute(sql.raw(`SELECT id, bom_id, step_no, name, description FROM bom_process_steps WHERE bom_id = ${bomId} ORDER BY step_no ASC`));
+    res.json((saved as any).rows || []);
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 

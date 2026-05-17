@@ -636,4 +636,69 @@ export function registerManufacturingRoutes(app: Express) {
       });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
+
+  // ===== MO Process Logs (Task #68) =====
+
+  // GET /api/manufacturing-orders/:id/process-logs — ดูประวัติขั้นตอน
+  app.get("/api/manufacturing-orders/:id/process-logs", requireAuth, requireModule("inventory"), async (req, res) => {
+    try {
+      const moId = Number(req.params.id);
+      const companyId = Number(req.query.companyId);
+      if (!companyId) return res.status(400).json({ message: "companyId required" });
+      const rows = await db.execute(sql.raw(`
+        SELECT id, mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at
+        FROM mo_process_logs WHERE mo_id = ${moId} ORDER BY logged_at ASC
+      `));
+      res.json((rows as any).rows || []);
+    } catch (err: any) { res.status(400).json({ message: err.message }); }
+  });
+
+  // POST /api/manufacturing-orders/:id/process-logs — บันทึกขั้นตอนใหม่
+  app.post("/api/manufacturing-orders/:id/process-logs", requireAuth, requireModule("inventory"), async (req, res) => {
+    try {
+      const moId = Number(req.params.id);
+      const companyId = Number(req.body.companyId);
+      if (!companyId) return res.status(400).json({ message: "companyId required" });
+      const { stepNo, stepName, qtyPassed, notes, loggedByName } = req.body;
+      if (!stepNo || !stepName) return res.status(400).json({ message: "stepNo, stepName required" });
+      const [mo] = await db.select().from(manufacturingOrders)
+        .where(and(eq(manufacturingOrders.id, moId), eq(manufacturingOrders.companyId, companyId)));
+      if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
+      const safeName = String(stepName).replace(/'/g, "''");
+      const safeNotes = notes ? `'${String(notes).replace(/'/g, "''")}'` : "NULL";
+      const safeLoggedBy = loggedByName ? `'${String(loggedByName).replace(/'/g, "''")}'` : "NULL";
+      const result = await db.execute(sql.raw(`
+        INSERT INTO mo_process_logs (mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at)
+        VALUES (${moId}, ${Number(stepNo)}, '${safeName}', ${Number(qtyPassed || 0)}, ${safeNotes}, ${safeLoggedBy}, NOW())
+        RETURNING id, mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at
+      `));
+      res.json(((result as any).rows || [])[0] || {});
+    } catch (err: any) { res.status(400).json({ message: err.message }); }
+  });
+
+  // GET /api/manufacturing-orders/by-order-no/:orderNo — ค้นหา MO จาก orderNo (สำหรับ scan station)
+  app.get("/api/manufacturing-orders/by-order-no/:orderNo", requireAuth, requireModule("inventory"), async (req, res) => {
+    try {
+      const companyId = Number(req.query.companyId);
+      if (!companyId) return res.status(400).json({ message: "companyId required" });
+      const orderNo = decodeURIComponent(req.params.orderNo);
+      const [mo] = await db.select().from(manufacturingOrders)
+        .where(and(eq(manufacturingOrders.companyId, companyId), eq(manufacturingOrders.orderNo, orderNo)));
+      if (!mo) return res.status(404).json({ message: `ไม่พบใบสั่งผลิต ${orderNo}` });
+      const lines = await db.select().from(manufacturingOrderLines).where(eq(manufacturingOrderLines.moId, mo.id));
+      const [prod] = await db.select().from(products).where(eq(products.id, mo.productId));
+      const stepRows = mo.bomId
+        ? await db.execute(sql.raw(`SELECT step_no, name, description FROM bom_process_steps WHERE bom_id = ${mo.bomId} ORDER BY step_no ASC`))
+        : { rows: [] };
+      const logRows = await db.execute(sql.raw(`SELECT step_no, step_name, qty_passed, logged_by_name, logged_at FROM mo_process_logs WHERE mo_id = ${mo.id} ORDER BY logged_at ASC`));
+      res.json({
+        ...mo,
+        productName: prod?.name || "",
+        productCode: prod?.code || "",
+        lineCount: lines.length,
+        processSteps: (stepRows as any).rows || [],
+        processLogs: (logRows as any).rows || [],
+      });
+    } catch (err: any) { res.status(400).json({ message: err.message }); }
+  });
 }

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Plus, X, Package } from "lucide-react";
+import { ArrowLeft, Save, Plus, X, Package, ChevronUp, ChevronDown, ListChecks } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { useState, useEffect } from "react";
@@ -16,8 +16,9 @@ import type { Product } from "@shared/schema";
 
 const UNITS = ["ชิ้น", "กล่อง", "ถุง", "แพ็ค", "ขวด", "กก.", "ลิตร", "เมตร", "ชุด"];
 type BomLine = { componentProductId: number | ""; quantity: string; unit: string; wastePercent: string };
-type BomForm = { productId: number | ""; name: string; version: string; yieldQty: string; unit: string; notes: string; active: boolean; lines: BomLine[] };
-const emptyForm: BomForm = { productId: "", name: "", version: "1.0", yieldQty: "1", unit: "ชิ้น", notes: "", active: true, lines: [] };
+type ProcessStep = { stepNo: number; name: string; description: string };
+type BomForm = { productId: number | ""; name: string; version: string; yieldQty: string; unit: string; notes: string; active: boolean; lines: BomLine[]; processSteps: ProcessStep[] };
+const emptyForm: BomForm = { productId: "", name: "", version: "1.0", yieldQty: "1", unit: "ชิ้น", notes: "", active: true, lines: [], processSteps: [] };
 const emptyLine: BomLine = { componentProductId: "", quantity: "1", unit: "ชิ้น", wastePercent: "0" };
 
 export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }>; basePath?: string; editIdProp?: string | null } = {}) {
@@ -45,9 +46,11 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
 
   useEffect(() => {
     if (editingId) {
-      fetch(`/api/bom/${editingId}`, { credentials: "include" })
-        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then(data => {
+      Promise.all([
+        fetch(`/api/bom/${editingId}`, { credentials: "include" }).then(r => r.ok ? r.json() : Promise.reject()),
+        fetch(`/api/bom/${editingId}/process-steps`, { credentials: "include" }).then(r => r.ok ? r.json() : []),
+      ])
+        .then(([data, steps]) => {
           setForm({
             productId: data.productId || "",
             name: data.name || "",
@@ -61,6 +64,11 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
               quantity: String(l.qty || l.quantity || "1"),
               unit: l.unit || "ชิ้น",
               wastePercent: String(l.wastePercent || "0"),
+            })),
+            processSteps: (steps || []).map((s: any) => ({
+              stepNo: s.step_no,
+              name: s.name,
+              description: s.description || "",
             })),
           });
         })
@@ -79,7 +87,15 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
       if (!r.ok) throw new Error((await r.json()).message);
       return r.json();
     },
-    onSuccess: () => {
+    onSuccess: async (created) => {
+      if (form.processSteps.length > 0) {
+        await fetch(`/api/bom/${created.id}/process-steps`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ steps: form.processSteps }),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/bom"] });
       toast({ title: "สร้าง BOM สำเร็จ", variant: "success" as any });
       navigate(basePath);
@@ -98,7 +114,13 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
       if (!r.ok) throw new Error((await r.json()).message);
       return r.json();
     },
-    onSuccess: () => {
+    onSuccess: async (_, { id }) => {
+      await fetch(`/api/bom/${id}/process-steps`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ steps: form.processSteps }),
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/bom"] });
       toast({ title: "แก้ไข BOM สำเร็จ", variant: "success" as any });
       navigate(basePath);
@@ -148,6 +170,42 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
       ...f,
       lines: f.lines.map((l, i) => (i === idx ? { ...l, [field]: value } : l)),
     }));
+  }
+
+  function addStep() {
+    setForm(f => ({
+      ...f,
+      processSteps: [
+        ...f.processSteps,
+        { stepNo: f.processSteps.length + 1, name: "", description: "" },
+      ],
+    }));
+  }
+
+  function removeStep(idx: number) {
+    setForm(f => ({
+      ...f,
+      processSteps: f.processSteps
+        .filter((_, i) => i !== idx)
+        .map((s, i) => ({ ...s, stepNo: i + 1 })),
+    }));
+  }
+
+  function updateStep(idx: number, field: keyof ProcessStep, value: any) {
+    setForm(f => ({
+      ...f,
+      processSteps: f.processSteps.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
+    }));
+  }
+
+  function moveStep(idx: number, dir: -1 | 1) {
+    const target = idx + dir;
+    if (target < 0 || target >= form.processSteps.length) return;
+    setForm(f => {
+      const arr = [...f.processSteps];
+      [arr[idx], arr[target]] = [arr[target], arr[idx]];
+      return { ...f, processSteps: arr.map((s, i) => ({ ...s, stepNo: i + 1 })) };
+    });
   }
 
   return (
@@ -298,6 +356,73 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
                   ))}
                 </TableBody>
               </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-cyan-600" />
+                <CardTitle className="text-base">ขั้นตอนการผลิต</CardTitle>
+                <span className="text-xs text-gray-400">(ใช้กับ Scan Station)</span>
+              </div>
+              <Button variant="outline" size="sm" data-testid="button-add-step" onClick={addStep}>
+                <Plus className="h-4 w-4 mr-1" /> เพิ่มขั้นตอน
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {form.processSteps.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 border rounded-md bg-gray-50">
+                <ListChecks className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">ยังไม่มีขั้นตอนการผลิต — กดเพิ่มขั้นตอนเพื่อเริ่มต้น</p>
+                <p className="text-xs text-gray-400 mt-1">ขั้นตอนจะใช้กับหน้า Scan Station สำหรับพนักงานสแกนบันทึกความคืบหน้า</p>
+              </div>
+            ) : (
+              <div className="space-y-2" data-testid="list-process-steps">
+                {form.processSteps.map((step, idx) => (
+                  <div key={idx} className="flex items-start gap-2 bg-gray-50 rounded-lg p-3 border" data-testid={`row-step-${idx}`}>
+                    <div className="flex flex-col gap-0.5 pt-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveStep(idx, -1)} disabled={idx === 0} data-testid={`button-step-up-${idx}`}>
+                        <ChevronUp className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveStep(idx, 1)} disabled={idx === form.processSteps.length - 1} data-testid={`button-step-down-${idx}`}>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-center w-7 h-7 rounded-full bg-cyan-100 text-cyan-700 text-sm font-bold shrink-0 mt-0.5">
+                      {step.stepNo}
+                    </div>
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">ชื่อขั้นตอน *</Label>
+                        <Input
+                          value={step.name}
+                          onChange={e => updateStep(idx, "name", e.target.value)}
+                          placeholder="เช่น ตัด, เชื่อม, ทดสอบ, QC"
+                          className="h-8 text-sm"
+                          data-testid={`input-step-name-${idx}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">คำอธิบาย (ถ้ามี)</Label>
+                        <Input
+                          value={step.description}
+                          onChange={e => updateStep(idx, "description", e.target.value)}
+                          placeholder="รายละเอียดเพิ่มเติม"
+                          className="h-8 text-sm"
+                          data-testid={`input-step-desc-${idx}`}
+                        />
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 shrink-0" onClick={() => removeStep(idx)} data-testid={`button-remove-step-${idx}`}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
