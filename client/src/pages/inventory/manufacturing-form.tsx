@@ -264,13 +264,15 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
           unit: l.unit,
         })),
       };
-      if (editId) {
-        return apiRequest("PATCH", `/api/manufacturing-orders/${editId}?companyId=${selectedCompanyId}`, payload);
-      }
-      return apiRequest("POST", "/api/manufacturing-orders", payload);
+      const url = editId
+        ? `/api/manufacturing-orders/${editId}?companyId=${selectedCompanyId}`
+        : "/api/manufacturing-orders";
+      const method = editId ? "PATCH" : "POST";
+      const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), credentials: "include" });
+      if (!r.ok) { const e = await r.json().catch(() => ({ message: r.statusText })); throw new Error(e.message || r.statusText); }
+      return r.json();
     },
-    onSuccess: async (r) => {
-      const data = await r.json();
+    onSuccess: (data: any) => {
       toast({ title: editId ? "บันทึกแล้ว" : "สร้างใบสั่งผลิตแล้ว" });
       qc.invalidateQueries({ queryKey: ["/api/manufacturing-orders"] });
       if (!editId) navigate(`${basePath}/form/${data.id}`);
@@ -280,24 +282,31 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
 
   const startMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", `/api/manufacturing-orders/${editId}/start?companyId=${selectedCompanyId}`, { companyId: selectedCompanyId });
+      const r = await fetch(`/api/manufacturing-orders/${editId}/start?companyId=${selectedCompanyId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: selectedCompanyId }), credentials: "include" });
+      if (!r.ok) { const e = await r.json().catch(() => ({ message: r.statusText })); throw new Error(e.message || r.statusText); }
+      return r.json();
     },
     onSuccess: () => {
       toast({ title: "เริ่มการผลิตแล้ว" });
       qc.invalidateQueries({ queryKey: ["/api/manufacturing-orders"] });
     },
-    onError: (err: any) => toast({ title: "ไม่สำเร็จ", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: "เริ่มผลิตไม่สำเร็จ", description: err.message, variant: "destructive" }),
   });
 
   const completeMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", `/api/manufacturing-orders/${editId}/complete?companyId=${selectedCompanyId}`, {
-        companyId: selectedCompanyId,
-        completedQty: completedQty || plannedQty,
-        lotNumber: completeLot || lotNumber || undefined,
-        manufacturingDate: completeMfgDate || mfgDate || undefined,
-        expiryDate: completeExpDate || expiryDate || undefined,
+      const r = await fetch(`/api/manufacturing-orders/${editId}/complete?companyId=${selectedCompanyId}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({
+          companyId: selectedCompanyId,
+          completedQty: completedQty || plannedQty,
+          lotNumber: completeLot || lotNumber || undefined,
+          manufacturingDate: completeMfgDate || mfgDate || undefined,
+          expiryDate: completeExpDate || expiryDate || undefined,
+        }),
       });
+      if (!r.ok) { const e = await r.json().catch(() => ({ message: r.statusText })); throw new Error(e.message || r.statusText); }
+      return r.json();
     },
     onSuccess: () => {
       toast({ title: "ผลิตเสร็จสิ้น! สินค้าเข้าคลังแล้ว" });
@@ -306,7 +315,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
       qc.invalidateQueries({ queryKey: ["/api/product-lots"] });
       qc.invalidateQueries({ queryKey: ["/api/product-stock"] });
     },
-    onError: (err: any) => toast({ title: "ไม่สำเร็จ", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: "ยืนยันผลิตเสร็จไม่สำเร็จ", description: err.message, variant: "destructive" }),
   });
 
   const journalMutation = useMutation({
@@ -671,13 +680,12 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                   <TableHead className="w-10">#</TableHead>
                   <TableHead>รหัสสินค้า</TableHead>
                   <TableHead>ชื่อวัตถุดิบ</TableHead>
-                  <TableHead className="w-32 text-right">
-                    <span>จำนวนที่ต้องใช้</span>
-                    {!isReadOnly && wipMultiplier !== 1 && (
-                      <span className="block text-[10px] font-normal text-orange-600">
-                        BOM batch ×{wipMultiplier % 1 === 0 ? wipMultiplier : wipMultiplier.toFixed(2)}
-                      </span>
-                    )}
+                  <TableHead className="w-28 text-right text-xs">ต่อ batch (BOM)</TableHead>
+                  <TableHead className="w-28 text-right text-orange-700">
+                    จำนวนจริง
+                    <span className="block text-[10px] font-normal text-orange-500">
+                      สำหรับ {plannedQty} {unit}
+                    </span>
                   </TableHead>
                   <TableHead className="w-20 text-center">หน่วย</TableHead>
                   <TableHead className="w-28 text-right">ต้นทุน/หน่วย</TableHead>
@@ -688,13 +696,14 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
               <TableBody>
                 {lines.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={moStatus === "completed" ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={moStatus === "completed" ? 9 : 8} className="text-center py-8 text-muted-foreground">
                       {bomId ? "ไม่มีวัตถุดิบในสูตร" : "เลือกสูตรการผลิต (BOM) เพื่อดึงวัตถุดิบ"}
                     </TableCell>
                   </TableRow>
                 )}
                 {lines.map((line, idx) => {
                   const lc = costEstimate.lineCosts[idx];
+                  const scaledQty = lc?.scaledQty ?? (Number(line.requiredQty) * wipMultiplier);
                   return (
                   <TableRow key={idx}>
                     <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
@@ -702,29 +711,25 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                     <TableCell className="text-sm">{line.componentName}</TableCell>
                     <TableCell className="text-right">
                       {isReadOnly ? (
-                        <span className="tabular-nums">
-                          {(lc?.scaledQty ?? Number(line.requiredQty)).toLocaleString("th-TH", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
-                        </span>
+                        <span className="tabular-nums text-sm text-muted-foreground">{Number(line.requiredQty).toLocaleString("th-TH", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
                       ) : (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <Input
-                            type="number"
-                            className="h-8 w-24 text-right ml-auto"
-                            value={line.requiredQty}
-                            onChange={e => {
-                              const updated = [...lines];
-                              updated[idx].requiredQty = e.target.value;
-                              setLines(updated);
-                            }}
-                            data-testid={`input-req-qty-${idx}`}
-                          />
-                          {wipMultiplier !== 1 && (
-                            <span className="text-[10px] text-orange-600 tabular-nums">
-                              จริง: {((Number(line.requiredQty) || 0) * wipMultiplier).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          )}
-                        </div>
+                        <Input
+                          type="number"
+                          className="h-8 w-24 text-right ml-auto"
+                          value={line.requiredQty}
+                          onChange={e => {
+                            const updated = [...lines];
+                            updated[idx].requiredQty = e.target.value;
+                            setLines(updated);
+                          }}
+                          data-testid={`input-req-qty-${idx}`}
+                        />
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="tabular-nums font-semibold text-orange-700" data-testid={`text-actual-qty-${idx}`}>
+                        {scaledQty.toLocaleString("th-TH", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                      </span>
                     </TableCell>
                     <TableCell className="text-center text-xs">{line.unit}</TableCell>
                     <TableCell className="text-right tabular-nums text-sm">
@@ -741,7 +746,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                 })}
                 {lines.length > 0 && (
                   <TableRow className="bg-slate-50 font-semibold">
-                    <TableCell colSpan={5} className="text-right text-sm">รวมต้นทุนวัตถุดิบทั้งหมด</TableCell>
+                    <TableCell colSpan={6} className="text-right text-sm">รวมต้นทุนวัตถุดิบทั้งหมด</TableCell>
                     <TableCell className="text-right tabular-nums text-sm">-</TableCell>
                     <TableCell className="text-right tabular-nums text-sm" style={{ color: "#fb9678" }}>
                       {costEstimate.totalCost > 0
