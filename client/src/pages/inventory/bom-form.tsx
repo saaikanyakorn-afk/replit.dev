@@ -32,14 +32,15 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
 
   const [form, setForm] = useState<BomForm>({ ...emptyForm });
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/products", selectedCompanyId],
     queryFn: async () => {
       const r = await fetch(`/api/products?companyId=${selectedCompanyId}`, { credentials: "include" });
-      if (!r.ok) return [];
+      if (!r.ok) throw new Error(`โหลดสินค้าไม่ได้ (${r.status})`);
       return r.json();
     },
     enabled: !!selectedCompanyId,
+    staleTime: 30_000,
   });
 
   useEffect(() => {
@@ -183,9 +184,12 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
                 <Select value={String(form.productId)} onValueChange={v => setForm(f => ({ ...f, productId: Number(v) }))}>
                   <SelectTrigger data-testid="select-product"><SelectValue placeholder="เลือกสินค้า" /></SelectTrigger>
                   <SelectContent>
-                    {products.filter(p => p.active !== false).map(p => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>
-                    ))}
+                    {productsLoading
+                      ? <SelectItem value="__loading__" disabled>กำลังโหลด...</SelectItem>
+                      : products.filter(p => p.active !== false).map(p => (
+                          <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>
+                        ))
+                    }
                   </SelectContent>
                 </Select>
               </div>
@@ -262,9 +266,12 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
                         <Select value={String(line.componentProductId)} onValueChange={v => updateLine(idx, "componentProductId", Number(v))}>
                           <SelectTrigger data-testid={`select-material-${idx}`}><SelectValue placeholder="เลือกวัตถุดิบ" /></SelectTrigger>
                           <SelectContent>
-                            {products.filter(p => p.active !== false).map(p => (
-                              <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>
-                            ))}
+                            {productsLoading
+                              ? <SelectItem value="__loading__" disabled>กำลังโหลด...</SelectItem>
+                              : products.filter(p => p.active !== false).map(p => (
+                                  <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>
+                                ))
+                            }
                           </SelectContent>
                         </Select>
                       </TableCell>
