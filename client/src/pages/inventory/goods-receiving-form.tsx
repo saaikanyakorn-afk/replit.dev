@@ -433,6 +433,58 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     }
   }
 
+  async function handlePrintWindow() {
+    if (lotLabels.length === 0) return;
+    const labelCards = await Promise.all(lotLabels.map(async (label) => {
+      const qrContent = label.hasLot ? JSON.stringify({
+        type: "MATERIAL_LOT",
+        lotId: label.lotId,
+        productId: label.productId,
+        productName: label.productName,
+        productCode: label.productCode,
+        lotNumber: label.lotNumber,
+        vendor: label.vendor,
+        grDate: label.grDate,
+        grNo: label.grNo,
+        mfgDate: label.mfgDate,
+        expDate: label.expDate,
+        companyId: label.companyId,
+      }) : null;
+      let qrSrc = "";
+      if (qrContent) {
+        try {
+          qrSrc = await QRCode.toDataURL(qrContent, { width: 90, margin: 1, errorCorrectionLevel: "M" });
+        } catch {}
+      }
+      const qrImg = qrSrc
+        ? `<img src="${qrSrc}" width="90" height="90" style="display:block"/>`
+        : `<div style="width:90px;height:90px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;text-align:center;border-radius:4px">ยังไม่มี<br>lot ID</div>`;
+      const rows = [
+        `<div style="font-size:10px;font-weight:bold;margin-bottom:3px">${label.productName || ""}</div>`,
+        label.productCode ? `<div style="font-size:9px;color:#444">รหัส: ${label.productCode}</div>` : "",
+        label.lotNumber ? `<div style="font-size:9px;color:#444">ล็อต: <strong>${label.lotNumber}</strong></div>` : `<div style="font-size:9px;color:#cc6600;font-style:italic">ไม่มีเลขล็อต</div>`,
+        label.vendor ? `<div style="font-size:9px;color:#444">ผู้ขาย: ${label.vendor}</div>` : "",
+        `<div style="font-size:9px;color:#444">วันรับ: ${label.grDate || "-"}</div>`,
+        label.mfgDate ? `<div style="font-size:9px;color:#444">ผลิต: ${label.mfgDate}</div>` : "",
+        label.expDate ? `<div style="font-size:9px;color:#444">หมดอายุ: ${label.expDate}</div>` : "",
+        `<div style="font-size:9px;color:#444">GR: ${label.grNo || ""}</div>`,
+        !label.hasLot ? `<div style="font-size:9px;color:#cc6600;font-style:italic">⚠ ยังไม่มี lot ID</div>` : "",
+      ].filter(Boolean).join("");
+      return `<div style="border:1px solid #ccc;border-radius:4px;padding:6px 8px;display:flex;flex-direction:row;align-items:center;gap:8px;width:234px;min-height:151px;box-sizing:border-box;page-break-inside:avoid;break-inside:avoid">
+        <div style="flex-shrink:0">${qrImg}</div>
+        <div style="flex:1;line-height:1.4;word-break:break-all">${rows}</div>
+      </div>`;
+    }));
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR Label — ${form.grNo}</title><style>
+      body{margin:0;padding:8px;font-family:sans-serif}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px}
+      @media print{@page{size:A4;margin:8mm}body{padding:0}}
+    </style></head><body><div class="grid">${labelCards.join("")}</div>
+    <script>window.onload=function(){window.print()}</script></body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); }
+  }
+
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const statusInfo = STATUS_MAP[form.status] || STATUS_MAP.draft;
 
@@ -845,61 +897,14 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
             </DialogTitle>
           </DialogHeader>
 
-          <style>{`
-            @media print {
-              body > * { display: none !important; }
-              .lot-label-print-area { display: grid !important; }
-              .lot-label-print-area * { display: revert !important; }
-              .no-print { display: none !important; }
-            }
-            .lot-label-print-area {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 8px;
-              padding: 8px;
-            }
-            .lot-label-card {
-              border: 1px solid #ccc;
-              border-radius: 4px;
-              padding: 6px 8px;
-              display: flex;
-              flex-direction: row;
-              align-items: center;
-              gap: 8px;
-              width: 234px;
-              min-height: 151px;
-              box-sizing: border-box;
-              page-break-inside: avoid;
-              break-inside: avoid;
-            }
-            .lot-label-info {
-              flex: 1;
-              font-size: 9px;
-              line-height: 1.4;
-              word-break: break-all;
-            }
-            .lot-label-info .label-product {
-              font-size: 10px;
-              font-weight: bold;
-              margin-bottom: 3px;
-            }
-            .lot-label-info .label-row {
-              color: #444;
-              margin-bottom: 1px;
-            }
-            .lot-label-info .label-warn {
-              color: #cc6600;
-              font-style: italic;
-            }
-          `}</style>
-
-          <div className="no-print mb-3 flex justify-between items-center">
+          <div className="mb-3 flex justify-between items-center">
             <p className="text-sm text-slate-500">QR แต่ละดวงมีข้อมูล: ประเภทล็อต, สินค้า, เลขล็อต, ผู้ขาย, วันรับ</p>
             <Button
               size="sm"
               className="gap-1.5 text-white"
               style={{ background: "#fb9678" }}
-              onClick={() => window.print()}
+              onClick={handlePrintWindow}
+              disabled={lotLabels.length === 0}
               data-testid="button-print-labels-now"
             >
               <Printer className="h-4 w-4" />
@@ -907,7 +912,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
             </Button>
           </div>
 
-          <div className="lot-label-print-area">
+          <div className="grid grid-cols-3 gap-2 p-2">
             {lotLabels.map((label, idx) => {
               const qrData = label.hasLot ? JSON.stringify({
                 type: "MATERIAL_LOT",
@@ -924,34 +929,34 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
                 companyId: label.companyId,
               }) : null;
               return (
-                <div key={idx} className="lot-label-card">
+                <div key={idx} className="border border-gray-300 rounded p-2 flex flex-row items-center gap-2" style={{ minHeight: 151 }}>
                   <div style={{ flexShrink: 0 }}>
                     {qrData
                       ? <LotQRCanvas value={qrData} size={90} />
                       : <div style={{ width: 90, height: 90, background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#999", textAlign: "center", borderRadius: 4 }}>ยังไม่มี<br/>lot ID</div>
                     }
                   </div>
-                  <div className="lot-label-info">
-                    <div className="label-product" data-testid={`text-lot-label-product-${idx}`}>{label.productName}</div>
-                    {label.productCode && <div className="label-row">รหัส: {label.productCode}</div>}
+                  <div style={{ flex: 1, fontSize: 9, lineHeight: 1.4, wordBreak: "break-all" }}>
+                    <div style={{ fontSize: 10, fontWeight: "bold", marginBottom: 3 }} data-testid={`text-lot-label-product-${idx}`}>{label.productName}</div>
+                    {label.productCode && <div style={{ color: "#444", marginBottom: 1 }}>รหัส: {label.productCode}</div>}
                     {label.lotNumber
-                      ? <div className="label-row">ล็อต: <strong>{label.lotNumber}</strong></div>
-                      : <div className="label-warn">ไม่มีเลขล็อต</div>
+                      ? <div style={{ color: "#444", marginBottom: 1 }}>ล็อต: <strong>{label.lotNumber}</strong></div>
+                      : <div style={{ color: "#cc6600", fontStyle: "italic" }}>ไม่มีเลขล็อต</div>
                     }
-                    {label.vendor && <div className="label-row">ผู้ขาย: {label.vendor}</div>}
-                    <div className="label-row">วันรับ: {label.grDate || "-"}</div>
-                    {label.mfgDate && <div className="label-row">ผลิต: {label.mfgDate}</div>}
-                    {label.expDate && <div className="label-row">หมดอายุ: {label.expDate}</div>}
-                    <div className="label-row">GR: {label.grNo}</div>
+                    {label.vendor && <div style={{ color: "#444", marginBottom: 1 }}>ผู้ขาย: {label.vendor}</div>}
+                    <div style={{ color: "#444", marginBottom: 1 }}>วันรับ: {label.grDate || "-"}</div>
+                    {label.mfgDate && <div style={{ color: "#444", marginBottom: 1 }}>ผลิต: {label.mfgDate}</div>}
+                    {label.expDate && <div style={{ color: "#444", marginBottom: 1 }}>หมดอายุ: {label.expDate}</div>}
+                    <div style={{ color: "#444", marginBottom: 1 }}>GR: {label.grNo}</div>
                     {!label.hasLot && (
-                      <div className="label-warn">⚠ ยังไม่มี lot ID (GR ต้อง approved ก่อน)</div>
+                      <div style={{ color: "#cc6600", fontStyle: "italic" }}>⚠ ยังไม่มี lot ID (GR ต้อง approved ก่อน)</div>
                     )}
                   </div>
                 </div>
               );
             })}
             {lotLabels.length === 0 && (
-              <div className="col-span-3 text-center py-8 text-slate-400 text-sm no-print">
+              <div className="col-span-3 text-center py-8 text-slate-400 text-sm">
                 ไม่มีรายการสินค้าใน GR นี้
               </div>
             )}
