@@ -90,9 +90,9 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-17 — Task #34 GR Lot QR Label ✅ done dev
+**Last verified:** 2026-05-17 — Task #35 ใบเบิกวัตถุดิบ + QR Scan ✅ done dev
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Pending work:** Task #35 (material-issue-lot-scan) still pending — blocked by #34, now unblocked
+**Pending work:** Task #35 complete on dev — awaiting พี่ทราย test + พี่ช้าง approval before push
 
 ---
 
@@ -109,8 +109,33 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 
 **Task #34 COMPLETE.** Task #35 (material-issue-lot-scan) is now unblocked.
 
-**⚠️ Still pending before next production push:**
-- S7 DEBUG logs from session 2026-05-16 (`console.log(req.body)` in products-routes.ts ~line 1835) — must remove before push
+**⚠️ S7 DEBUG LOG:** Searched `console.log(req.body)` — not found in products-routes.ts. Already removed (cleared ✅).
+
+---
+
+### SESSION 2026-05-17 NIGHT — TASK #35 ใบเบิกวัตถุดิบ + QR Scan
+
+| # | Change | File | Status |
+|---|--------|------|--------|
+| T35-1 | Migration `runMaterialIssueMigration()` — creates `material_issues` + `material_issue_items` tables. Flag: `CREATE_MATERIAL_ISSUE_TABLES_20260517`. Called at top of `registerProductsRoutes()`. | `server/schema-extra.ts` line 63 | ✅ dev |
+| T35-2 | Backend: `GET /api/users/employee-qr-data` — returns employees with QR payload `{type:"EMPLOYEE",userId,name}` filtered by allowedCompanyIds | `server/routes/products-routes.ts` line 2655 | ✅ dev |
+| T35-3 | Backend: `GET /api/material-issues` — list by companyId, JOIN users+MO | `server/routes/products-routes.ts` line 2699 | ✅ dev |
+| T35-4 | Backend: `GET /api/material-issues/:id` — detail with items array | `server/routes/products-routes.ts` line 2712 | ✅ dev |
+| T35-5 | Backend: `POST /api/material-issues` — create draft, validates all items (NO FALLBACK on all fields) | `server/routes/products-routes.ts` line 2738 | ✅ dev |
+| T35-6 | Backend: `POST /api/material-issues/:id/confirm` — deducts lot qty + adjustStock + lot_id on movement | `server/routes/products-routes.ts` line 2773 | ✅ dev |
+| T35-7 | Backend: `DELETE /api/material-issues/:id` — draft only, cascade delete items | `server/routes/products-routes.ts` line 2817 | ✅ dev |
+| T35-8 | Sidebar nav: "ใบเบิกวัตถุดิบ" + "QR บัตรพนักงาน" links under "ควบคุมสินค้า" group | `client/src/lib/mock-data.ts` | ✅ dev |
+| T35-9 | Frontend: `MaterialIssueList` — list with status badge, delete (draft only), link to form | `client/src/pages/inventory/material-issue-list.tsx` | ✅ dev |
+| T35-10 | Frontend: `MaterialIssueForm` — create new (QR scan employee + product, lot dropdown, qty) + view/confirm existing | `client/src/pages/inventory/material-issue-form.tsx` | ✅ dev |
+| T35-11 | Frontend: `EmployeeQRPage` — show all employee QR cards, print all, search | `client/src/pages/inventory/employee-qr.tsx` | ✅ dev |
+| T35-12 | app-extra.tsx: 4 new routes registered (matchMaterialIssueList, matchMaterialIssueForm, matchMaterialIssueFormEdit, matchEmployeeQR) | `client/src/app-extra.tsx` lines 127-377 | ✅ dev |
+| T35-13 | NO FALLBACK fix: `getNextMaterialIssueNo()` — explicit throw if COUNT returns no rows or cnt is null | `server/routes/products-routes.ts` line 2683 | ✅ dev |
+| T35-14 | NO FALLBACK fix: POST handler — explicit `moIdSql`, `issuedByUserIdSql`, `notesSql`, `lotIdSql`, `lotNumberSql` — no `\|\|` chains | `server/routes/products-routes.ts` line 2745 | ✅ dev |
+| T35-15 | schema-history.md ENTRY #009 — material_issues tables added | `db/schema-history.md` | ✅ |
+
+**⚠️ Before production push:**
+- This commit contains NEW TABLES (schema change) — alert พี่ช้าง: `material_issues` + `material_issue_items` will be auto-created by `runMaterialIssueMigration()` on first server start
+- ENTRY #009 in schema-history.md tracks this migration
 
 ---
 

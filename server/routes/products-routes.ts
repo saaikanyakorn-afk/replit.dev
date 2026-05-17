@@ -2,9 +2,10 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzle-orm";
-import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems } from "@shared/schema";
+import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
+import { runMaterialIssueMigration } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { parsePagination, paginatedResponse } from "./pagination";
@@ -42,6 +43,9 @@ export function registerProductsRoutes(app: Express) {
   // runProductSplitMigration(db).catch((err: any) => { // ✅ DONE 2026-05-11T13:35:09Z — commented out after verify
   //   console.error("[migration] ❌ runProductSplitMigration failed — server continues but product split tables may be incomplete:", err.message);
   // });
+  runMaterialIssueMigration(db).catch((err: any) => {
+    console.error("[migration] ❌ runMaterialIssueMigration failed:", err.message);
+  });
 
 // ==================== Product Categories ====================
 app.get("/api/product-categories", requireAuth, async (req, res) => {
@@ -2630,6 +2634,192 @@ app.get("/api/inventory/warehouse-stock/:warehouseId", requireAuth, requireModul
     const stockMap: Record<number, number> = {};
     levels.forEach(l => { stockMap[l.productId] = Number(l.quantity || 0); });
     res.json(stockMap);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+// ==================== QR Decode ====================
+app.post("/api/scan/decode", requireAuth, async (req, res) => {
+  try {
+    const { raw } = req.body;
+    if (!raw || typeof raw !== "string") return res.status(400).json({ message: "raw QR string required" });
+    let parsed: any;
+    try { parsed = JSON.parse(raw); } catch { return res.status(400).json({ message: "QR ไม่ใช่ JSON ที่ถูกต้อง", raw }); }
+    if (!parsed.type) return res.status(400).json({ message: "QR ไม่มี type field", raw });
+    const knownTypes = ["MATERIAL_LOT", "EMPLOYEE"];
+    if (!knownTypes.includes(parsed.type)) return res.status(400).json({ message: `QR type "${parsed.type}" ไม่รู้จัก`, raw });
+    return res.json({ type: parsed.type, data: parsed });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+// ==================== Employee QR Data ====================
+app.get("/api/users/employee-qr-data", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const allUsers = await db.select({
+      id: users.id, fullName: users.fullName, username: users.username,
+      role: users.role, avatarUrl: users.avatarUrl, active: users.active,
+      allowedCompanyIds: users.allowedCompanyIds,
+    }).from(users).where(eq(users.active, true));
+    const filtered = allUsers.filter(u =>
+      u.role === "superadmin" ||
+      (u.allowedCompanyIds && u.allowedCompanyIds.includes(companyId))
+    );
+    const result = filtered.map(u => ({
+      id: u.id, fullName: u.fullName, username: u.username,
+      role: u.role, avatarUrl: u.avatarUrl,
+      qrPayload: JSON.stringify({ type: "EMPLOYEE", userId: u.id, name: u.fullName }),
+    }));
+    res.json(result);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+// ==================== Material Issues ====================
+async function getNextMaterialIssueNo(companyId: number): Promise<string> {
+  const year = new Date().getFullYear();
+  const rows = await db.execute(sql.raw(
+    `SELECT COUNT(*) as cnt FROM material_issues WHERE company_id = ${companyId} AND issue_no LIKE 'MI-${year}-%'`
+  ));
+  if (!rows.rows.length) {
+    throw new Error(`[MAT-ISSUE-SEQ] COUNT(*) คืนค่า 0 rows — companyId=${companyId} — ไม่สามารถสร้างเลขที่ใบเบิกได้`);
+  }
+  const cntRaw = (rows.rows[0] as any).cnt;
+  if (cntRaw === null || cntRaw === undefined) {
+    throw new Error(`[MAT-ISSUE-SEQ] cnt เป็น null/undefined — companyId=${companyId} — ข้อมูลผิดพลาด`);
+  }
+  const cnt = Number(cntRaw);
+  return `MI-${year}-${String(cnt + 1).padStart(5, "0")}`;
+}
+
+app.get("/api/material-issues", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const rows = await db.execute(sql.raw(`
+      SELECT mi.*, u.full_name as issued_by_name, mo.order_no as mo_no
+      FROM material_issues mi
+      LEFT JOIN users u ON u.id = mi.issued_by_user_id
+      LEFT JOIN manufacturing_orders mo ON mo.id = mi.mo_id
+      WHERE mi.company_id = ${companyId}
+      ORDER BY mi.id DESC
+    `));
+    res.json(rows.rows);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.get("/api/material-issues/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const rows = await db.execute(sql.raw(`
+      SELECT mi.*, u.full_name as issued_by_name, mo.order_no as mo_no
+      FROM material_issues mi
+      LEFT JOIN users u ON u.id = mi.issued_by_user_id
+      LEFT JOIN manufacturing_orders mo ON mo.id = mi.mo_id
+      WHERE mi.id = ${id}
+    `));
+    if (!rows.rows.length) return res.status(404).json({ message: "ไม่พบใบเบิกวัตถุดิบ" });
+    const issue = rows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(issue.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const itemRows = await db.execute(sql.raw(
+      `SELECT * FROM material_issue_items WHERE material_issue_id = ${id} ORDER BY id`
+    ));
+    res.json({ ...issue, items: itemRows.rows });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.post("/api/material-issues", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const { companyId, moId, issuedByUserId, notes, items } = req.body;
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    if (!items || !Array.isArray(items) || items.length === 0) return res.status(400).json({ message: "ต้องมีรายการอย่างน้อย 1 รายการ" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const issueNo = await getNextMaterialIssueNo(companyId);
+    const moIdSql = (moId === null || moId === undefined) ? "NULL" : Number(moId);
+    const issuedByUserIdSql = (issuedByUserId === null || issuedByUserId === undefined) ? "NULL" : Number(issuedByUserId);
+    const notesSql = (notes === null || notes === undefined || String(notes).trim() === "") ? "NULL" : `'${String(notes).replace(/'/g, "''")}'`;
+    const created = await db.execute(sql.raw(`
+      INSERT INTO material_issues (company_id, issue_no, mo_id, issued_by_user_id, notes, status)
+      VALUES (${companyId}, '${issueNo}', ${moIdSql}, ${issuedByUserIdSql}, ${notesSql}, 'draft')
+      RETURNING *
+    `));
+    const issue = created.rows[0] as any;
+    for (const item of items) {
+      if (!item.productId) throw new Error(`[MAT-ISSUE-ITEM] productId ไม่ครบ — productName="${item.productName}" — กรุณาเลือกสินค้าจากรายการ`);
+      if (!item.productName) throw new Error(`[MAT-ISSUE-ITEM] productName ไม่ครบ — productId=${item.productId}`);
+      if (!item.quantity || Number(item.quantity) <= 0) throw new Error(`[MAT-ISSUE-ITEM] quantity ต้องมากกว่า 0 — productId=${item.productId}`);
+      if (!item.unit) throw new Error(`[MAT-ISSUE-ITEM] unit ไม่ครบ — productId=${item.productId}`);
+      const lotIdSql = (item.lotId === null || item.lotId === undefined) ? "NULL" : Number(item.lotId);
+      const lotNumberSql = (item.lotNumber === null || item.lotNumber === undefined || String(item.lotNumber).trim() === "") ? "NULL" : `'${String(item.lotNumber).replace(/'/g, "''")}'`;
+      await db.execute(sql.raw(`
+        INSERT INTO material_issue_items (material_issue_id, product_id, product_name, lot_id, lot_number, quantity, unit)
+        VALUES (${issue.id}, ${item.productId}, '${String(item.productName).replace(/'/g, "''")}',
+          ${lotIdSql}, ${lotNumberSql},
+          ${Number(item.quantity)}, '${String(item.unit).replace(/'/g, "''")}')
+      `));
+    }
+    res.json({ ...issue, issueNo });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const issueRows = await db.execute(sql.raw(`SELECT * FROM material_issues WHERE id = ${id}`));
+    if (!issueRows.rows.length) return res.status(404).json({ message: "ไม่พบใบเบิก" });
+    const issue = issueRows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(issue.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    if (issue.status !== "draft") return res.status(400).json({ message: `สถานะ "${issue.status}" ไม่สามารถยืนยันได้` });
+    const itemRows = await db.execute(sql.raw(
+      `SELECT * FROM material_issue_items WHERE material_issue_id = ${id}`
+    ));
+    const companyId = Number(issue.company_id);
+    const issueNo = issue.issue_no;
+    for (const item of itemRows.rows as any[]) {
+      const qty = Number(item.quantity);
+      if (!item.product_id || qty <= 0) continue;
+      if (item.lot_id) {
+        await db.execute(sql.raw(
+          `UPDATE product_lots SET quantity = GREATEST(0, CAST(quantity AS NUMERIC) - ${qty}) WHERE id = ${item.lot_id}`
+        ));
+      }
+      await storage.adjustStock(
+        companyId, Number(item.product_id), String(-qty), "issue",
+        `เบิกวัตถุดิบ ${issueNo}`,
+        "material_issue", id,
+        { referenceNo: issueNo, createdBy: (req.user as any)?.id }
+      );
+      if (item.lot_id) {
+        await db.execute(sql.raw(
+          `UPDATE stock_movements SET lot_id = ${item.lot_id} WHERE reference_type = 'material_issue' AND reference_id = ${id} AND product_id = ${item.product_id} ORDER BY id DESC LIMIT 1`
+        ));
+      }
+    }
+    await db.execute(sql.raw(
+      `UPDATE material_issues SET status = 'confirmed', issued_at = NOW() WHERE id = ${id}`
+    ));
+    res.json({ message: "ยืนยันการเบิกวัตถุดิบสำเร็จ", issueNo });
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
+app.delete("/api/material-issues/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const issueRows = await db.execute(sql.raw(`SELECT * FROM material_issues WHERE id = ${id}`));
+    if (!issueRows.rows.length) return res.status(404).json({ message: "ไม่พบใบเบิก" });
+    const issue = issueRows.rows[0] as any;
+    const ac = await checkDocOwnership(Number(issue.company_id), req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    if (issue.status === "confirmed") return res.status(400).json({ message: "ไม่สามารถลบใบเบิกที่ยืนยันแล้ว" });
+    await db.execute(sql.raw(`DELETE FROM material_issue_items WHERE material_issue_id = ${id}`));
+    await db.execute(sql.raw(`DELETE FROM material_issues WHERE id = ${id}`));
+    res.json({ message: "ลบใบเบิกวัตถุดิบสำเร็จ" });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 

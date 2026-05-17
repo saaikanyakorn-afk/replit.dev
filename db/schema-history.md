@@ -405,3 +405,21 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 ```
 
 **Authorized by:** พี่ช้าง — 2026-05-16
+
+---
+
+## 2026-05-17 — material_issues + material_issue_items tables (ENTRY #009)
+
+**What changed:**
+- Added `material_issues` table: id, company_id, issue_no, mo_id (FK→manufacturing_orders), issued_by_user_id (FK→users), notes, status (draft/confirmed), issued_at
+- Added `material_issue_items` table: id, material_issue_id (FK→material_issues ON DELETE CASCADE), product_id, product_name, lot_id, lot_number, quantity, unit
+
+**Backup location:** No backup required — new tables (no existing data affected)
+
+**Migration code:** `server/schema-extra.ts` → `runMaterialIssueMigration()`
+**Caller:** `server/routes/products-routes.ts` → `registerProductsRoutes()` (top-level call)
+**Flag:** `CREATE_MATERIAL_ISSUE_TABLES_20260517` in `system_config`
+
+**Reason:** Task #35 — เบิกวัตถุดิบล็อตเข้าไลน์ผลิตด้วย QR Scan. New module for issuing raw materials to production lines, with QR scan support for employee cards and product lot labels.
+
+**Status:** Dev only — NOT yet on production. Awaiting พี่ช้าง approval before push.

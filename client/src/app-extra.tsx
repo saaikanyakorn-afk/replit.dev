@@ -38,6 +38,11 @@ const MesWorkOrders = lazy(() => import("@/pages/manufacturing/mes-work-orders")
 const MesUnitDetail = lazy(() => import("@/pages/manufacturing/mes-unit-detail"));
 const MesScanStation = lazy(() => import("@/pages/manufacturing/mes-scan-station"));
 
+// [material-issue] เบิกวัตถุดิบ — added 2026-05-17
+const MaterialIssueList = lazy(() => import("@/pages/inventory/material-issue-list"));
+const MaterialIssueForm = lazy(() => import("@/pages/inventory/material-issue-form"));
+const EmployeeQRPage = lazy(() => import("@/pages/inventory/employee-qr"));
+
 // [mfg-form] Manufacturing order form inside ManufacturingLayout
 // /manufacturing/orders/form and /manufacturing/orders/form/:id
 const ManufacturingForm = lazy(() => import("@/pages/inventory/manufacturing-form"));
@@ -118,6 +123,21 @@ function matchMesScan(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/mes/scan";
 }
 
+// [material-issue] Material issue route matchers
+function matchMaterialIssueList(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/inventory/material-issues";
+}
+function matchMaterialIssueForm(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/inventory/material-issue/form";
+}
+function matchMaterialIssueFormEdit(location: string): string | null {
+  const m = location.replace(/\?.*$/, "").match(/^\/inventory\/material-issue\/form\/(\d+)$/);
+  return m ? m[1] : null;
+}
+function matchEmployeeQR(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/inventory/employee-qr";
+}
+
 export default function AppExtra() {
   const { user, loading } = useAuth();
   const [location, setLocation] = useLocation();
@@ -168,6 +188,10 @@ export default function AppExtra() {
   const isMesWorkOrders = matchMesWorkOrders(location);
   const mesUnitDetailId = matchMesUnitDetail(location);
   const isMesScan = matchMesScan(location);
+  const isMaterialIssueList = matchMaterialIssueList(location);
+  const isMaterialIssueForm = matchMaterialIssueForm(location);
+  const materialIssueFormEditId = matchMaterialIssueFormEdit(location);
+  const isEmployeeQR = matchEmployeeQR(location);
 
   if (pdfId) {
     return (
@@ -303,6 +327,50 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <MesScanStation />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [material-issue] ใบเบิกวัตถุดิบ — list
+  if (isMaterialIssueList) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <MaterialIssueList />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [material-issue] ใบเบิกวัตถุดิบ — new form
+  if (isMaterialIssueForm) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <MaterialIssueForm />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [material-issue] ใบเบิกวัตถุดิบ — edit/view existing
+  if (materialIssueFormEditId) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <MaterialIssueForm idProp={materialIssueFormEditId} />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [material-issue] QR บัตรพนักงาน
+  if (isEmployeeQR) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <EmployeeQRPage />
         </Suspense>
       </FullPageOverlay>
     );

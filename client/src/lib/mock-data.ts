@@ -164,6 +164,7 @@ export const NAV_ITEMS = [
       { label: "โปรโมชั่น", href: "/inventory/promotions", group: "สินค้า" },
       { label: "คลังสินค้า", href: "/inventory/warehouse", group: "ควบคุมสินค้า" },
       { label: "ใบรับสินค้า (GR)", href: "/inventory/receiving", group: "ควบคุมสินค้า" },
+      { label: "เบิกวัตถุดิบ", href: "/inventory/material-issues", group: "ควบคุมสินค้า" },
       { label: "โอนย้ายสินค้า", href: "/inventory/stock-transfer", group: "ควบคุมสินค้า" },
       { label: "เบิกสินค้า", href: "/inventory/requisition", group: "ควบคุมสินค้า" },
       { label: "สต๊อกการ์ด", href: "/inventory/stock-card", group: "ควบคุมสินค้า" },
@@ -176,6 +177,7 @@ export const NAV_ITEMS = [
       { label: "เชื่อมโยง/สต๊อก", href: "/inventory/product-mapping", group: "รายงาน & เครื่องมือ" },
       { label: "นำเข้า/ส่งออก Excel สินค้า", href: "/inventory/import-export", group: "รายงาน & เครื่องมือ" },
       { label: "ปริ้นท์ลาเบลบาร์โค้ด", href: "/inventory/barcode-labels", group: "รายงาน & เครื่องมือ" },
+      { label: "QR บัตรพนักงาน", href: "/inventory/employee-qr", group: "รายงาน & เครื่องมือ" },
     ]
   },
   { 
