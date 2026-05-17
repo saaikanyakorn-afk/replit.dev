@@ -124,8 +124,9 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
             setZoomMax(max);
             setZoomStep(step);
 
-            // Restore saved zoom if it falls within this device's range
-            const savedZoom = parseFloat(localStorage.getItem("qr-scanner-zoom") ?? "");
+            // Restore saved zoom for this specific camera (front vs back) if within range
+            const zoomKey = `qr-scanner-zoom-${facing}`;
+            const savedZoom = parseFloat(localStorage.getItem(zoomKey) ?? "");
             const initialZoom = !isNaN(savedZoom) && savedZoom >= min && savedZoom <= max
               ? savedZoom
               : min;
@@ -220,11 +221,11 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
         advanced: [{ zoom: clamped }],
       });
       setZoom(clamped);
-      localStorage.setItem("qr-scanner-zoom", String(clamped));
+      localStorage.setItem(`qr-scanner-zoom-${facingMode}`, String(clamped));
     } catch {
       setZoomSupported(false);
     }
-  }, [zoomMin, zoomMax]);
+  }, [zoomMin, zoomMax, facingMode]);
 
   const handleZoomIn = () => applyZoom(zoom + zoomStep);
   const handleZoomOut = () => applyZoom(zoom - zoomStep);
