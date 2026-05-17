@@ -19,8 +19,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
-import { ArrowLeft, Plus, Trash2, QrCode, CheckCircle, Save, ScanLine, UserCheck, ClipboardList, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, QrCode, CheckCircle, Save, ScanLine, UserCheck, ClipboardList, AlertTriangle, Camera } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CameraQrScanner } from "@/components/camera-qr-scanner";
 
 // ──────────────────────────────────────────────
 // Types
@@ -134,6 +135,10 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
   const [productQrInput, setProductQrInput] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
   const productQrRef = useRef<HTMLInputElement>(null);
+
+  // ── Camera scanner state ──
+  const [empCameraOpen, setEmpCameraOpen] = useState(false);
+  const [productCameraOpen, setProductCameraOpen] = useState(false);
 
   // ── Product/lot selection for manual add ──
   const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null);
@@ -297,13 +302,12 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
   });
 
   // ──────────────────────────────────────────────
-  // QR scan handlers
+  // QR scan handlers — core logic extracted so
+  // both USB scanner (keyboard) and camera can
+  // share the same processing path
   // ──────────────────────────────────────────────
 
-  function handleEmpQrKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter") return;
-    const raw = empQrInput.trim();
-    setEmpQrInput("");
+  function processEmpQr(raw: string) {
     if (!raw) return;
     let parsed: any;
     try {
@@ -322,10 +326,14 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
     toast({ title: "สแกนบัตรพนักงานสำเร็จ", description: `ผู้เบิก: ${parsed.name}` });
   }
 
-  async function handleProductQrKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleEmpQrKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter") return;
-    const raw = productQrInput.trim();
-    setProductQrInput("");
+    const raw = empQrInput.trim();
+    setEmpQrInput("");
+    processEmpQr(raw);
+  }
+
+  async function processProductQr(raw: string) {
     if (!raw) return;
     if (!company?.id) {
       setScanError("[QR-PROD-NO-COMPANY] ไม่พบข้อมูลบริษัท — กรุณา refresh หน้า");
@@ -419,6 +427,13 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
     if (!matched.trackLots) {
       addItemFromProduct(matched, null, null, 1);
     }
+  }
+
+  async function handleProductQrKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter") return;
+    const raw = productQrInput.trim();
+    setProductQrInput("");
+    await processProductQr(raw);
   }
 
   function addItemFromProduct(prod: ProductOption, lotId: number | null, lotNumber: string | null, qty: number, lotAvailableQty?: number) {
@@ -683,6 +698,17 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
                   data-testid="input-employee-qr"
                 />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="md:hidden shrink-0 gap-1.5"
+                onClick={() => setEmpCameraOpen(true)}
+                aria-label="สแกนด้วยกล้อง"
+                data-testid="button-emp-camera-scan"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="text-xs">กล้อง</span>
+              </Button>
               {issuedByName && (
                 <Badge className="bg-blue-600 text-white whitespace-nowrap" data-testid="badge-issued-by">
                   <UserCheck className="h-3 w-3 mr-1" />
@@ -774,18 +800,31 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
           {/* Product QR input */}
           <div className="space-y-1">
             <Label htmlFor="product-qr-input">สแกน QR สินค้า (กด Enter หลังสแกน)</Label>
-            <div className="relative">
-              <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="product-qr-input"
-                ref={productQrRef}
-                className="pl-9"
-                placeholder="สแกน QR label สินค้า..."
-                value={productQrInput}
-                onChange={e => setProductQrInput(e.target.value)}
-                onKeyDown={handleProductQrKeyDown}
-                data-testid="input-product-qr"
-              />
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="product-qr-input"
+                  ref={productQrRef}
+                  className="pl-9"
+                  placeholder="สแกน QR label สินค้า..."
+                  value={productQrInput}
+                  onChange={e => setProductQrInput(e.target.value)}
+                  onKeyDown={handleProductQrKeyDown}
+                  data-testid="input-product-qr"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="md:hidden shrink-0 gap-1.5"
+                onClick={() => setProductCameraOpen(true)}
+                aria-label="สแกนด้วยกล้อง"
+                data-testid="button-product-camera-scan"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="text-xs">กล้อง</span>
+              </Button>
             </div>
           </div>
 
@@ -966,6 +1005,20 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
           {saveMutation.isPending ? "กำลังบันทึก..." : "บันทึกร่าง"}
         </Button>
       </div>
+
+      {/* Camera QR scanners — rendered as full-screen overlays, mobile-only */}
+      <CameraQrScanner
+        open={empCameraOpen}
+        onClose={() => setEmpCameraOpen(false)}
+        onScan={raw => processEmpQr(raw)}
+        title="สแกน QR บัตรพนักงาน"
+      />
+      <CameraQrScanner
+        open={productCameraOpen}
+        onClose={() => setProductCameraOpen(false)}
+        onScan={raw => processProductQr(raw)}
+        title="สแกน QR สินค้า / Lot"
+      />
     </div>
   );
 }
