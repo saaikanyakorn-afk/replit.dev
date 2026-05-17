@@ -648,10 +648,10 @@ export function registerManufacturingRoutes(app: Express) {
       const [mo] = await db.select().from(manufacturingOrders)
         .where(and(eq(manufacturingOrders.id, moId), eq(manufacturingOrders.companyId, companyId)));
       if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
-      const rows = await db.execute(sql.raw(`
-        SELECT id, mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at
+      const rows = await db.execute(sql`
+        SELECT id, mo_id, step_no, step_name, qty_passed, notes, logged_by_employee_id, logged_by_name, logged_at
         FROM mo_process_logs WHERE mo_id = ${moId} ORDER BY logged_at ASC
-      `));
+      `);
       res.json((rows as any).rows || []);
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
@@ -670,11 +670,12 @@ export function registerManufacturingRoutes(app: Express) {
       let loggedByEmployeeId: number | null = null;
       let loggedByName: string | null = null;
       if (employeeQr) {
+        const qrStr = String(employeeQr);
         const [emp] = await db.select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName })
           .from(employees)
           .where(and(
             eq(employees.companyId, companyId),
-            sql`(${employees.employeeCode} = ${String(employeeQr)} OR ${(employees as any).qrCode} = ${String(employeeQr)} OR ${employees.id}::text = ${String(employeeQr)})`
+            sql`(${employees.employeeCode} = ${qrStr} OR ${employees.id}::text = ${qrStr})`
           )).limit(1);
         if (!emp) return res.status(404).json({ message: "ไม่พบพนักงานจาก QR นี้" });
         loggedByEmployeeId = emp.id;
@@ -682,15 +683,15 @@ export function registerManufacturingRoutes(app: Express) {
       } else {
         loggedByName = (req.user as any)?.fullName || (req.user as any)?.username || null;
       }
-      const safeName = String(stepName).replace(/'/g, "''");
-      const safeNotes = notes ? `'${String(notes).replace(/'/g, "''")}'` : "NULL";
-      const safeLoggedBy = loggedByName ? `'${String(loggedByName).replace(/'/g, "''")}'` : "NULL";
-      const safeEmpId = loggedByEmployeeId !== null ? String(loggedByEmployeeId) : "NULL";
-      const result = await db.execute(sql.raw(`
+      const stepNoNum = Number(stepNo);
+      const stepNameStr = String(stepName);
+      const qtyNum = Number(qtyPassed || 0);
+      const notesVal = notes ? String(notes) : null;
+      const result = await db.execute(sql`
         INSERT INTO mo_process_logs (mo_id, step_no, step_name, qty_passed, notes, logged_by_employee_id, logged_by_name, logged_at)
-        VALUES (${moId}, ${Number(stepNo)}, '${safeName}', ${Number(qtyPassed || 0)}, ${safeNotes}, ${safeEmpId}, ${safeLoggedBy}, NOW())
+        VALUES (${moId}, ${stepNoNum}, ${stepNameStr}, ${qtyNum}, ${notesVal}, ${loggedByEmployeeId}, ${loggedByName}, NOW())
         RETURNING id, mo_id, step_no, step_name, qty_passed, notes, logged_by_employee_id, logged_by_name, logged_at
-      `));
+      `);
       res.json(((result as any).rows || [])[0] || {});
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
@@ -707,9 +708,9 @@ export function registerManufacturingRoutes(app: Express) {
       const lines = await db.select().from(manufacturingOrderLines).where(eq(manufacturingOrderLines.moId, mo.id));
       const [prod] = await db.select().from(products).where(eq(products.id, mo.productId));
       const stepRows = mo.bomId
-        ? await db.execute(sql.raw(`SELECT step_no, name, description FROM bom_process_steps WHERE bom_id = ${mo.bomId} ORDER BY step_no ASC`))
+        ? await db.execute(sql`SELECT step_no, name, description FROM bom_process_steps WHERE bom_id = ${mo.bomId} ORDER BY step_no ASC`)
         : { rows: [] };
-      const logRows = await db.execute(sql.raw(`SELECT step_no, step_name, qty_passed, logged_by_name, logged_at FROM mo_process_logs WHERE mo_id = ${mo.id} ORDER BY logged_at ASC`));
+      const logRows = await db.execute(sql`SELECT step_no, step_name, qty_passed, logged_by_employee_id, logged_by_name, logged_at FROM mo_process_logs WHERE mo_id = ${mo.id} ORDER BY logged_at ASC`);
       res.json({
         ...mo,
         productName: prod?.name || "",

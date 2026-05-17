@@ -1189,7 +1189,7 @@ app.get("/api/bom/:id/process-steps", requireAuth, requireModule("inventory"), a
     if (!companyId) return res.status(400).json({ message: "companyId required" });
     const [bom] = await db.select().from(bomHeaders).where(and(eq(bomHeaders.id, bomId), eq(bomHeaders.companyId, companyId)));
     if (!bom) return res.status(404).json({ message: "ไม่พบสูตรผลิต" });
-    const rows = await db.execute(sql.raw(`SELECT id, bom_id, step_no, name, description FROM bom_process_steps WHERE bom_id = ${bomId} ORDER BY step_no ASC`));
+    const rows = await db.execute(sql`SELECT id, bom_id, step_no, name, description FROM bom_process_steps WHERE bom_id = ${bomId} ORDER BY step_no ASC`);
     res.json((rows as any).rows || []);
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
@@ -1203,14 +1203,12 @@ app.post("/api/bom/:id/process-steps", requireAuth, requireModule("inventory"), 
     if (!bom) return res.status(404).json({ message: "ไม่พบสูตรผลิต" });
     const steps: { stepNo: number; name: string; description?: string }[] = req.body.steps;
     if (!Array.isArray(steps)) return res.status(400).json({ message: "steps array required" });
-    await db.execute(sql.raw(`DELETE FROM bom_process_steps WHERE bom_id = ${bomId}`));
+    await db.execute(sql`DELETE FROM bom_process_steps WHERE bom_id = ${bomId}`);
     for (const s of steps) {
       if (!s.name?.trim()) continue;
-      const name = s.name.replace(/'/g, "''");
-      const desc = s.description ? `'${s.description.replace(/'/g, "''")}'` : "NULL";
-      await db.execute(sql.raw(`INSERT INTO bom_process_steps (bom_id, step_no, name, description) VALUES (${bomId}, ${s.stepNo}, '${name}', ${desc})`));
+      await db.execute(sql`INSERT INTO bom_process_steps (bom_id, step_no, name, description) VALUES (${bomId}, ${Number(s.stepNo)}, ${String(s.name)}, ${s.description ? String(s.description) : null})`);
     }
-    const saved = await db.execute(sql.raw(`SELECT id, bom_id, step_no, name, description FROM bom_process_steps WHERE bom_id = ${bomId} ORDER BY step_no ASC`));
+    const saved = await db.execute(sql`SELECT id, bom_id, step_no, name, description FROM bom_process_steps WHERE bom_id = ${bomId} ORDER BY step_no ASC`);
     res.json((saved as any).rows || []);
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
