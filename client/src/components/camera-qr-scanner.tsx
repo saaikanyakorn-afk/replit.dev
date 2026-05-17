@@ -120,7 +120,22 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
             setZoomMin(min);
             setZoomMax(max);
             setZoomStep(step);
-            setZoom(min);
+
+            // Restore saved zoom if it falls within this device's range
+            const savedZoom = parseFloat(localStorage.getItem("qr-scanner-zoom") ?? "");
+            const initialZoom = !isNaN(savedZoom) && savedZoom >= min && savedZoom <= max
+              ? savedZoom
+              : min;
+            setZoom(initialZoom);
+
+            // Apply the restored/initial zoom to the track
+            try {
+              await (track.applyConstraints as (c: MediaTrackConstraints & { advanced?: Array<{ zoom?: number }> }) => Promise<void>)({
+                advanced: [{ zoom: initialZoom }],
+              });
+            } catch {
+              // Ignore if applying fails — UI will still reflect the value
+            }
           }
         } catch {
           // Capabilities API failed — silently ignore, torch/zoom stay hidden
@@ -201,6 +216,7 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
         advanced: [{ zoom: clamped }],
       });
       setZoom(clamped);
+      localStorage.setItem("qr-scanner-zoom", String(clamped));
     } catch {
       setZoomSupported(false);
     }
