@@ -5,9 +5,9 @@
  * Props: idProp?: string — if provided, load existing issue in view/confirm mode
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -107,11 +107,20 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function MaterialIssueForm({ idProp }: Props) {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { company } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const isEditMode = !!idProp;
+
+  // ── Parse moId from URL query param (?moId=X) for new issue pre-selection ──
+  const urlMoId = useMemo(() => {
+    if (isEditMode) return null;
+    const params = new URLSearchParams(search);
+    const v = params.get("moId");
+    return v ? Number(v) : null;
+  }, [search, isEditMode]);
 
   // ── Form state (new issue only) ──
   const [moId, setMoId] = useState<number | null>(null);
@@ -160,6 +169,13 @@ export default function MaterialIssueForm({ idProp }: Props) {
     },
     enabled: !!company?.id && !isEditMode,
   });
+
+  // ── Auto-select MO from URL ?moId=X when mos are loaded ──
+  useEffect(() => {
+    if (!urlMoId || isEditMode || mos.length === 0) return;
+    const found = mos.find(m => m.id === urlMoId);
+    if (found) setMoId(found.id);
+  }, [urlMoId, mos, isEditMode]);
 
   const { data: employees = [] } = useQuery<EmployeeOption[]>({
     queryKey: ["/api/users/employee-qr-data", company?.id],

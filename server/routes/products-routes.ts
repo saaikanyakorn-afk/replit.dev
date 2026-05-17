@@ -2728,13 +2728,19 @@ app.get("/api/material-issues", requireAuth, requireModule("inventory"), async (
     if (!companyId) return res.status(400).json({ message: "companyId required" });
     const ac = await checkDocOwnership(companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    let moIdFilter = "";
+    if (req.query.moId) {
+      const parsedMoId = Number(req.query.moId);
+      if (Number.isNaN(parsedMoId) || parsedMoId <= 0) return res.status(400).json({ message: "moId ต้องเป็นตัวเลขที่มากกว่า 0" });
+      moIdFilter = `AND mi.mo_id = ${parsedMoId}`;
+    }
     const rows = await db.execute(sql.raw(`
       SELECT mi.*, u.full_name as issued_by_name, mo.order_no as mo_no,
         (SELECT COUNT(*) FROM material_issue_items mii WHERE mii.material_issue_id = mi.id) AS item_count
       FROM material_issues mi
       LEFT JOIN users u ON u.id = mi.issued_by_user_id
       LEFT JOIN manufacturing_orders mo ON mo.id = mi.mo_id
-      WHERE mi.company_id = ${companyId}
+      WHERE mi.company_id = ${companyId} ${moIdFilter}
       ORDER BY mi.id DESC
     `));
     res.json(rows.rows);

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode } from "lucide-react";
+import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink } from "lucide-react";
 import { useState, useEffect, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
@@ -98,6 +98,16 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
       return r.json();
     },
     enabled: !!selectedCompanyId,
+  });
+
+  const { data: materialIssues = [] } = useQuery<any[]>({
+    queryKey: ["/api/material-issues", selectedCompanyId, editId],
+    queryFn: async () => {
+      const r = await fetch(`/api/material-issues?companyId=${selectedCompanyId}&moId=${editId}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!editId && !!selectedCompanyId && (moStatus === "in_progress" || moStatus === "completed"),
   });
 
   const { data: moDetail } = useQuery<any>({
@@ -673,6 +683,79 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                 <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
                   ⚠ วัตถุดิบยังไม่มีราคาต้นทุน — กรุณากรอกราคาต้นทุนในหน้าแก้ไขสินค้าแต่ละตัวก่อน
                 </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {editId && (moStatus === "in_progress" || moStatus === "completed") && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" /> ใบเบิกวัตถุดิบ
+                  {materialIssues.length > 0 && (
+                    <Badge className="bg-blue-100 text-blue-700 text-xs">{materialIssues.length} ใบ</Badge>
+                  )}
+                </CardTitle>
+                {moStatus === "in_progress" && (
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/inventory/material-issue/form?moId=${editId}`)}
+                    data-testid="button-create-material-issue"
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> สร้างใบเบิก
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {materialIssues.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6" data-testid="text-no-material-issues">
+                  ยังไม่มีใบเบิกวัตถุดิบสำหรับใบสั่งผลิตนี้
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>เลขที่ใบเบิก</TableHead>
+                      <TableHead className="text-center">สถานะ</TableHead>
+                      <TableHead className="text-center">รายการ</TableHead>
+                      <TableHead>ผู้เบิก</TableHead>
+                      <TableHead className="text-right">วันที่</TableHead>
+                      <TableHead className="w-10" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {materialIssues.map((mi: any) => (
+                      <TableRow key={mi.id} data-testid={`row-material-issue-${mi.id}`}>
+                        <TableCell className="font-mono text-sm" data-testid={`text-mi-no-${mi.id}`}>{mi.issue_no}</TableCell>
+                        <TableCell className="text-center">
+                          {mi.status === "confirmed" ? (
+                            <Badge className="bg-green-100 text-green-700 text-xs" data-testid={`badge-mi-status-${mi.id}`}>ยืนยันแล้ว</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs" data-testid={`badge-mi-status-${mi.id}`}>ร่าง</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center text-sm" data-testid={`text-mi-items-${mi.id}`}>{mi.item_count} รายการ</TableCell>
+                        <TableCell className="text-sm" data-testid={`text-mi-issued-by-${mi.id}`}>{mi.issued_by_name || "—"}</TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground" data-testid={`text-mi-date-${mi.id}`}>
+                          {mi.issued_at ? new Date(mi.issued_at).toLocaleDateString("th-TH") : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate(`/inventory/material-issue/form/${mi.id}`)}
+                            data-testid={`button-view-mi-${mi.id}`}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
