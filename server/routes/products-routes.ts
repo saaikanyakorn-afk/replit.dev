@@ -2037,7 +2037,7 @@ app.get("/api/goods-receivings/:id/lot-labels", requireAuth, requireModule("inve
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
     const items = await db.select().from(goodsReceivingItems).where(eq(goodsReceivingItems.goodsReceivingId, id));
     const labels = await Promise.all(items.map(async (item) => {
-      let lot: any = null;
+      let lot: typeof productLots.$inferSelect | null = null;
       if (item.lotId) {
         const [l] = await db.select().from(productLots).where(eq(productLots.id, item.lotId));
         lot = l || null;

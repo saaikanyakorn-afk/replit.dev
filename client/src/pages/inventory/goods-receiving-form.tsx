@@ -34,6 +34,23 @@ interface GRItemForm {
   trackLots?: boolean;
 }
 
+interface LotLabelItem {
+  productId: number | null;
+  productName: string;
+  productCode: string | null;
+  unit: string;
+  quantity: string;
+  lotId: number | null;
+  lotNumber: string | null;
+  mfgDate: string | null;
+  expDate: string | null;
+  vendor: string | null;
+  grDate: string;
+  grNo: string;
+  companyId: number;
+  hasLot: boolean;
+}
+
 function fmt(val: string | number | null | undefined): string {
   const n = parseFloat(String(val || "0"));
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -41,11 +58,17 @@ function fmt(val: string | number | null | undefined): string {
 
 function LotQRCanvas({ value, size }: { value: string; size: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [qrError, setQrError] = useState(false);
   useEffect(() => {
     if (canvasRef.current && value) {
-      QRCode.toCanvas(canvasRef.current, value, { width: size, margin: 1, errorCorrectionLevel: "M" }).catch(() => {});
+      QRCode.toCanvas(canvasRef.current, value, { width: size, margin: 1, errorCorrectionLevel: "M" })
+        .then(() => setQrError(false))
+        .catch(() => setQrError(true));
     }
   }, [value, size]);
+  if (qrError) {
+    return <div style={{ width: size, height: size, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#b91c1c", textAlign: "center", borderRadius: 4, padding: 4 }}>QR Error</div>;
+  }
   return <canvas ref={canvasRef} style={{ width: size, height: size }} />;
 }
 
@@ -99,7 +122,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
   const [keyboardWarning, setKeyboardWarning] = useState(false);
   const barcodeRef = useRef<HTMLInputElement>(null);
   const [showLotLabels, setShowLotLabels] = useState(false);
-  const [lotLabels, setLotLabels] = useState<any[]>([]);
+  const [lotLabels, setLotLabels] = useState<LotLabelItem[]>([]);
   const [loadingLabels, setLoadingLabels] = useState(false);
 
   function isThai(str: string) {
@@ -435,6 +458,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
 
   async function handlePrintWindow() {
     if (lotLabels.length === 0) return;
+    try {
     const labelCards = await Promise.all(lotLabels.map(async (label) => {
       const qrContent = label.hasLot ? JSON.stringify({
         type: "MATERIAL_LOT",
@@ -452,9 +476,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
       }) : null;
       let qrSrc = "";
       if (qrContent) {
-        try {
-          qrSrc = await QRCode.toDataURL(qrContent, { width: 90, margin: 1, errorCorrectionLevel: "M" });
-        } catch {}
+        qrSrc = await QRCode.toDataURL(qrContent, { width: 90, margin: 1, errorCorrectionLevel: "M" });
       }
       const qrImg = qrSrc
         ? `<img src="${qrSrc}" width="90" height="90" style="display:block"/>`
@@ -470,19 +492,23 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
         `<div style="font-size:9px;color:#444">GR: ${label.grNo || ""}</div>`,
         !label.hasLot ? `<div style="font-size:9px;color:#cc6600;font-style:italic">⚠ ยังไม่มี lot ID</div>` : "",
       ].filter(Boolean).join("");
-      return `<div style="border:1px solid #ccc;border-radius:4px;padding:6px 8px;display:flex;flex-direction:row;align-items:center;gap:8px;width:234px;min-height:151px;box-sizing:border-box;page-break-inside:avoid;break-inside:avoid">
+      return `<div style="border:1px solid #ccc;border-radius:4px;padding:2mm 3mm;display:flex;flex-direction:row;align-items:center;gap:3mm;width:62mm;min-height:40mm;box-sizing:border-box;page-break-inside:avoid;break-inside:avoid">
         <div style="flex-shrink:0">${qrImg}</div>
         <div style="flex:1;line-height:1.4;word-break:break-all">${rows}</div>
       </div>`;
     }));
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR Label — ${form.grNo}</title><style>
-      body{margin:0;padding:8px;font-family:sans-serif}
-      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px}
+      body{margin:0;padding:4mm;font-family:sans-serif}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;padding:4mm}
       @media print{@page{size:A4;margin:8mm}body{padding:0}}
     </style></head><body><div class="grid">${labelCards.join("")}</div>
     <script>window.onload=function(){window.print()}</script></body></html>`;
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "ไม่สามารถสร้าง QR ได้";
+      toast({ title: "พิมพ์ QR ไม่สำเร็จ", description: msg, variant: "destructive" });
+    }
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
