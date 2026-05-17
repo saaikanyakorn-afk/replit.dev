@@ -993,6 +993,21 @@ export async function runMesTablesMigration(db: any) {
 // Creates material_issues + material_issue_items for เบิกวัตถุดิบ module.
 // History: db/schema-history.md ENTRY #009
 // =============================================================================
+/* ── ENTRY #012: general_settings.lot_low_stock_threshold ADD COLUMN ──
+ * Adds a company-level default threshold for lot low-stock warnings in the
+ * material-issue form. Product-level lowStockThreshold takes priority; this
+ * serves as the company-wide fallback when product threshold is 0/unset.
+ * Pure DDL — no data backfill needed. Default 10 applied to all rows.
+ */
+export async function runLotLowStockThresholdMigration(db: any) {
+  try {
+    await db.execute(sql.raw(`ALTER TABLE general_settings ADD COLUMN IF NOT EXISTS lot_low_stock_threshold INTEGER DEFAULT 10`));
+    console.log("[migration] ✅ general_settings.lot_low_stock_threshold ready");
+  } catch (e: any) {
+    console.error("[migration] ❌ runLotLowStockThresholdMigration FAILED:", e.message);
+  }
+}
+
 export async function runMaterialIssueMigration(db: any) {
   const FLAG = "CREATE_MATERIAL_ISSUE_TABLES_20260517";
   try {

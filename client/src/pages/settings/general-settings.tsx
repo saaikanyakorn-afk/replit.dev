@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Sliders, Save, Loader2, Bell, Globe, Clock, Shield, PenTool, Upload, X } from "lucide-react";
+import { Sliders, Save, Loader2, Bell, Globe, Clock, Shield, PenTool, Upload, X, Package } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ export default function GeneralSettings() {
     authorizedSignerName: "",
     authorizedSignerTitle: "",
     authorizedSignerSignatureUrl: "",
+    lotLowStockThreshold: 10,
   });
 
   const { data: settings, isLoading } = useQuery({
@@ -308,6 +309,33 @@ export default function GeneralSettings() {
                   </label>
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Package className="h-5 w-5 text-[#05b187]" />
+              คลังสินค้า & Lot
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="input-lot-threshold">จำนวนขั้นต่ำ Lot ที่ถือว่า "ใกล้หมด" (ค่าเริ่มต้นทั้งบริษัท)</Label>
+              <p className="text-sm text-muted-foreground">
+                Lot ที่มีจำนวนคงเหลือต่ำกว่าค่านี้จะแสดงแจ้งเตือน "ใกล้หมด" ในใบเบิกวัตถุดิบ — สินค้าแต่ละรายการสามารถตั้งค่าเองได้ที่หน้าสินค้า (หากตั้งค่าไว้จะใช้ค่านั้นแทน)
+              </p>
+              <Input
+                id="input-lot-threshold"
+                type="number"
+                min={1}
+                max={9999}
+                value={form.lotLowStockThreshold}
+                onChange={e => setForm(prev => ({ ...prev, lotLowStockThreshold: Math.max(1, Number(e.target.value) || 10) }))}
+                className="w-32"
+                data-testid="input-lot-low-stock-threshold"
+              />
             </div>
           </CardContent>
         </Card>

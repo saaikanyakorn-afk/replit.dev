@@ -43,6 +43,7 @@ interface ProductOption {
   code: string;
   unit: string | null;
   trackLots: boolean;
+  lowStockThreshold?: number;
 }
 
 interface LotOption {
@@ -214,6 +215,17 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
       return r.json();
     },
     enabled: !!company?.id && !!selectedProduct?.id && selectedProduct.trackLots,
+  });
+
+  const { data: companySettings } = useQuery<{ lotLowStockThreshold?: number }>({
+    queryKey: ["/api/settings/general", company?.id],
+    queryFn: async () => {
+      if (!company?.id) return {};
+      const r = await fetch(`/api/settings/general?companyId=${company.id}`, { credentials: "include" });
+      if (!r.ok) return {};
+      return r.json();
+    },
+    enabled: !!company?.id && !isEditMode,
   });
 
   // ── View mode: fetch live lot quantities for each item that has a lot_id ──
@@ -885,12 +897,41 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
                     {lots.length === 0 ? (
                       <SelectItem value="none" disabled>ไม่มี Lot ในระบบ</SelectItem>
                     ) : (
-                      lots.map(l => (
-                        <SelectItem key={l.id} value={String(l.id)} data-testid={`option-lot-${l.id}`}>
-                          {l.lotNumber} (คงเหลือ: {Number(l.quantity).toLocaleString()}
-                          {l.expiryDate ? ` | หมดอายุ: ${new Date(l.expiryDate).toLocaleDateString("th-TH")}` : ""})
-                        </SelectItem>
-                      ))
+                      lots.map(l => {
+                        const qty = Number(l.quantity);
+                        const productThreshold = selectedProduct?.lowStockThreshold ?? 0;
+                        const companyThreshold = companySettings?.lotLowStockThreshold ?? 10;
+                        const threshold = productThreshold > 0 ? productThreshold : companyThreshold;
+                        const isOutOfStock = qty <= 0;
+                        const isLowStock = !isOutOfStock && qty < threshold;
+                        const expiryText = l.expiryDate
+                          ? ` | หมดอายุ: ${new Date(l.expiryDate).toLocaleDateString("th-TH")}`
+                          : "";
+                        return (
+                          <SelectItem
+                            key={l.id}
+                            value={String(l.id)}
+                            disabled={isOutOfStock}
+                            data-testid={`option-lot-${l.id}`}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <span>
+                                {l.lotNumber} (คงเหลือ: {qty.toLocaleString()}{expiryText})
+                              </span>
+                              {isOutOfStock && (
+                                <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground" data-testid={`badge-lot-out-${l.id}`}>
+                                  หมดสต็อก
+                                </span>
+                              )}
+                              {isLowStock && (
+                                <span className="shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-600" data-testid={`badge-lot-low-${l.id}`}>
+                                  ใกล้หมด
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })
                     )}
                   </SelectContent>
                 </Select>

@@ -5,7 +5,7 @@ import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzl
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
-import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration } from "@shared/schema-extra";
+import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration, runLotLowStockThresholdMigration } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { parsePagination, paginatedResponse } from "./pagination";
@@ -51,6 +51,9 @@ export function registerProductsRoutes(app: Express) {
   });
   runNcrMigration(db).catch((err: any) => {
     console.error("[migration] ❌ runNcrMigration failed:", err.message);
+  });
+  runLotLowStockThresholdMigration(db).catch((err: any) => {
+    console.error("[migration] ❌ runLotLowStockThresholdMigration failed:", err.message);
   });
 
 // ==================== Product Categories ====================

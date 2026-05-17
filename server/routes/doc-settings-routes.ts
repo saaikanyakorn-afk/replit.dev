@@ -37,12 +37,13 @@ app.put("/api/settings/general", requireAuth, async (req, res) => {
   try {
     const companyId = Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุ companyId" });
-    const { dateFormat, calendarType, language, timezone, notifyOnDocApproval, notifyOnOverdue, autoLogoutMinutes, defaultPageSize, showDecimalPlaces, hiddenEmployeeModules, authorizedSignerName, authorizedSignerTitle, authorizedSignerSignatureUrl } = req.body;
+    const { dateFormat, calendarType, language, timezone, notifyOnDocApproval, notifyOnOverdue, autoLogoutMinutes, defaultPageSize, showDecimalPlaces, hiddenEmployeeModules, authorizedSignerName, authorizedSignerTitle, authorizedSignerSignatureUrl, lotLowStockThreshold } = req.body;
     const data: any = { companyId, dateFormat, calendarType, language, timezone, notifyOnDocApproval, notifyOnOverdue, autoLogoutMinutes, defaultPageSize, showDecimalPlaces };
     if (hiddenEmployeeModules !== undefined) data.hiddenEmployeeModules = hiddenEmployeeModules;
     if (authorizedSignerName !== undefined) data.authorizedSignerName = authorizedSignerName;
     if (authorizedSignerTitle !== undefined) data.authorizedSignerTitle = authorizedSignerTitle;
     if (authorizedSignerSignatureUrl !== undefined) data.authorizedSignerSignatureUrl = authorizedSignerSignatureUrl;
+    if (lotLowStockThreshold !== undefined) data.lotLowStockThreshold = Number(lotLowStockThreshold);
     const [existing] = await db.select().from(generalSettings).where(eq(generalSettings.companyId, companyId)).limit(1);
     if (existing) {
       const { companyId: _cid, ...updateData } = data;
