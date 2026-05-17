@@ -183,7 +183,7 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
                 <Select value={String(form.productId)} onValueChange={v => setForm(f => ({ ...f, productId: Number(v) }))}>
                   <SelectTrigger data-testid="select-product"><SelectValue placeholder="เลือกสินค้า" /></SelectTrigger>
                   <SelectContent>
-                    {products.filter(p => p.active).map(p => (
+                    {products.filter(p => p.active !== false).map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -262,7 +262,7 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
                         <Select value={String(line.componentProductId)} onValueChange={v => updateLine(idx, "componentProductId", Number(v))}>
                           <SelectTrigger data-testid={`select-material-${idx}`}><SelectValue placeholder="เลือกวัตถุดิบ" /></SelectTrigger>
                           <SelectContent>
-                            {products.filter(p => p.active).map(p => (
+                            {products.filter(p => p.active !== false).map(p => (
                               <SelectItem key={p.id} value={String(p.id)}>{p.code} - {p.name}</SelectItem>
                             ))}
                           </SelectContent>
