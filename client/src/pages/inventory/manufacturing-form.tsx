@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer } from "lucide-react";
-import { useState, useEffect, useMemo, type ComponentType, type ReactNode } from "react";
+import QRCodeLib from "qrcode";
+import { useState, useEffect, useRef, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -65,6 +66,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
 
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [qrPrintOpen, setQrPrintOpen] = useState(false);
+  const moQrCanvasRef = useRef<HTMLCanvasElement>(null);
   const [logStepDialogOpen, setLogStepDialogOpen] = useState(false);
   const [logStepNo, setLogStepNo] = useState<string>("");
   const [logStepQty, setLogStepQty] = useState("1");
@@ -1158,13 +1160,17 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
             <div className="bg-white border-2 border-gray-200 rounded-xl p-4" id="mo-qr-container">
-              {moData?.orderNo && (
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(moData.orderNo)}`}
-                  alt={`QR ${moData.orderNo}`}
-                  className="w-48 h-48"
-                />
-              )}
+              <canvas
+                ref={moQrCanvasRef}
+                className="block mx-auto"
+                style={{ width: 192, height: 192 }}
+              />
+              {(() => {
+                if (qrPrintOpen && moData?.orderNo && moQrCanvasRef.current) {
+                  QRCodeLib.toCanvas(moQrCanvasRef.current, moData.orderNo, { width: 192, margin: 1, errorCorrectionLevel: "M" });
+                }
+                return null;
+              })()}
               <p className="text-center font-mono font-bold mt-2 text-sm">{moData?.orderNo}</p>
               <p className="text-center text-xs text-gray-500">{moData?.productName || ""}</p>
             </div>

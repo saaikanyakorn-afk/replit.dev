@@ -667,6 +667,13 @@ export function registerManufacturingRoutes(app: Express) {
       const [mo] = await db.select().from(manufacturingOrders)
         .where(and(eq(manufacturingOrders.id, moId), eq(manufacturingOrders.companyId, companyId)));
       if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
+      if (mo.bomId) {
+        const validSteps = await db.execute(sql`SELECT step_no FROM bom_process_steps WHERE bom_id = ${mo.bomId}`);
+        const validStepNos = ((validSteps as any).rows || []).map((r: any) => Number(r.step_no));
+        if (validStepNos.length > 0 && !validStepNos.includes(Number(stepNo))) {
+          return res.status(400).json({ message: `ขั้นตอน ${stepNo} ไม่มีใน BOM ของใบสั่งผลิตนี้` });
+        }
+      }
       let loggedByEmployeeId: number | null = null;
       let loggedByName: string | null = null;
       if (employeeQr) {
