@@ -113,6 +113,18 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
 
           if (caps.torch) {
             setTorchSupported(true);
+            // Restore saved torch preference
+            const savedTorch = localStorage.getItem("qr-scanner-torch") === "true";
+            if (savedTorch) {
+              try {
+                await (track.applyConstraints as (c: MediaTrackConstraints & { advanced?: Array<{ torch?: boolean }> }) => Promise<void>)({
+                  advanced: [{ torch: true }],
+                });
+                setTorchOn(true);
+              } catch {
+                // Torch restoration failed — leave it off
+              }
+            }
           }
 
           if (caps.zoom && caps.zoom.max > caps.zoom.min) {
@@ -205,6 +217,7 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
         advanced: [{ torch: next }],
       });
       setTorchOn(next);
+      localStorage.setItem("qr-scanner-torch", String(next));
     } catch {
       // torch not available on this device after all — hide the button
       setTorchSupported(false);
