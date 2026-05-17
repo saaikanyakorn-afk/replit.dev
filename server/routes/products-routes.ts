@@ -2773,52 +2773,90 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
 app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
     const id = Number(req.params.id);
+
+    // ── Phase 1: pre-flight reads (outside transaction) ──
     const issueRows = await db.execute(sql.raw(`SELECT * FROM material_issues WHERE id = ${id}`));
     if (!issueRows.rows.length) return res.status(404).json({ message: "ไม่พบใบเบิก" });
     const issue = issueRows.rows[0] as any;
-    const ac = await checkDocOwnership(Number(issue.company_id), req.user);
+    const companyId = Number(issue.company_id);
+    const issueNo = String(issue.issue_no);
+    const ac = await checkDocOwnership(companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
     if (issue.status !== "draft") return res.status(400).json({ message: `สถานะ "${issue.status}" ไม่สามารถยืนยันได้` });
+
     const itemRows = await db.execute(sql.raw(
-      `SELECT * FROM material_issue_items WHERE material_issue_id = ${id}`
+      `SELECT * FROM material_issue_items WHERE material_issue_id = ${id} ORDER BY id`
     ));
-    const companyId = Number(issue.company_id);
-    const issueNo = issue.issue_no;
-    for (const item of itemRows.rows as any[]) {
+    const items = itemRows.rows as any[];
+    if (!items.length) return res.status(400).json({ message: "ใบเบิกไม่มีรายการวัตถุดิบ" });
+
+    // ── Phase 2: validate each item (pre-flight, no writes) ──
+    for (const item of items) {
       const productId = Number(item.product_id);
       const qty = Number(item.quantity);
-      if (!productId) throw new Error(`[MAT-ISSUE-CONFIRM] product_id null — item.id=${item.id} — ข้อมูลผิดพลาด`);
+      if (!productId) throw new Error(`[MAT-ISSUE-CONFIRM] product_id null — item.id=${item.id}`);
       if (qty <= 0) throw new Error(`[MAT-ISSUE-CONFIRM] quantity=${qty} ไม่ถูกต้อง — item.id=${item.id} productId=${productId}`);
-      // Check if product is lot-tracked — if so, lot_id is required
       const prodRows = await db.execute(sql.raw(`SELECT track_lots FROM products WHERE id = ${productId} LIMIT 1`));
-      if (prodRows.rows.length > 0) {
-        const trackLots = (prodRows.rows[0] as any).track_lots;
-        if (trackLots === true && !item.lot_id) {
-          throw new Error(`[MAT-ISSUE-CONFIRM] สินค้า productId=${productId} ต้องระบุ Lot — item.id=${item.id} — กรุณาแก้ไขใบเบิกก่อนยืนยัน`);
-        }
+      if (prodRows.rows.length > 0 && (prodRows.rows[0] as any).track_lots === true && !item.lot_id) {
+        throw new Error(`[MAT-ISSUE-CONFIRM] สินค้า productId=${productId} ต้องระบุ Lot — item.id=${item.id} — กรุณาแก้ไขใบเบิกก่อนยืนยัน`);
       }
       if (item.lot_id) {
         const lotId = Number(item.lot_id);
-        await db.execute(sql.raw(
-          `UPDATE product_lots SET quantity = GREATEST(0, CAST(quantity AS NUMERIC) - ${qty}) WHERE id = ${lotId}`
-        ));
-      }
-      await storage.adjustStock(
-        companyId, productId, String(-qty), "issue",
-        `เบิกวัตถุดิบ ${issueNo}`,
-        "material_issue", id,
-        { referenceNo: issueNo, createdBy: (req.user as any)?.id }
-      );
-      if (item.lot_id) {
-        const lotId = Number(item.lot_id);
-        await db.execute(sql.raw(
-          `UPDATE stock_movements SET lot_id = ${lotId} WHERE reference_type = 'material_issue' AND reference_id = ${id} AND product_id = ${productId} ORDER BY id DESC LIMIT 1`
-        ));
+        const lotCheck = await db.execute(sql.raw(`SELECT CAST(quantity AS NUMERIC) AS q FROM product_lots WHERE id = ${lotId} LIMIT 1`));
+        if (!lotCheck.rows.length) throw new Error(`[MAT-ISSUE-CONFIRM] lotId=${lotId} ไม่พบในระบบ — item.id=${item.id}`);
+        const available = Number((lotCheck.rows[0] as any).q || 0);
+        if (available < qty) throw new Error(`[MAT-ISSUE-CONFIRM] ล็อต lotId=${lotId} มีสต๊อก ${available} ไม่เพียงพอ (ต้องการ ${qty}) — item.id=${item.id}`);
       }
     }
-    await db.execute(sql.raw(
-      `UPDATE material_issues SET status = 'confirmed', issued_at = NOW() WHERE id = ${id}`
-    ));
+
+    // ── Phase 3: all writes inside a single transaction ──
+    const createdBy = Number((req.user as any)?.id) || null;
+    const createdBySql = createdBy ? createdBy : "NULL";
+    const notesText = `เบิกวัตถุดิบ ${issueNo}`.replace(/'/g, "''");
+
+    await db.transaction(async (tx) => {
+      for (const item of items) {
+        const productId = Number(item.product_id);
+        const qty = Number(item.quantity);
+        const lotId = item.lot_id ? Number(item.lot_id) : null;
+        const lotIdSql = lotId !== null ? lotId : "NULL";
+
+        // Deduct lot quantity (no GREATEST — throw on underflow was already checked in pre-flight)
+        if (lotId !== null) {
+          await tx.execute(sql.raw(
+            `UPDATE product_lots SET quantity = CAST(quantity AS NUMERIC) - ${qty} WHERE id = ${lotId}`
+          ));
+        }
+
+        // Insert stock movement (includes lot_id directly — no separate UPDATE needed)
+        await tx.execute(sql.raw(`
+          INSERT INTO stock_movements
+            (company_id, product_id, lot_id, movement_type, quantity, unit_cost, total_cost,
+             reference_type, reference_id, reference_no, notes, created_by)
+          VALUES
+            (${companyId}, ${productId}, ${lotIdSql}, 'issue', ${-qty}, 0, 0,
+             'material_issue', ${id}, '${issueNo.replace(/'/g, "''")}', '${notesText}', ${createdBySql})
+        `));
+
+        // Upsert product_stock
+        const stockRow = await tx.execute(sql.raw(
+          `SELECT CAST(quantity AS NUMERIC) AS q FROM product_stock WHERE company_id = ${companyId} AND product_id = ${productId} LIMIT 1`
+        ));
+        const currentQty = stockRow.rows.length > 0 ? Number((stockRow.rows[0] as any).q || 0) : 0;
+        const newQty = currentQty - qty;
+        await tx.execute(sql.raw(`
+          INSERT INTO product_stock (company_id, product_id, quantity)
+          VALUES (${companyId}, ${productId}, ${newQty})
+          ON CONFLICT (company_id, product_id) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()
+        `));
+      }
+
+      // Mark issue confirmed
+      await tx.execute(sql.raw(
+        `UPDATE material_issues SET status = 'confirmed', issued_at = NOW() WHERE id = ${id}`
+      ));
+    });
+
     res.json({ message: "ยืนยันการเบิกวัตถุดิบสำเร็จ", issueNo });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
