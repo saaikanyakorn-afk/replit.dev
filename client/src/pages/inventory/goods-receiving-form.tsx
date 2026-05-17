@@ -490,7 +490,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
         label.mfgDate ? `<div style="font-size:9px;color:#444">ผลิต: ${label.mfgDate}</div>` : "",
         label.expDate ? `<div style="font-size:9px;color:#444">หมดอายุ: ${label.expDate}</div>` : "",
         `<div style="font-size:9px;color:#444">GR: ${label.grNo || ""}</div>`,
-        !label.hasLot ? `<div style="font-size:9px;color:#cc6600;font-style:italic">⚠ ยังไม่มี lot ID</div>` : "",
+        !label.hasLot ? `<div style="font-size:9px;color:#cc6600;font-style:italic">⚠ item นี้ยังไม่มี lot บันทึก (GR ต้อง approved ก่อน)</div>` : "",
       ].filter(Boolean).join("");
       return `<div style="border:1px solid #ccc;border-radius:4px;padding:2mm 3mm;display:flex;flex-direction:row;align-items:center;gap:3mm;width:62mm;min-height:40mm;box-sizing:border-box;page-break-inside:avoid;break-inside:avoid">
         <div style="flex-shrink:0">${qrImg}</div>
@@ -975,7 +975,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
                     {label.expDate && <div style={{ color: "#444", marginBottom: 1 }}>หมดอายุ: {label.expDate}</div>}
                     <div style={{ color: "#444", marginBottom: 1 }}>GR: {label.grNo}</div>
                     {!label.hasLot && (
-                      <div style={{ color: "#cc6600", fontStyle: "italic" }}>⚠ ยังไม่มี lot ID (GR ต้อง approved ก่อน)</div>
+                      <div style={{ color: "#cc6600", fontStyle: "italic" }}>⚠ item นี้ยังไม่มี lot บันทึก (GR ต้อง approved ก่อน)</div>
                     )}
                   </div>
                 </div>

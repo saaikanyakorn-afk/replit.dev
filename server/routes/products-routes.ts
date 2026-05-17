@@ -2035,6 +2035,7 @@ app.get("/api/goods-receivings/:id/lot-labels", requireAuth, requireModule("inve
     if (!gr) return res.status(404).json({ message: "ไม่พบใบรับสินค้า" });
     const ac = await checkDocOwnership(gr.companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    if (gr.status !== "approved") return res.status(400).json({ message: "ใบรับสินค้าต้อง approved ก่อนจึงจะพิมพ์ QR ได้" });
     const items = await db.select().from(goodsReceivingItems).where(eq(goodsReceivingItems.goodsReceivingId, id));
     const labels = await Promise.all(items.map(async (item) => {
       let lot: typeof productLots.$inferSelect | null = null;
