@@ -81,6 +81,7 @@ export default function ProductionFinishForm({ idProp, urlBase = "/manufacturing
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ReceiptItem[]>([{ ...EMPTY_ITEM }]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [toWarehouseId, setToWarehouseId] = useState<number | null>(null);
 
   const { data: receipt } = useQuery<ReceiptDetail>({
     queryKey: ["/api/production-receipts", id],
@@ -116,6 +117,18 @@ export default function ProductionFinishForm({ idProp, urlBase = "/manufacturing
     enabled: !!company?.id,
   });
 
+  interface WarehouseOption { id: number; name: string; code: string | null; }
+  const { data: warehouses = [] } = useQuery<WarehouseOption[]>({
+    queryKey: ["/api/inventory/warehouses", company?.id],
+    queryFn: async () => {
+      if (!company?.id) return [];
+      const r = await fetch(`/api/inventory/warehouses?companyId=${company.id}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!company?.id && !isEdit,
+  });
+
   useEffect(() => {
     if (!receipt) return;
     setMoId(receipt.mo_id ? String(receipt.mo_id) : "");
@@ -143,6 +156,7 @@ export default function ProductionFinishForm({ idProp, urlBase = "/manufacturing
         moId: moId ? Number(moId) : null,
         receivedByUserId: (user as any)?.id ?? null,
         notes: notes || null,
+        toWarehouseId: toWarehouseId ?? null,
         items: validItems.map(i => ({
           productId: i.productId,
           productName: i.productName,
@@ -248,6 +262,26 @@ export default function ProductionFinishForm({ idProp, urlBase = "/manufacturing
                 {manufacturingOrders.map(mo => (
                   <SelectItem key={mo.id} value={String(mo.id)} data-testid={`option-mo-${mo.id}`}>
                     {mo.order_no} — สถานะ: {mo.status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-sm">คลังปลายทาง (FG) — ไม่บังคับ</Label>
+            <Select
+              value={toWarehouseId ? String(toWarehouseId) : "none"}
+              onValueChange={(v) => setToWarehouseId(v === "none" ? null : Number(v))}
+              disabled={isConfirmed}
+            >
+              <SelectTrigger data-testid="select-to-warehouse">
+                <SelectValue placeholder="เลือกคลังปลายทาง (ไม่บังคับ)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— ไม่เลือกคลัง —</SelectItem>
+                {warehouses.map(wh => (
+                  <SelectItem key={wh.id} value={String(wh.id)} data-testid={`option-warehouse-${wh.id}`}>
+                    {wh.name}{wh.code ? ` (${wh.code})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

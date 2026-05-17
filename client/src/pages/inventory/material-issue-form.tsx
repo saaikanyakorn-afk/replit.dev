@@ -130,6 +130,7 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
   const [issuedByName, setIssuedByName] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ItemForm[]>([]);
+  const [fromWarehouseId, setFromWarehouseId] = useState<number | null>(null);
 
   // ── QR scan state ──
   const [empQrInput, setEmpQrInput] = useState("");
@@ -172,6 +173,18 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
       const data = await r.json();
       const all = (data.data ?? data) as MoOption[];
       return all.filter(m => m.status === "in_progress");
+    },
+    enabled: !!company?.id && !isEditMode,
+  });
+
+  interface WarehouseOption { id: number; name: string; code: string | null; }
+  const { data: warehouses = [] } = useQuery<WarehouseOption[]>({
+    queryKey: ["/api/inventory/warehouses", company?.id],
+    queryFn: async () => {
+      if (!company?.id) return [];
+      const r = await fetch(`/api/inventory/warehouses?companyId=${company.id}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
     },
     enabled: !!company?.id && !isEditMode,
   });
@@ -266,6 +279,7 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
         companyId: company.id,
         moId: moId ?? null,
         issuedByUserId: issuedByUserId ?? null,
+        fromWarehouseId: fromWarehouseId ?? null,
         notes: notes.trim() || null,
         items: items.map(it => ({
           productId: it.productId,
@@ -768,6 +782,27 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
                 {mos.map(mo => (
                   <SelectItem key={mo.id} value={String(mo.id)} data-testid={`option-mo-${mo.id}`}>
                     {mo.orderNo} ({mo.status})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Warehouse selector */}
+          <div className="space-y-1">
+            <Label>คลังต้นทาง (RAW/WIP) — ไม่บังคับ</Label>
+            <Select
+              value={fromWarehouseId ? String(fromWarehouseId) : "none"}
+              onValueChange={val => setFromWarehouseId(val === "none" ? null : Number(val))}
+            >
+              <SelectTrigger data-testid="select-from-warehouse">
+                <SelectValue placeholder="เลือกคลังต้นทาง (ไม่บังคับ)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— ไม่เลือกคลัง —</SelectItem>
+                {warehouses.map(wh => (
+                  <SelectItem key={wh.id} value={String(wh.id)} data-testid={`option-warehouse-${wh.id}`}>
+                    {wh.name}{wh.code ? ` (${wh.code})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

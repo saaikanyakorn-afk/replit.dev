@@ -1019,6 +1019,7 @@ export async function runMaterialIssueMigration(db: any) {
       issue_no TEXT NOT NULL,
       mo_id INTEGER REFERENCES manufacturing_orders(id),
       issued_by_user_id INTEGER REFERENCES users(id),
+      from_warehouse_id INTEGER,
       issued_at TIMESTAMP DEFAULT NOW(),
       notes TEXT,
       status TEXT NOT NULL DEFAULT 'draft'
@@ -1056,6 +1057,7 @@ export async function runProductionFinishMigration(db: any) {
       receipt_no TEXT NOT NULL,
       mo_id INTEGER REFERENCES manufacturing_orders(id),
       received_by_user_id INTEGER REFERENCES users(id),
+      to_warehouse_id INTEGER,
       received_at TIMESTAMP DEFAULT NOW(),
       notes TEXT,
       status TEXT NOT NULL DEFAULT 'draft'
@@ -1084,6 +1086,20 @@ export async function runProductionFinishMigration(db: any) {
 // ncr_reports — Non-Conformance Report บันทึกของเสีย/Reject ในกระบวนการผลิต
 // History: db/schema-history.md ENTRY #012
 // =============================================================================
+export async function runWarehouseColumnsForMfgMigration(db: any) {
+  const FLAG = "ADD_WAREHOUSE_COLS_TO_MFG_TABLES_20260517";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`ALTER TABLE material_issues ADD COLUMN IF NOT EXISTS from_warehouse_id INTEGER`));
+    await db.execute(sql.raw(`ALTER TABLE production_receipts ADD COLUMN IF NOT EXISTS to_warehouse_id INTEGER`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ from_warehouse_id + to_warehouse_id added to mfg tables");
+  } catch (e: any) {
+    console.error("[migration] ❌ runWarehouseColumnsForMfgMigration FAILED:", e.message);
+  }
+}
+
 export async function runNcrMigration(db: any) {
   const FLAG = "CREATE_NCR_REPORTS_TABLE_20260517";
   try {

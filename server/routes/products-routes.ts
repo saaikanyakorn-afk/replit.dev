@@ -5,7 +5,7 @@ import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzl
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
-import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration, runLotLowStockThresholdMigration } from "@shared/schema-extra";
+import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration, runLotLowStockThresholdMigration, runWarehouseColumnsForMfgMigration } from "@shared/schema-extra";
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { parsePagination, paginatedResponse } from "./pagination";
@@ -54,6 +54,9 @@ export function registerProductsRoutes(app: Express) {
   });
   runLotLowStockThresholdMigration(db).catch((err: any) => {
     console.error("[migration] ❌ runLotLowStockThresholdMigration failed:", err.message);
+  });
+  runWarehouseColumnsForMfgMigration(db).catch((err: any) => {
+    console.error("[migration] ❌ runWarehouseColumnsForMfgMigration failed:", err.message);
   });
 
 // ==================== Product Categories ====================
@@ -2458,7 +2461,7 @@ app.delete("/api/goods-requisitions/:id", requireAuth, requireModule("inventory"
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
-app.get("/api/inventory/warehouses", requireAuth, requireModule("inventory"), async (req, res) => {
+app.get("/api/inventory/warehouses", requireAuth, requireAnyModule("inventory", "manufacturing"), async (req, res) => {
   try {
     const companyId = Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "companyId required" });
@@ -2779,7 +2782,7 @@ app.get("/api/material-issues/:id", requireAuth, requireModule("inventory"), asy
 
 app.post("/api/material-issues", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
-    const { companyId: rawCompanyId, moId, issuedByUserId, notes, items } = req.body;
+    const { companyId: rawCompanyId, moId, issuedByUserId, notes, items, fromWarehouseId } = req.body;
     const companyId = Number(rawCompanyId);
     if (!companyId || isNaN(companyId)) return res.status(400).json({ message: "companyId required and must be a number" });
     if (!items || !Array.isArray(items) || items.length === 0) return res.status(400).json({ message: "ต้องมีรายการอย่างน้อย 1 รายการ" });
@@ -2857,9 +2860,10 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
 
     let createdIssue: any;
     await db.transaction(async (tx) => {
+      const fromWhSql = (fromWarehouseId !== null && fromWarehouseId !== undefined && Number(fromWarehouseId) > 0) ? Number(fromWarehouseId) : "NULL";
       const created = await tx.execute(sql.raw(`
-        INSERT INTO material_issues (company_id, issue_no, mo_id, issued_by_user_id, notes, status)
-        VALUES (${companyId}, '${issueNo}', ${moIdSql}, ${issuedByUserIdSql}, ${notesSql}, 'draft')
+        INSERT INTO material_issues (company_id, issue_no, mo_id, issued_by_user_id, from_warehouse_id, notes, status)
+        VALUES (${companyId}, '${issueNo}', ${moIdSql}, ${issuedByUserIdSql}, ${fromWhSql}, ${notesSql}, 'draft')
         RETURNING *
       `));
       createdIssue = created.rows[0] as any;
@@ -2982,6 +2986,12 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
           VALUES (${companyId}, ${productId}, ${newQty})
           ON CONFLICT (company_id, product_id) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()
         `));
+
+        // Deduct from warehouse stock level (from_warehouse_id on the issue header)
+        const fromWhId = issue.from_warehouse_id ? Number(issue.from_warehouse_id) : null;
+        if (fromWhId) {
+          await upsertWarehouseStockLevel(companyId, productId, fromWhId, -qty, tx);
+        }
       }
     });
 
@@ -3048,7 +3058,7 @@ app.get("/api/production-receipts/:id", requireAuth, requireModule("inventory"),
 
 app.post("/api/production-receipts", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
-    const { companyId: rawCompanyId, moId, receivedByUserId, notes, items } = req.body;
+    const { companyId: rawCompanyId, moId, receivedByUserId, notes, items, toWarehouseId } = req.body;
     const companyId = Number(rawCompanyId);
     if (!companyId || isNaN(companyId)) return res.status(400).json({ message: "companyId required" });
     if (!items || !Array.isArray(items) || items.length === 0) return res.status(400).json({ message: "ต้องมีรายการอย่างน้อย 1 รายการ" });
@@ -3092,7 +3102,8 @@ app.post("/api/production-receipts", requireAuth, requireModule("inventory"), as
     const notesSql = (notes === null || notes === undefined || String(notes).trim() === "") ? "NULL" : `'${String(notes).replace(/'/g, "''")}'`;
     let created: any;
     await db.transaction(async (tx) => {
-      const r = await tx.execute(sql.raw(`INSERT INTO production_receipts (company_id, receipt_no, mo_id, received_by_user_id, notes, status) VALUES (${companyId}, '${receiptNo}', ${moIdSql}, ${receivedBySql}, ${notesSql}, 'draft') RETURNING *`));
+      const toWhSql = (toWarehouseId !== null && toWarehouseId !== undefined && Number(toWarehouseId) > 0) ? Number(toWarehouseId) : "NULL";
+      const r = await tx.execute(sql.raw(`INSERT INTO production_receipts (company_id, receipt_no, mo_id, received_by_user_id, to_warehouse_id, notes, status) VALUES (${companyId}, '${receiptNo}', ${moIdSql}, ${receivedBySql}, ${toWhSql}, ${notesSql}, 'draft') RETURNING *`));
       created = r.rows[0] as any;
       const rid = Number(created.id);
       for (const vi of validated) {
@@ -3156,6 +3167,11 @@ app.post("/api/production-receipts/:id/confirm", requireAuth, requireModule("inv
         await tx.execute(sql.raw(`INSERT INTO product_stock (company_id, product_id, quantity) VALUES (${companyId}, ${pid}, ${currentQty + qty}) ON CONFLICT (company_id, product_id) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`));
         // Stock movement
         await tx.execute(sql.raw(`INSERT INTO stock_movements (company_id, product_id, lot_id, movement_type, quantity, unit_cost, total_cost, reference_type, reference_id, reference_no, notes, created_by) VALUES (${companyId}, ${pid}, ${lotIdSql}, 'production_finish', ${qty}, ${unitCost}, ${totalCost}, 'production_receipt', ${id}, '${receiptNo.replace(/'/g, "''")}', '${notesText}', ${createdBySql})`));
+        // Add to destination warehouse stock level (to_warehouse_id on the receipt header)
+        const toWhId = receipt.to_warehouse_id ? Number(receipt.to_warehouse_id) : null;
+        if (toWhId) {
+          await upsertWarehouseStockLevel(companyId, pid, toWhId, qty, tx);
+        }
       }
       // Update MO completed_qty if linked
       if (receipt.mo_id) {
