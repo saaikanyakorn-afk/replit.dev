@@ -194,7 +194,7 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
               poId: data.poId || undefined,
               notes: data.notes || "",
               status: data.status || "draft",
-              warehouseId: data.warehouse_id || data.warehouseId || undefined,
+              warehouseId: data.receivingWarehouseId || data.warehouse_id || data.warehouseId || undefined,
             });
             if (data.items && data.items.length > 0) {
               setItems(data.items.map((it: any) => ({
@@ -511,6 +511,24 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     }
   }
 
+  const [isApproving, setIsApproving] = useState(false);
+  async function handleApprove() {
+    if (!editingId) return;
+    if (!window.confirm("ยืนยันการอนุมัติใบรับสินค้า? สต๊อกจะถูกอัปเดตทันที")) return;
+    setIsApproving(true);
+    try {
+      const res = await fetch(`/api/goods-receivings/${editingId}/approve`, { method: "POST", credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "อนุมัติไม่สำเร็จ");
+      toast({ title: "อนุมัติใบรับสินค้าสำเร็จ", description: "สต๊อกถูกอัปเดตแล้ว" });
+      setForm(prev => ({ ...prev, status: "approved" }));
+    } catch (err: any) {
+      toast({ title: "ข้อผิดพลาด", description: err.message, variant: "destructive" });
+    } finally {
+      setIsApproving(false);
+    }
+  }
+
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const statusInfo = STATUS_MAP[form.status] || STATUS_MAP.draft;
 
@@ -538,6 +556,19 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
               </Badge>
             )}
           </div>
+          {form.status === "draft" && editingId && (
+            <Button
+              size="sm"
+              className="h-8 text-sm gap-1.5 text-white"
+              style={{ background: "#10b981" }}
+              onClick={handleApprove}
+              disabled={isApproving}
+              data-testid="button-approve"
+            >
+              <FileText className="h-4 w-4" />
+              {isApproving ? "กำลังอนุมัติ..." : "อนุมัติ"}
+            </Button>
+          )}
           {form.status === "approved" && editingId && (
             <Button
               variant="outline"
