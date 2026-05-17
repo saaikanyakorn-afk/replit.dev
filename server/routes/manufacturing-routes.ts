@@ -90,7 +90,7 @@ export function registerManufacturingRoutes(app: Express) {
         }
       }
 
-      const rawWh = await db.execute(sql.raw(`SELECT source_warehouse_id, target_warehouse_id FROM manufacturing_orders WHERE id = ${id}`));
+      const rawWh = await db.execute(sql`SELECT source_warehouse_id, target_warehouse_id, wip_warehouse_id FROM manufacturing_orders WHERE id = ${id}`);
       const rawWhRow = (rawWh as any).rows?.[0] || {};
       res.json({
         ...mo,
@@ -101,6 +101,7 @@ export function registerManufacturingRoutes(app: Express) {
         lines: linesWithNames,
         sourceWarehouseId: rawWhRow.source_warehouse_id || null,
         targetWarehouseId: rawWhRow.target_warehouse_id || null,
+        wipWarehouseId: rawWhRow.wip_warehouse_id || null,
       });
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
@@ -147,14 +148,16 @@ export function registerManufacturingRoutes(app: Express) {
 
       const srcWid = req.body.sourceWarehouseId ? Number(req.body.sourceWarehouseId) : null;
       const tgtWid = req.body.targetWarehouseId ? Number(req.body.targetWarehouseId) : null;
-      if (srcWid || tgtWid) {
+      const wipWid = req.body.wipWarehouseId ? Number(req.body.wipWarehouseId) : null;
+      if (srcWid || tgtWid || wipWid) {
         const parts: string[] = [];
         if (srcWid) parts.push(`source_warehouse_id = ${srcWid}`);
         if (tgtWid) parts.push(`target_warehouse_id = ${tgtWid}`);
+        if (wipWid) parts.push(`wip_warehouse_id = ${wipWid}`);
         await db.execute(sql.raw(`UPDATE manufacturing_orders SET ${parts.join(", ")} WHERE id = ${mo.id}`));
       }
 
-      res.status(201).json({ ...mo, sourceWarehouseId: srcWid, targetWarehouseId: tgtWid });
+      res.status(201).json({ ...mo, sourceWarehouseId: srcWid, targetWarehouseId: tgtWid, wipWarehouseId: wipWid });
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
 
@@ -197,16 +200,18 @@ export function registerManufacturingRoutes(app: Express) {
       }
       const srcWid = req.body.sourceWarehouseId != null ? Number(req.body.sourceWarehouseId) || null : undefined;
       const tgtWid = req.body.targetWarehouseId != null ? Number(req.body.targetWarehouseId) || null : undefined;
-      if (srcWid !== undefined || tgtWid !== undefined) {
+      const wipWid = req.body.wipWarehouseId != null ? Number(req.body.wipWarehouseId) || null : undefined;
+      if (srcWid !== undefined || tgtWid !== undefined || wipWid !== undefined) {
         const parts: string[] = [];
         if (srcWid !== undefined) parts.push(`source_warehouse_id = ${srcWid === null ? "NULL" : srcWid}`);
         if (tgtWid !== undefined) parts.push(`target_warehouse_id = ${tgtWid === null ? "NULL" : tgtWid}`);
+        if (wipWid !== undefined) parts.push(`wip_warehouse_id = ${wipWid === null ? "NULL" : wipWid}`);
         await db.execute(sql.raw(`UPDATE manufacturing_orders SET ${parts.join(", ")} WHERE id = ${id}`));
       }
       const [updated] = await db.select().from(manufacturingOrders).where(eq(manufacturingOrders.id, id));
-      const rawRow = await db.execute(sql.raw(`SELECT source_warehouse_id, target_warehouse_id FROM manufacturing_orders WHERE id = ${id}`));
+      const rawRow = await db.execute(sql`SELECT source_warehouse_id, target_warehouse_id, wip_warehouse_id FROM manufacturing_orders WHERE id = ${id}`);
       const rawExtra = (rawRow as any).rows?.[0] || {};
-      res.json({ ...updated, sourceWarehouseId: rawExtra.source_warehouse_id, targetWarehouseId: rawExtra.target_warehouse_id });
+      res.json({ ...updated, sourceWarehouseId: rawExtra.source_warehouse_id, targetWarehouseId: rawExtra.target_warehouse_id, wipWarehouseId: rawExtra.wip_warehouse_id || null });
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
 
@@ -215,18 +220,61 @@ export function registerManufacturingRoutes(app: Express) {
       const id = Number(req.params.id);
       const companyId = Number(req.query.companyId || req.body.companyId);
       if (!companyId) return res.status(400).json({ message: "companyId required" });
+      const user = req.user as any;
 
       const [mo] = await db.select().from(manufacturingOrders)
         .where(and(eq(manufacturingOrders.id, id), eq(manufacturingOrders.companyId, companyId)));
       if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
       if (mo.status !== "draft") return res.status(400).json({ message: "สถานะต้องเป็น 'ร่าง' เท่านั้น" });
 
+      const rawWh = await db.execute(sql`SELECT source_warehouse_id, wip_warehouse_id FROM manufacturing_orders WHERE id = ${id}`);
+      const rawWhRow = (rawWh as any).rows?.[0] || {};
+      const moSourceWarehouseId = rawWhRow.source_warehouse_id ? Number(rawWhRow.source_warehouse_id) : null;
+      const moWipWarehouseId = rawWhRow.wip_warehouse_id ? Number(rawWhRow.wip_warehouse_id) : null;
+
       const [updated] = await db.update(manufacturingOrders).set({
         status: "in_progress",
         startedAt: new Date(),
       }).where(eq(manufacturingOrders.id, id)).returning();
 
-      res.json(updated);
+      // WIP transfer: Raw → WIP warehouse for all BOM lines at planned quantities
+      if (moSourceWarehouseId && moWipWarehouseId) {
+        const mfgTriggers = await getInventoryTriggers(companyId);
+        if (mfgTriggers.manufacturing_complete) {
+          const lines = await db.select().from(manufacturingOrderLines)
+            .where(eq(manufacturingOrderLines.moId, id));
+          let bomYieldQty = 1;
+          if (mo.bomId) {
+            const [bom] = await db.select().from(bomHeaders).where(eq(bomHeaders.id, mo.bomId));
+            if (bom) bomYieldQty = Number(bom.yieldQty) || 1;
+          }
+          const multiplier = Number(mo.plannedQty) / bomYieldQty;
+          for (const line of lines) {
+            const transferQty = Number(line.requiredQty) * multiplier;
+            if (transferQty <= 0) continue;
+            // Deduct from raw (source) warehouse
+            await upsertWarehouseStockLevel(companyId, line.componentProductId, moSourceWarehouseId, -transferQty);
+            // Add to WIP warehouse
+            await upsertWarehouseStockLevel(companyId, line.componentProductId, moWipWarehouseId, transferQty);
+            // Record the transfer movement
+            await db.insert(stockMovements).values({
+              companyId,
+              productId: line.componentProductId,
+              movementType: "mo_wip_in",
+              quantity: String(transferQty),
+              unitCost: "0",
+              totalCost: "0",
+              referenceType: "manufacturing_order",
+              referenceId: id,
+              referenceNo: mo.orderNo,
+              notes: `โอนวัตถุดิบเข้า WIP คลัง${moWipWarehouseId} สำหรับ ${mo.orderNo}`,
+              createdBy: user?.id || null,
+            });
+          }
+        }
+      }
+
+      res.json({ ...updated, wipTransferred: !!(moSourceWarehouseId && moWipWarehouseId) });
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
 
@@ -243,8 +291,11 @@ export function registerManufacturingRoutes(app: Express) {
       if (mo.status === "completed") return res.status(400).json({ message: "ใบสั่งผลิตเสร็จสิ้นแล้ว" });
       if (mo.status === "cancelled") return res.status(400).json({ message: "ใบสั่งผลิตถูกยกเลิก" });
 
-      const moSourceWarehouseId = (mo as any).sourceWarehouseId ? Number((mo as any).sourceWarehouseId) : null;
-      const moTargetWarehouseId = (mo as any).targetWarehouseId ? Number((mo as any).targetWarehouseId) : null;
+      const rawWhComplete = await db.execute(sql`SELECT source_warehouse_id, target_warehouse_id, wip_warehouse_id FROM manufacturing_orders WHERE id = ${id}`);
+      const rawWhCompleteRow = (rawWhComplete as any).rows?.[0] || {};
+      const moSourceWarehouseId = rawWhCompleteRow.source_warehouse_id ? Number(rawWhCompleteRow.source_warehouse_id) : null;
+      const moTargetWarehouseId = rawWhCompleteRow.target_warehouse_id ? Number(rawWhCompleteRow.target_warehouse_id) : null;
+      const moWipWarehouseId = rawWhCompleteRow.wip_warehouse_id ? Number(rawWhCompleteRow.wip_warehouse_id) : null;
 
       const completedQty = Number(req.body.completedQty || mo.plannedQty);
       if (!isFinite(completedQty) || completedQty <= 0) {
@@ -352,8 +403,12 @@ export function registerManufacturingRoutes(app: Express) {
           } else {
             await tx.insert(productStock).values({ companyId, productId: line.componentProductId, quantity: newQty });
           }
-          if (moSourceWarehouseId && mfgTriggers.manufacturing_complete) {
-            await upsertWarehouseStockLevel(companyId, line.componentProductId, moSourceWarehouseId, -deductQty, tx);
+          if (mfgTriggers.manufacturing_complete) {
+            // Deduct from WIP warehouse if set, otherwise from source warehouse
+            const deductFromWhId = moWipWarehouseId || moSourceWarehouseId;
+            if (deductFromWhId) {
+              await upsertWarehouseStockLevel(companyId, line.componentProductId, deductFromWhId, -deductQty, tx);
+            }
           }
         }
 

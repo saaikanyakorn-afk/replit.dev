@@ -62,6 +62,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
   const [moStatus, setMoStatus] = useState("draft");
   const [moData, setMoData] = useState<any>(null);
   const [sourceWarehouseId, setSourceWarehouseId] = useState<string>("");
+  const [wipWarehouseId, setWipWarehouseId] = useState<string>("");
   const [targetWarehouseId, setTargetWarehouseId] = useState<string>("");
 
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
@@ -175,6 +176,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
       setMoStatus(moDetail.status);
       setMoData(moDetail);
       setSourceWarehouseId(moDetail.sourceWarehouseId ? String(moDetail.sourceWarehouseId) : "");
+      setWipWarehouseId(moDetail.wipWarehouseId ? String(moDetail.wipWarehouseId) : "");
       setTargetWarehouseId(moDetail.targetWarehouseId ? String(moDetail.targetWarehouseId) : "");
       if (moDetail.lines) {
         setLines(moDetail.lines.map((l: any) => ({
@@ -254,6 +256,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
         expiryDate: expiryDate || null,
         notes: notes || null,
         sourceWarehouseId: sourceWarehouseId ? Number(sourceWarehouseId) : null,
+        wipWarehouseId: wipWarehouseId ? Number(wipWarehouseId) : null,
         targetWarehouseId: targetWarehouseId ? Number(targetWarehouseId) : null,
         lines: lines.map(l => ({
           componentProductId: l.componentProductId,
@@ -496,35 +499,67 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                 <Textarea value={notes} onChange={e => setNotes(e.target.value)} disabled={isReadOnly} rows={2} data-testid="input-notes" />
               </div>
               {warehouses.length > 0 && (
-                <div className="grid grid-cols-2 gap-3 pt-1 border-t">
-                  <div>
-                    <Label className="text-xs text-blue-700">คลังวัตถุดิบ (ต้นทาง)</Label>
-                    <Select value={sourceWarehouseId || "none"} onValueChange={v => setSourceWarehouseId(v === "none" ? "" : v)} disabled={isReadOnly}>
-                      <SelectTrigger className="mt-1 text-xs" data-testid="select-source-warehouse">
-                        <SelectValue placeholder="-- ไม่ระบุ --" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">-- ไม่ระบุ --</SelectItem>
-                        {warehouses.map((w: any) => (
-                          <SelectItem key={w.id} value={String(w.id)}>{w.code} — {w.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-2 pt-1 border-t">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-blue-700">คลังวัตถุดิบ (ต้นทาง)</Label>
+                      <Select value={sourceWarehouseId || "none"} onValueChange={v => setSourceWarehouseId(v === "none" ? "" : v)} disabled={isReadOnly}>
+                        <SelectTrigger className="mt-1 text-xs" data-testid="select-source-warehouse">
+                          <SelectValue placeholder="-- ไม่ระบุ --" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- ไม่ระบุ --</SelectItem>
+                          {warehouses.map((w: any) => (
+                            <SelectItem key={w.id} value={String(w.id)}>{w.code} — {w.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-orange-700">คลัง WIP (ระหว่างผลิต)</Label>
+                      <Select value={wipWarehouseId || "none"} onValueChange={v => setWipWarehouseId(v === "none" ? "" : v)} disabled={isReadOnly}>
+                        <SelectTrigger className="mt-1 text-xs" data-testid="select-wip-warehouse">
+                          <SelectValue placeholder="-- ไม่ใช้ WIP --" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- ไม่ใช้ WIP --</SelectItem>
+                          {warehouses.map((w: any) => (
+                            <SelectItem key={w.id} value={String(w.id)}>{w.code} — {w.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs text-green-700">คลังสินค้าสำเร็จรูป (ปลายทาง)</Label>
-                    <Select value={targetWarehouseId || "none"} onValueChange={v => setTargetWarehouseId(v === "none" ? "" : v)} disabled={isReadOnly}>
-                      <SelectTrigger className="mt-1 text-xs" data-testid="select-target-warehouse">
-                        <SelectValue placeholder="-- ไม่ระบุ --" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">-- ไม่ระบุ --</SelectItem>
-                        {warehouses.map((w: any) => (
-                          <SelectItem key={w.id} value={String(w.id)}>{w.code} — {w.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-green-700">คลังสินค้าสำเร็จรูป (ปลายทาง)</Label>
+                      <Select value={targetWarehouseId || "none"} onValueChange={v => setTargetWarehouseId(v === "none" ? "" : v)} disabled={isReadOnly}>
+                        <SelectTrigger className="mt-1 text-xs" data-testid="select-target-warehouse">
+                          <SelectValue placeholder="-- ไม่ระบุ --" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- ไม่ระบุ --</SelectItem>
+                          {warehouses.map((w: any) => (
+                            <SelectItem key={w.id} value={String(w.id)}>{w.code} — {w.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end pb-0.5">
+                      {wipWarehouseId && (
+                        <div className="text-xs text-orange-700 space-y-0.5">
+                          {moStatus === "draft" && <p className="font-medium">วัตถุดิบจะโอนเข้า WIP อัตโนมัติเมื่อเริ่มผลิต</p>}
+                          {moStatus === "in_progress" && <p className="font-medium text-green-700">โอนวัตถุดิบเข้า WIP แล้ว</p>}
+                          {moStatus === "completed" && <p className="font-medium text-green-700">ตัดสต็อกจาก WIP แล้ว</p>}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {wipWarehouseId && moStatus === "draft" && (
+                    <p className="text-xs text-muted-foreground">
+                      Raw → WIP → สำเร็จรูป: วัตถุดิบจะโอนจากคลังต้นทางเข้า WIP เมื่อ "เริ่มผลิต" และตัดออกจาก WIP เมื่อ "ยืนยันผลิตเสร็จ"
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>

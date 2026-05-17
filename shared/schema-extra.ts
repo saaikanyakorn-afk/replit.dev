@@ -1168,6 +1168,24 @@ export async function runBomProcessStepsMigration(db: any) {
 }
 
 // =============================================================================
+// WIP WAREHOUSE COLUMN ON MANUFACTURING ORDERS (ENTRY #014, 2026-05-17)
+// Adds wip_warehouse_id column to manufacturing_orders for Raw→WIP→FG flow
+// History: db/schema-history.md ENTRY #014
+// =============================================================================
+export async function runWipWarehouseMigration(db: any) {
+  const FLAG = "ADD_WIP_WAREHOUSE_TO_MFG_ORDERS_20260517";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`ALTER TABLE manufacturing_orders ADD COLUMN IF NOT EXISTS wip_warehouse_id INTEGER`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ wip_warehouse_id added to manufacturing_orders");
+  } catch (e: any) {
+    console.error("[migration] ❌ runWipWarehouseMigration FAILED:", e.message);
+  }
+}
+
+// =============================================================================
 // INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12) — ❌ CANCELLED
 // Approach changed 2026-05-12: user inputs วันที่เริ่มต้นสต๊อก at Excel import
 // time via product-import-export.tsx date picker. Backfill not needed.
