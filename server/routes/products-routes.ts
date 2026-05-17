@@ -2926,11 +2926,17 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
         const lotId = item.lot_id ? Number(item.lot_id) : null;
         const lotIdSql = lotId !== null ? lotId : "NULL";
 
-        // Deduct lot quantity (no GREATEST — sufficiency was checked in Phase 2 pre-flight)
+        // Deduct lot quantity — conditional WHERE quantity >= qty prevents concurrent over-deduction.
+        // Pre-flight checked sufficiency, but two concurrent confirms on the same lot need this guard.
         if (lotId !== null) {
-          await tx.execute(sql.raw(
-            `UPDATE product_lots SET quantity = CAST(quantity AS NUMERIC) - ${qty} WHERE id = ${lotId}`
+          const deducted = await tx.execute(sql.raw(
+            `UPDATE product_lots SET quantity = CAST(quantity AS NUMERIC) - ${qty}
+             WHERE id = ${lotId} AND CAST(quantity AS NUMERIC) >= ${qty}
+             RETURNING id`
           ));
+          if (!deducted.rows.length) {
+            throw new Error(`[MAT-ISSUE-CONFIRM] lotId=${lotId} สต๊อกไม่เพียงพอขณะยืนยัน (ต้องการ ${qty}) — อาจมีการเบิกพร้อมกัน — กรุณา refresh และลองใหม่`);
+          }
         }
 
         // Insert stock movement (lot_id included directly — no separate UPDATE needed)

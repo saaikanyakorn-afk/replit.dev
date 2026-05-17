@@ -153,6 +153,7 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 | T35-34 | CODE REVIEW FIX (round 7) — Cross-tenant moId validation in POST create: `manufacturing_orders WHERE id=moNum AND company_id=companyId` — rejects MO from other tenants | `server/routes/products-routes.ts` lines 2777-2785 | ✅ |
 | T35-35 | CODE REVIEW FIX (round 7) — Cross-tenant productId validation in POST create Phase 1 loop: `products WHERE id=itemProductId AND company_id=companyId` for every item (including non-lot items) | `server/routes/products-routes.ts` lines 2796-2800 | ✅ |
 | T35-36 | CODE REVIEW FIX (round 7) — Cross-tenant productId validation in confirm Phase 2: `products WHERE id=productId AND company_id=companyId` — no-rows → throw error; eliminates cross-tenant stock pollution | `server/routes/products-routes.ts` lines 2893-2895 | ✅ |
+| T35-37 | CODE REVIEW APPROVED_WITH_COMMENTS — Lot deduction hardened: conditional `UPDATE product_lots ... WHERE id=lotId AND CAST(quantity AS NUMERIC) >= qty RETURNING id`; if no rows → throw (concurrent over-deduction guard, prevents negative lot stock under parallel confirm) | `server/routes/products-routes.ts` lines 2932-2942 | ✅ |
 
 **⚠️ Before production push:**
 - This commit contains NEW TABLES (schema change) — alert พี่ช้าง: `material_issues` + `material_issue_items` will be auto-created by `runMaterialIssueMigration()` on first server start
