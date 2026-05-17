@@ -169,8 +169,8 @@ export default function ProductLotsPage() {
   const searchStr = useSearch();
   const urlParams = new URLSearchParams(searchStr);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
-  const [showLowStockOnly, setShowLowStockOnly] = useState(urlParams.get("filter") === "low-stock");
+  const [tab, setTab] = useState(urlParams.get("filter") === "low-stock" ? "low-stock" : "all");
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [expiryDays, setExpiryDays] = useState("30");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>({});
@@ -250,13 +250,19 @@ export default function ProductLotsPage() {
 
   const activeLots = filteredLots.filter((l: any) => Number(l.quantity) > 0);
   const emptyLots = filteredLots.filter((l: any) => Number(l.quantity) <= 0);
-  const lowStockCount = lots.filter((l: any) => {
+  const lowStockLots = lots.filter((l: any) => {
     const qty = Number(l.quantity);
     if (qty <= 0) return false;
     const productThreshold = l.productLowStockThreshold ?? 0;
     const threshold = productThreshold > 0 ? productThreshold : companyThresholdGlobal;
     return qty < threshold;
-  }).length;
+  });
+  const lowStockCount = lowStockLots.length;
+  const filteredLowStockLots = lowStockLots.filter((l: any) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return l.lotNumber.toLowerCase().includes(s) || l.productName?.toLowerCase().includes(s) || l.productCode?.toLowerCase().includes(s);
+  });
 
   function toggleExpand(lotId: number) {
     setExpandedLotId(prev => prev === lotId ? null : lotId);
@@ -273,6 +279,10 @@ export default function ProductLotsPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="all" data-testid="tab-all-lots">ล็อตทั้งหมด ({lots.length})</TabsTrigger>
+            <TabsTrigger value="low-stock" data-testid="tab-low-stock" className="text-amber-600">
+              <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+              ใกล้หมด ({lowStockCount})
+            </TabsTrigger>
             <TabsTrigger value="expiring" data-testid="tab-expiring" className="text-amber-600">
               <AlertTriangle className="h-3.5 w-3.5 mr-1" />
               ใกล้หมดอายุ ({expiringLots.length})
@@ -436,6 +446,84 @@ export default function ProductLotsPage() {
                               <IssueHistoryPanel key={`history-${lot.id}`} lotId={lot.id} lotNumber={lot.lotNumber} companyId={companyId!} urlBase={urlBase} />
                             )}
                           </Fragment>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="low-stock" className="mt-4">
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3 pt-4 px-4 border-b">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-semibold text-slate-700">ล็อตที่ใกล้หมดสต็อก</span>
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      data-testid="input-low-stock-search"
+                      placeholder="ค้นหาล็อต, สินค้า..."
+                      className="pl-10 h-9 text-sm"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">{filteredLowStockLots.length} ล็อต</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow className="h-10">
+                        <TableHead className="text-xs font-medium text-slate-600">เลขล็อต</TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600">สินค้า</TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600 w-28 text-right">คงเหลือ</TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600 w-28">เกณฑ์ขั้นต่ำ</TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600 w-28">วันหมดอายุ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-gray-400">กำลังโหลด...</TableCell></TableRow>
+                      ) : filteredLowStockLots.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-10 text-gray-400">
+                            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                            {lowStockCount === 0 ? "ไม่มีล็อตที่ใกล้หมดสต็อก" : "ไม่พบรายการที่ค้นหา"}
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredLowStockLots.map((lot: any) => {
+                        const productThreshold = lot.productLowStockThreshold ?? 0;
+                        const threshold = productThreshold > 0 ? productThreshold : companyThresholdGlobal;
+                        const qty = Number(lot.quantity);
+                        const daysLeft = lot.expiryDate ? Math.ceil((new Date(lot.expiryDate).getTime() - Date.now()) / 86400000) : null;
+                        return (
+                          <TableRow key={lot.id} data-testid={`row-low-stock-${lot.id}`} className="hover:bg-amber-50/40 bg-amber-50/20">
+                            <TableCell className="text-sm font-mono font-medium">{lot.lotNumber}</TableCell>
+                            <TableCell>
+                              <div className="text-sm">{lot.productName}</div>
+                              <div className="text-[11px] text-gray-400">{lot.productCode}</div>
+                            </TableCell>
+                            <TableCell className="text-right text-sm tabular-nums font-semibold text-amber-700">
+                              {fmtQty(qty)} {lot.productUnit}
+                            </TableCell>
+                            <TableCell className="text-sm text-slate-500">
+                              &lt; {fmtQty(threshold)} {lot.productUnit}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {daysLeft === null ? "-" : daysLeft <= 0 ? (
+                                <span className="text-red-600 font-medium">หมดอายุแล้ว</span>
+                              ) : daysLeft <= 7 ? (
+                                <span className="text-red-500">{daysLeft} วัน</span>
+                              ) : (
+                                <span className="text-slate-600">{fmtDate(lot.expiryDate)}</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
                         );
                       })}
                     </TableBody>
