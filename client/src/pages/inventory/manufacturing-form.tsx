@@ -737,10 +737,12 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                       {lines.map((line, idx) => {
                         const required = Number(line.requiredQty) || 0;
                         const issued = issuedSummary?.issuedMap?.[String(line.componentProductId)] || 0;
-                        const remaining = Math.max(0, required - issued);
+                        const diff = required - issued;
+                        const isOver = issued > required;
                         const isFulfilled = issued >= required;
+                        const overAmt = isOver ? issued - required : 0;
                         return (
-                          <TableRow key={idx} data-testid={`row-bom-summary-${line.componentProductId}`}>
+                          <TableRow key={idx} data-testid={`row-bom-summary-${line.componentProductId}`} className={isOver ? "bg-red-50" : undefined}>
                             <TableCell className="text-sm py-2">
                               <span className="font-medium">{line.componentName}</span>
                               {line.componentCode && <span className="text-xs text-slate-400 ml-1">({line.componentCode})</span>}
@@ -749,17 +751,25 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                               {required.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-sm py-2" data-testid={`text-bom-issued-${line.componentProductId}`}>
-                              <span className={issued > 0 ? "text-blue-700 font-medium" : "text-slate-400"}>
+                              <span className={issued > 0 ? (isOver ? "text-red-600 font-semibold" : "text-blue-700 font-medium") : "text-slate-400"}>
                                 {issued.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit}
                               </span>
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-sm py-2" data-testid={`text-bom-remaining-${line.componentProductId}`}>
-                              <span className={isFulfilled ? "text-green-600" : "text-amber-600 font-medium"}>
-                                {isFulfilled ? "0" : remaining.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit}
-                              </span>
+                              {isOver ? (
+                                <span className="text-red-600 font-semibold">
+                                  +{overAmt.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit} เกิน
+                                </span>
+                              ) : (
+                                <span className={isFulfilled ? "text-green-600" : "text-amber-600 font-medium"}>
+                                  {isFulfilled ? "0" : diff.toLocaleString("th-TH", { maximumFractionDigits: 4 })} {line.unit}
+                                </span>
+                              )}
                             </TableCell>
                             <TableCell className="text-center py-2" data-testid={`text-bom-status-${line.componentProductId}`}>
-                              {isFulfilled ? (
+                              {isOver ? (
+                                <Badge className="bg-red-100 text-red-700 text-xs px-1.5 py-0.5">เกิน</Badge>
+                              ) : isFulfilled ? (
                                 <span className="text-green-600 text-base" title="เบิกครบแล้ว">✓</span>
                               ) : (
                                 <span className="text-amber-500 text-base" title="ยังเบิกไม่ครบ">⚠</span>
