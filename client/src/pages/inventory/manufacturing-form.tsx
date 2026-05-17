@@ -15,7 +15,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
-import { useLocation, useParams } from "wouter";
+import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDate } from "@/lib/format";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -45,9 +45,9 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
   const qc = useQueryClient();
   const { dateEra, dateFmt } = useDateSettings();
   const { selectedCompanyId } = useCompany();
-  const [, navigate] = useLocation();
-  const params = useParams<{ id: string }>();
-  const editId = params.id ? Number(params.id) : null;
+  const [location, navigate] = useLocation();
+  const idMatch = location.match(/\/form\/(\d+)/);
+  const editId = idMatch ? Number(idMatch[1]) : null;
 
   const [bomId, setBomId] = useState<string>("");
   const [productId, setProductId] = useState<string>("");
