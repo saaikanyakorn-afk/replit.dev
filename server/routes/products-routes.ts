@@ -2676,6 +2676,31 @@ app.get("/api/users/employee-qr-data", requireAuth, requireModule("inventory"), 
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
+// Alias for employee-qr-data (same handler — supports both endpoint names)
+app.get("/api/users/employee-qr-labels", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const allUsers = await db.select({
+      id: users.id, fullName: users.fullName, username: users.username,
+      role: users.role, avatarUrl: users.avatarUrl, active: users.active,
+      allowedCompanyIds: users.allowedCompanyIds,
+    }).from(users).where(eq(users.active, true));
+    const filtered = allUsers.filter(u =>
+      u.role === "superadmin" ||
+      (u.allowedCompanyIds && u.allowedCompanyIds.includes(companyId))
+    );
+    const result = filtered.map(u => ({
+      id: u.id, fullName: u.fullName, username: u.username,
+      role: u.role, avatarUrl: u.avatarUrl,
+      qrPayload: JSON.stringify({ type: "EMPLOYEE", userId: u.id, name: u.fullName }),
+    }));
+    res.json(result);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
 // ==================== Material Issues ====================
 async function getNextMaterialIssueNo(companyId: number): Promise<string> {
   // Use MAX on the numeric suffix (not COUNT) so that deleted drafts never cause duplicate numbers.
@@ -2776,10 +2801,28 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
       });
     }
 
+    // ── Validate issuedByUserId (if provided) — must be active user allowed for this company ──
+    let validatedIssuedByUserId: number | null = null;
+    if (issuedByUserId !== null && issuedByUserId !== undefined) {
+      const uid = Number(issuedByUserId);
+      if (!uid || isNaN(uid)) throw new Error(`[MAT-ISSUE-EMP] issuedByUserId ต้องเป็นตัวเลข — ค่าที่ได้รับ: ${issuedByUserId}`);
+      const userCheck = await db.execute(sql.raw(
+        `SELECT id, active, role, allowed_company_ids FROM users WHERE id = ${uid} AND active = true LIMIT 1`
+      ));
+      if (!userCheck.rows.length) throw new Error(`[MAT-ISSUE-EMP] ไม่พบพนักงาน userId=${uid} หรือบัญชีถูกปิดใช้งาน`);
+      const u = userCheck.rows[0] as any;
+      const isSuperAdmin = u.role === "superadmin";
+      const allowedCompanyIds: number[] = Array.isArray(u.allowed_company_ids) ? u.allowed_company_ids : [];
+      if (!isSuperAdmin && !allowedCompanyIds.includes(companyId)) {
+        throw new Error(`[MAT-ISSUE-EMP] userId=${uid} ไม่มีสิทธิ์ในบริษัทนี้ (companyId=${companyId})`);
+      }
+      validatedIssuedByUserId = uid;
+    }
+
     // ── Phase 2: all writes in a single transaction (atomic — all or nothing) ──
     const issueNo = await getNextMaterialIssueNo(companyId);
     const moIdSql = (moId === null || moId === undefined) ? "NULL" : Number(moId);
-    const issuedByUserIdSql = (issuedByUserId === null || issuedByUserId === undefined) ? "NULL" : Number(issuedByUserId);
+    const issuedByUserIdSql = validatedIssuedByUserId !== null ? validatedIssuedByUserId : "NULL";
     const notesSql = (notes === null || notes === undefined || String(notes).trim() === "") ? "NULL" : `'${String(notes).replace(/'/g, "''")}'`;
 
     let createdIssue: any;
