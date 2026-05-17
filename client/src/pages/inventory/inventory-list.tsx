@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Plus, Package, Pencil, Trash2, Upload, FileDown, CheckCircle2, XCircle, AlertCircle, ClipboardList, RefreshCw, Barcode, Send } from "lucide-react";
+import { Search, Plus, Package, Pencil, Trash2, Upload, FileDown, CheckCircle2, XCircle, AlertCircle, ClipboardList, RefreshCw, Barcode, Send, AlertTriangle, ChevronRight } from "lucide-react";
 import ListExportButton from "@/components/list-export-button";
 import ListPdfExportButton from "@/components/list-pdf-export-button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -90,6 +90,36 @@ export default function InventoryList(props: { Wrapper?: React.ComponentType<{ c
     },
     enabled: !!selectedCompanyId,
   });
+
+  const { data: companySettings } = useQuery<{ lotLowStockThreshold?: number }>({
+    queryKey: ["/api/settings/general", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return {};
+      const r = await fetch(`/api/settings/general?companyId=${selectedCompanyId}`, { credentials: "include" });
+      if (!r.ok) return {};
+      return r.json();
+    },
+    enabled: !!selectedCompanyId,
+  });
+
+  const { data: productLots = [] } = useQuery<any[]>({
+    queryKey: ["/api/product-lots", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return [];
+      const r = await fetch(`/api/product-lots?companyId=${selectedCompanyId}`, { credentials: "include" });
+      return r.ok ? r.json() : [];
+    },
+    enabled: !!selectedCompanyId,
+  });
+
+  const companyThreshold = companySettings?.lotLowStockThreshold ?? 10;
+  const lowStockLotCount = productLots.filter((l: any) => {
+    const qty = Number(l.quantity);
+    if (qty <= 0) return false;
+    const productThreshold = l.productLowStockThreshold ?? 0;
+    const threshold = productThreshold > 0 ? productThreshold : companyThreshold;
+    return qty < threshold;
+  }).length;
 
   const deactivateMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -545,6 +575,31 @@ export default function InventoryList(props: { Wrapper?: React.ComponentType<{ c
             </CardContent>
           </Card>
         </div>
+
+        {lowStockLotCount > 0 && (
+          <button
+            data-testid="card-low-stock-alert"
+            className="w-full text-left"
+            onClick={() => navigate(`${basePath}/lots?filter=low-stock`)}
+          >
+            <Card className="border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer">
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                    <div>
+                      <span className="font-semibold text-amber-800 text-sm">แจ้งเตือนสต็อกใกล้หมด</span>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        มี <span data-testid="text-low-stock-count" className="font-bold">{lowStockLotCount}</span> ล็อตที่มีปริมาณต่ำกว่าเกณฑ์ — คลิกเพื่อดูรายการ
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-amber-600 shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          </button>
+        )}
 
         <ImportBatchHistory docType="product" invalidateKeys={[["products"], ["/api/products"]]} />
 

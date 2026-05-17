@@ -15,7 +15,7 @@ import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
 import { apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 
 function fmtDate(d: string | null): string {
   if (!d) return "-";
@@ -166,8 +166,11 @@ export default function ProductLotsPage() {
   const { toast } = useToast();
   const { dateEra, dateFmt } = useDateSettings();
   const qc = useQueryClient();
+  const searchStr = useSearch();
+  const urlParams = new URLSearchParams(searchStr);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
+  const [showLowStockOnly, setShowLowStockOnly] = useState(urlParams.get("filter") === "low-stock");
   const [expiryDays, setExpiryDays] = useState("30");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>({});
@@ -228,19 +231,28 @@ export default function ProductLotsPage() {
     onError: (err: any) => toast({ title: "ลบไม่สำเร็จ", description: err.message, variant: "destructive" }),
   });
 
+  const companyThresholdGlobal = companySettings?.lotLowStockThreshold ?? 10;
+
   const filteredLots = lots.filter((l: any) => {
     if (search) {
       const s = search.toLowerCase();
       if (!l.lotNumber.toLowerCase().includes(s) && !l.productName?.toLowerCase().includes(s) && !l.productCode?.toLowerCase().includes(s)) return false;
+    }
+    if (showLowStockOnly) {
+      const qty = Number(l.quantity);
+      if (qty <= 0) return false;
+      const productThreshold = l.productLowStockThreshold ?? 0;
+      const threshold = productThreshold > 0 ? productThreshold : companyThresholdGlobal;
+      if (qty >= threshold) return false;
     }
     return true;
   });
 
   const activeLots = filteredLots.filter((l: any) => Number(l.quantity) > 0);
   const emptyLots = filteredLots.filter((l: any) => Number(l.quantity) <= 0);
-  const companyThresholdGlobal = companySettings?.lotLowStockThreshold ?? 10;
-  const lowStockCount = activeLots.filter((l: any) => {
+  const lowStockCount = lots.filter((l: any) => {
     const qty = Number(l.quantity);
+    if (qty <= 0) return false;
     const productThreshold = l.productLowStockThreshold ?? 0;
     const threshold = productThreshold > 0 ? productThreshold : companyThresholdGlobal;
     return qty < threshold;
@@ -282,7 +294,16 @@ export default function ProductLotsPage() {
                     />
                   </div>
                   <Badge variant="outline" className="text-xs">{activeLots.length} ล็อตมีสต็อก</Badge>
-                  {lowStockCount > 0 && <Badge variant="outline" data-testid="badge-low-stock-count" className="text-xs border-amber-400 text-amber-600 bg-amber-50">{lowStockCount} ใกล้หมด</Badge>}
+                  {lowStockCount > 0 && (
+                    <button
+                      data-testid="button-toggle-low-stock-filter"
+                      onClick={() => setShowLowStockOnly(v => !v)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${showLowStockOnly ? "bg-amber-500 border-amber-500 text-white" : "border-amber-400 text-amber-600 bg-amber-50 hover:bg-amber-100"}`}
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      {lowStockCount} ใกล้หมด{showLowStockOnly ? " (กรองอยู่)" : ""}
+                    </button>
+                  )}
                   {emptyLots.length > 0 && <Badge variant="secondary" className="text-xs">{emptyLots.length} หมดสต็อก</Badge>}
                 </div>
               </CardHeader>
