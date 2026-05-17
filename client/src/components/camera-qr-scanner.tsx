@@ -7,10 +7,10 @@
  *   <CameraQrScanner open={open} onClose={() => setOpen(false)} onScan={raw => processQr(raw)} />
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
 import { Button } from "@/components/ui/button";
-import { X, Camera, Loader2 } from "lucide-react";
+import { X, Camera, Loader2, Flashlight, FlashlightOff, ZoomIn, ZoomOut } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -27,6 +27,25 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
   const [status, setStatus] = useState<"idle" | "loading" | "scanning" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Torch state
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+
+  // Zoom state
+  const [zoom, setZoom] = useState(1);
+  const [zoomMin, setZoomMin] = useState(1);
+  const [zoomMax, setZoomMax] = useState(1);
+  const [zoomStep, setZoomStep] = useState(0.5);
+  const [zoomSupported, setZoomSupported] = useState(false);
+
+  // Pinch-to-zoom state
+  const pinchStartDistRef = useRef<number | null>(null);
+  const pinchStartZoomRef = useRef<number>(1);
+
+  const getVideoTrack = (): MediaStreamTrack | null => {
+    return streamRef.current?.getVideoTracks()[0] ?? null;
+  };
+
   const stopCamera = () => {
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
@@ -39,11 +58,18 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setTorchOn(false);
+    setTorchSupported(false);
+    setZoomSupported(false);
+    setZoom(1);
+    setZoomMin(1);
+    setZoomMax(1);
   };
 
   const startCamera = async () => {
     setStatus("loading");
     setErrorMsg(null);
+    setTorchOn(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -54,6 +80,35 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
         videoRef.current.setAttribute("playsinline", "true");
         await videoRef.current.play();
       }
+
+      // Detect torch and zoom support from track capabilities (defensive — some browsers lack getCapabilities)
+      const track = stream.getVideoTracks()[0];
+      if (track && typeof track.getCapabilities === "function") {
+        try {
+          const caps = track.getCapabilities() as MediaTrackCapabilities & {
+            torch?: boolean;
+            zoom?: { min: number; max: number; step?: number };
+          };
+
+          if (caps.torch) {
+            setTorchSupported(true);
+          }
+
+          if (caps.zoom && caps.zoom.max > caps.zoom.min) {
+            setZoomSupported(true);
+            const min = caps.zoom.min ?? 1;
+            const max = caps.zoom.max ?? 1;
+            const step = caps.zoom.step ?? Math.max(0.1, (max - min) / 10);
+            setZoomMin(min);
+            setZoomMax(max);
+            setZoomStep(step);
+            setZoom(min);
+          }
+        } catch {
+          // Capabilities API failed — silently ignore, torch/zoom stay hidden
+        }
+      }
+
       setStatus("scanning");
       scanFrame();
     } catch (err: unknown) {
@@ -93,6 +148,64 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
     rafRef.current = requestAnimationFrame(scanFrame);
   };
 
+  // Toggle torch
+  const toggleTorch = async () => {
+    const track = getVideoTrack();
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await (track.applyConstraints as (c: MediaTrackConstraints & { advanced?: Array<{ torch?: boolean }> }) => Promise<void>)({
+        advanced: [{ torch: next }],
+      });
+      setTorchOn(next);
+    } catch {
+      // torch not available on this device after all — hide the button
+      setTorchSupported(false);
+    }
+  };
+
+  // Apply zoom to track
+  const applyZoom = useCallback(async (newZoom: number) => {
+    const track = getVideoTrack();
+    if (!track) return;
+    const clamped = Math.min(zoomMax, Math.max(zoomMin, newZoom));
+    try {
+      await (track.applyConstraints as (c: MediaTrackConstraints & { advanced?: Array<{ zoom?: number }> }) => Promise<void>)({
+        advanced: [{ zoom: clamped }],
+      });
+      setZoom(clamped);
+    } catch {
+      setZoomSupported(false);
+    }
+  }, [zoomMin, zoomMax]);
+
+  const handleZoomIn = () => applyZoom(zoom + zoomStep);
+  const handleZoomOut = () => applyZoom(zoom - zoomStep);
+
+  // Pinch-to-zoom handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDistRef.current = Math.hypot(dx, dy);
+      pinchStartZoomRef.current = zoom;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStartDistRef.current !== null && zoomSupported) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const scale = dist / pinchStartDistRef.current;
+      applyZoom(pinchStartZoomRef.current * scale);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    pinchStartDistRef.current = null;
+  };
+
   useEffect(() => {
     if (open) {
       startCamera();
@@ -106,6 +219,9 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
 
   if (!open) return null;
 
+  const canZoomIn = zoomSupported && zoom < zoomMax;
+  const canZoomOut = zoomSupported && zoom > zoomMin;
+
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col bg-black"
@@ -117,19 +233,40 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
           <Camera className="h-5 w-5" />
           <span className="font-medium text-sm">{title}</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-white hover:bg-white/20"
-          onClick={() => { stopCamera(); onClose(); }}
-          data-testid="button-close-camera"
-        >
-          <X className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {/* Torch button — only shown when supported */}
+          {torchSupported && status === "scanning" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`text-white hover:bg-white/20 ${torchOn ? "bg-yellow-500/40 text-yellow-300" : ""}`}
+              onClick={toggleTorch}
+              data-testid="button-toggle-torch"
+              title={torchOn ? "ปิดไฟฉาย" : "เปิดไฟฉาย"}
+            >
+              {torchOn ? <Flashlight className="h-5 w-5" /> : <FlashlightOff className="h-5 w-5" />}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/20"
+            onClick={() => { stopCamera(); onClose(); }}
+            data-testid="button-close-camera"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Video + canvas */}
-      <div className="relative flex-1 overflow-hidden flex items-center justify-center bg-black">
+      <div
+        className="relative flex-1 overflow-hidden flex items-center justify-center bg-black"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        data-testid="camera-video-container"
+      >
         <video
           ref={videoRef}
           className="w-full h-full object-cover"
@@ -151,6 +288,40 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
               {/* Scanning line animation */}
               <div className="absolute left-1 right-1 h-0.5 bg-green-400 opacity-80 animate-[scan_2s_linear_infinite]" />
             </div>
+          </div>
+        )}
+
+        {/* Zoom controls — shown on the right side when supported */}
+        {zoomSupported && status === "scanning" && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 rounded-full"
+              onClick={handleZoomIn}
+              disabled={!canZoomIn}
+              data-testid="button-zoom-in"
+              title="ซูมเข้า"
+            >
+              <ZoomIn className="h-5 w-5" />
+            </Button>
+            <span
+              className="text-white text-xs bg-black/50 rounded px-1 py-0.5 tabular-nums"
+              data-testid="text-zoom-level"
+            >
+              {zoom.toFixed(1)}×
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-black/50 text-white hover:bg-black/70 disabled:opacity-30 rounded-full"
+              onClick={handleZoomOut}
+              disabled={!canZoomOut}
+              data-testid="button-zoom-out"
+              title="ซูมออก"
+            >
+              <ZoomOut className="h-5 w-5" />
+            </Button>
           </div>
         )}
 
@@ -182,6 +353,7 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
       {/* Footer hint */}
       <div className="px-4 py-3 bg-black/80 text-center text-white/70 text-xs">
         เล็งกล้องไปที่ QR Code — ระบบจะสแกนอัตโนมัติ
+        {zoomSupported && <span className="ml-1">(Pinch เพื่อซูม)</span>}
       </div>
 
       <style>{`
