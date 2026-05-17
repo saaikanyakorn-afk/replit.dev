@@ -2678,19 +2678,23 @@ app.get("/api/users/employee-qr-data", requireAuth, requireModule("inventory"), 
 
 // ==================== Material Issues ====================
 async function getNextMaterialIssueNo(companyId: number): Promise<string> {
+  // Use MAX on the numeric suffix (not COUNT) so that deleted drafts never cause duplicate numbers.
+  // Pattern: MI-YYYY-NNNNN  → extract numeric suffix via SPLIT_PART and cast to INTEGER.
   const year = new Date().getFullYear();
   const rows = await db.execute(sql.raw(
-    `SELECT COUNT(*) as cnt FROM material_issues WHERE company_id = ${companyId} AND issue_no LIKE 'MI-${year}-%'`
+    `SELECT COALESCE(MAX(CAST(NULLIF(SPLIT_PART(issue_no, '-', 3), '') AS INTEGER)), 0) AS max_seq
+     FROM material_issues
+     WHERE company_id = ${companyId} AND issue_no LIKE 'MI-${year}-%'`
   ));
   if (!rows.rows.length) {
-    throw new Error(`[MAT-ISSUE-SEQ] COUNT(*) คืนค่า 0 rows — companyId=${companyId} — ไม่สามารถสร้างเลขที่ใบเบิกได้`);
+    throw new Error(`[MAT-ISSUE-SEQ] MAX query คืนค่า 0 rows — companyId=${companyId} — ไม่สามารถสร้างเลขที่ใบเบิกได้`);
   }
-  const cntRaw = (rows.rows[0] as any).cnt;
-  if (cntRaw === null || cntRaw === undefined) {
-    throw new Error(`[MAT-ISSUE-SEQ] cnt เป็น null/undefined — companyId=${companyId} — ข้อมูลผิดพลาด`);
+  const maxSeqRaw = (rows.rows[0] as any).max_seq;
+  if (maxSeqRaw === null || maxSeqRaw === undefined) {
+    throw new Error(`[MAT-ISSUE-SEQ] max_seq เป็น null/undefined — companyId=${companyId} — ข้อมูลผิดพลาด`);
   }
-  const cnt = Number(cntRaw);
-  return `MI-${year}-${String(cnt + 1).padStart(5, "0")}`;
+  const nextSeq = Number(maxSeqRaw) + 1;
+  return `MI-${year}-${String(nextSeq).padStart(5, "0")}`;
 }
 
 app.get("/api/material-issues", requireAuth, requireModule("inventory"), async (req, res) => {
@@ -2757,6 +2761,15 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
       if (!item.quantity || Number(item.quantity) <= 0) throw new Error(`[MAT-ISSUE-ITEM] quantity ต้องมากกว่า 0 — productId=${item.productId}`);
       if (!item.unit) throw new Error(`[MAT-ISSUE-ITEM] unit ไม่ครบ — productId=${item.productId}`);
       const itemProductId = Number(item.productId);
+      // Validate lot belongs to this product and company (security: prevent cross-product lot deduction)
+      if (item.lotId !== null && item.lotId !== undefined) {
+        const lotValidate = await db.execute(sql.raw(
+          `SELECT id FROM product_lots WHERE id = ${Number(item.lotId)} AND product_id = ${itemProductId} AND company_id = ${companyId} LIMIT 1`
+        ));
+        if (!lotValidate.rows.length) {
+          throw new Error(`[MAT-ISSUE-ITEM] lotId=${item.lotId} ไม่ตรงกับ productId=${itemProductId} หรือ companyId=${companyId} — ข้อมูล QR ไม่ถูกต้อง`);
+        }
+      }
       const lotIdSql = (item.lotId === null || item.lotId === undefined) ? "NULL" : Number(item.lotId);
       const lotNumberSql = (item.lotNumber === null || item.lotNumber === undefined || String(item.lotNumber).trim() === "") ? "NULL" : `'${String(item.lotNumber).replace(/'/g, "''")}'`;
       await db.execute(sql.raw(`
@@ -2802,8 +2815,11 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
       }
       if (item.lot_id) {
         const lotId = Number(item.lot_id);
-        const lotCheck = await db.execute(sql.raw(`SELECT CAST(quantity AS NUMERIC) AS q FROM product_lots WHERE id = ${lotId} LIMIT 1`));
-        if (!lotCheck.rows.length) throw new Error(`[MAT-ISSUE-CONFIRM] lotId=${lotId} ไม่พบในระบบ — item.id=${item.id}`);
+        // Validate lot belongs to this product AND company (prevents cross-product lot deduction)
+        const lotCheck = await db.execute(sql.raw(
+          `SELECT CAST(quantity AS NUMERIC) AS q FROM product_lots WHERE id = ${lotId} AND product_id = ${productId} AND company_id = ${companyId} LIMIT 1`
+        ));
+        if (!lotCheck.rows.length) throw new Error(`[MAT-ISSUE-CONFIRM] lotId=${lotId} ไม่ตรงกับ productId=${productId} หรือ companyId=${companyId} — ข้อมูล QR ไม่ถูกต้อง`);
         const available = Number((lotCheck.rows[0] as any).q || 0);
         if (available < qty) throw new Error(`[MAT-ISSUE-CONFIRM] ล็อต lotId=${lotId} มีสต๊อก ${available} ไม่เพียงพอ (ต้องการ ${qty}) — item.id=${item.id}`);
       }
