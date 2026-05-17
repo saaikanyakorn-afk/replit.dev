@@ -339,32 +339,46 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
     return m;
   }, [allProducts]);
 
+  const bomYieldQty = useMemo(() => {
+    if (!bomId) return 1;
+    const bom = boms.find((b: any) => b.id === Number(bomId));
+    return Math.max(1, Number(bom?.yieldQty || 1));
+  }, [bomId, boms]);
+
+  const wipMultiplier = useMemo(() => {
+    const qty = Number(plannedQty) || 1;
+    return qty / bomYieldQty;
+  }, [plannedQty, bomYieldQty]);
+
   const costEstimate = useMemo(() => {
-    if (lines.length === 0) return { lineCosts: [] as { cost: number; total: number }[], totalCost: 0, unitCost: 0, hasCost: false };
+    if (lines.length === 0) return { lineCosts: [] as { cost: number; total: number; scaledQty: number }[], totalCost: 0, unitCost: 0, hasCost: false };
     if (moStatus === "completed" && moData) {
       const realTotal = Number(moData.totalCost || 0);
       const realUnit = Number(moData.unitCost || 0);
       const lineCosts = lines.map(line => {
         const cost = productCostMap.get(line.componentProductId) || 0;
         const reqQty = Number(line.consumedQty || line.requiredQty) || 0;
-        const total = cost * reqQty;
-        return { cost, total };
+        const scaledQty = reqQty;
+        const total = cost * scaledQty;
+        return { cost, total, scaledQty };
       });
       const hasCost = realTotal > 0 || lineCosts.some(lc => lc.cost > 0);
       return { lineCosts, totalCost: realTotal, unitCost: realUnit, hasCost };
     }
-    const qty = Number(plannedQty) || 1;
+    // Scale BOM per-batch qty by (plannedQty / yieldQty) to get actual consumption
     let totalCost = 0;
     const lineCosts = lines.map(line => {
       const cost = productCostMap.get(line.componentProductId) || 0;
       const reqQty = Number(line.requiredQty) || 0;
-      const total = cost * reqQty;
+      const scaledQty = reqQty * wipMultiplier;
+      const total = cost * scaledQty;
       totalCost += total;
-      return { cost, total };
+      return { cost, total, scaledQty };
     });
     const hasCost = lineCosts.some(lc => lc.cost > 0);
+    const qty = Number(plannedQty) || 1;
     return { lineCosts, totalCost, unitCost: totalCost / qty, hasCost };
-  }, [lines, plannedQty, productCostMap, moStatus, moData]);
+  }, [lines, plannedQty, bomYieldQty, wipMultiplier, productCostMap, moStatus, moData]);
 
   return (
     <LayoutComponent>
@@ -657,7 +671,14 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                   <TableHead className="w-10">#</TableHead>
                   <TableHead>รหัสสินค้า</TableHead>
                   <TableHead>ชื่อวัตถุดิบ</TableHead>
-                  <TableHead className="w-28 text-right">จำนวนที่ต้องใช้</TableHead>
+                  <TableHead className="w-32 text-right">
+                    <span>จำนวนที่ต้องใช้</span>
+                    {!isReadOnly && wipMultiplier !== 1 && (
+                      <span className="block text-[10px] font-normal text-orange-600">
+                        BOM batch ×{wipMultiplier % 1 === 0 ? wipMultiplier : wipMultiplier.toFixed(2)}
+                      </span>
+                    )}
+                  </TableHead>
                   <TableHead className="w-20 text-center">หน่วย</TableHead>
                   <TableHead className="w-28 text-right">ต้นทุน/หน่วย</TableHead>
                   <TableHead className="w-28 text-right">ต้นทุนรวม</TableHead>
@@ -681,19 +702,28 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                     <TableCell className="text-sm">{line.componentName}</TableCell>
                     <TableCell className="text-right">
                       {isReadOnly ? (
-                        <span className="tabular-nums">{line.requiredQty}</span>
+                        <span className="tabular-nums">
+                          {(lc?.scaledQty ?? Number(line.requiredQty)).toLocaleString("th-TH", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                        </span>
                       ) : (
-                        <Input
-                          type="number"
-                          className="h-8 w-24 text-right ml-auto"
-                          value={line.requiredQty}
-                          onChange={e => {
-                            const updated = [...lines];
-                            updated[idx].requiredQty = e.target.value;
-                            setLines(updated);
-                          }}
-                          data-testid={`input-req-qty-${idx}`}
-                        />
+                        <div className="flex flex-col items-end gap-0.5">
+                          <Input
+                            type="number"
+                            className="h-8 w-24 text-right ml-auto"
+                            value={line.requiredQty}
+                            onChange={e => {
+                              const updated = [...lines];
+                              updated[idx].requiredQty = e.target.value;
+                              setLines(updated);
+                            }}
+                            data-testid={`input-req-qty-${idx}`}
+                          />
+                          {wipMultiplier !== 1 && (
+                            <span className="text-[10px] text-orange-600 tabular-nums">
+                              จริง: {((Number(line.requiredQty) || 0) * wipMultiplier).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="text-center text-xs">{line.unit}</TableCell>
