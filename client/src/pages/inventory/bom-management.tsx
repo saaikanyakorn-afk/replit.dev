@@ -142,13 +142,13 @@ export default function BomManagement(props: { Wrapper?: React.ComponentType<{ c
                     <TableRow key={bom.id} data-testid={`row-bom-${bom.id}`}>
                       <TableCell className="font-medium">{productName(bom.productId)}</TableCell>
                       <TableCell>{bom.name}</TableCell>
-                      <TableCell>{bom.version}</TableCell>
+                      <TableCell>{bom.revisionNo}</TableCell>
                       <TableCell>
                         <Badge
                           data-testid={`badge-status-${bom.id}`}
-                          className={bom.status === "active" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-gray-100 text-gray-600 hover:bg-gray-100"}
+                          className={bom.active ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-gray-100 text-gray-600 hover:bg-gray-100"}
                         >
-                          {bom.status === "active" ? "ใช้งาน" : "ฉบับร่าง"}
+                          {bom.active ? "ใช้งาน" : "ฉบับร่าง"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">{Number(bom.yieldQty).toFixed(2)} {bom.unit}</TableCell>

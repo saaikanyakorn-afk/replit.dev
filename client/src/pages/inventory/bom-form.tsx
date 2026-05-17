@@ -16,8 +16,8 @@ import type { Product } from "@shared/schema";
 
 const UNITS = ["ชิ้น", "กล่อง", "ถุง", "แพ็ค", "ขวด", "กก.", "ลิตร", "เมตร", "ชุด"];
 type BomLine = { componentProductId: number | ""; quantity: string; unit: string; wastePercent: string };
-type BomForm = { productId: number | ""; name: string; version: string; yieldQty: string; unit: string; notes: string; status: string; lines: BomLine[] };
-const emptyForm: BomForm = { productId: "", name: "", version: "1.0", yieldQty: "1", unit: "ชิ้น", notes: "", status: "draft", lines: [] };
+type BomForm = { productId: number | ""; name: string; version: string; yieldQty: string; unit: string; notes: string; active: boolean; lines: BomLine[] };
+const emptyForm: BomForm = { productId: "", name: "", version: "1.0", yieldQty: "1", unit: "ชิ้น", notes: "", active: true, lines: [] };
 const emptyLine: BomLine = { componentProductId: "", quantity: "1", unit: "ชิ้น", wastePercent: "0" };
 
 export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ children: React.ReactNode }>; basePath?: string; editIdProp?: string | null } = {}) {
@@ -51,11 +51,11 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
           setForm({
             productId: data.productId || "",
             name: data.name || "",
-            version: data.version || "1.0",
+            version: data.revisionNo || "1.0",
             yieldQty: String(data.yieldQty || "1"),
             unit: data.unit || "ชิ้น",
             notes: data.notes || "",
-            status: data.status || "draft",
+            active: data.active ?? true,
             lines: (data.lines || []).map((l: any) => ({
               componentProductId: l.componentProductId,
               quantity: String(l.qty || l.quantity || "1"),
@@ -114,11 +114,11 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
     const payload = {
       productId: Number(form.productId),
       name: form.name,
-      version: form.version,
+      revisionNo: form.version,
       yieldQty: form.yieldQty,
       unit: form.unit,
       notes: form.notes,
-      status: form.status,
+      active: form.active,
       lines: form.lines
         .filter(l => l.componentProductId !== "")
         .map(l => ({
@@ -218,7 +218,7 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
               </div>
               <div>
                 <Label>สถานะ</Label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                <Select value={form.active ? "active" : "draft"} onValueChange={v => setForm(f => ({ ...f, active: v === "active" }))}>
                   <SelectTrigger data-testid="select-status"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">ฉบับร่าง</SelectItem>
