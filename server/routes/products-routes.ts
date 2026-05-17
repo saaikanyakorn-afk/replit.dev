@@ -2028,6 +2028,41 @@ app.post("/api/goods-receivings/:id/approve", requireAuth, requireModule("invent
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
+app.get("/api/goods-receivings/:id/lot-labels", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const [gr] = await db.select().from(goodsReceivings).where(eq(goodsReceivings.id, id));
+    if (!gr) return res.status(404).json({ message: "ไม่พบใบรับสินค้า" });
+    const ac = await checkDocOwnership(gr.companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
+    const items = await db.select().from(goodsReceivingItems).where(eq(goodsReceivingItems.goodsReceivingId, id));
+    const labels = await Promise.all(items.map(async (item) => {
+      let lot: any = null;
+      if (item.lotId) {
+        const [l] = await db.select().from(productLots).where(eq(productLots.id, item.lotId));
+        lot = l || null;
+      }
+      return {
+        productId: item.productId,
+        productName: item.productName,
+        productCode: item.productCode || null,
+        unit: item.unit,
+        quantity: item.quantity,
+        lotId: lot?.id || null,
+        lotNumber: lot?.lotNumber || item.lotNumber || null,
+        mfgDate: lot?.manufacturingDate || item.manufacturingDate || null,
+        expDate: lot?.expiryDate || item.expiryDate || null,
+        vendor: gr.vendorName || null,
+        grDate: gr.grDate,
+        grNo: gr.grNo,
+        companyId: gr.companyId,
+        hasLot: !!item.lotId,
+      };
+    }));
+    res.json(labels);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
 app.delete("/api/goods-receivings/:id", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
     const id = Number(req.params.id);

@@ -90,9 +90,27 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-16 — พี่ทราย testing GR + Lot Traceability + Barcode print
+**Last verified:** 2026-05-17 — Task #34 GR Lot QR Label ✅ done dev
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Pending work:** None — clean slate, all session work is dev-only UI fixes
+**Pending work:** Task #35 (material-issue-lot-scan) still pending — blocked by #34, now unblocked
+
+---
+
+### SESSION 2026-05-17 — TASK #34 GR LOT QR LABEL
+
+| # | Change | File | Status |
+|---|--------|------|--------|
+| T34-1 | Backend `GET /api/goods-receivings/:id/lot-labels` — returns array of label data per GR item (lotId, lotNumber, mfgDate, expDate, vendor, grDate, grNo, productId/Name/Code, companyId, hasLot) | `server/routes/products-routes.ts` line 2031 | ✅ dev |
+| T34-2 | Frontend `LotQRCanvas` component — renders QR onto canvas via `QRCode.toCanvas`, defined before main component | `client/src/pages/inventory/goods-receiving-form.tsx` line 42 | ✅ dev |
+| T34-3 | State: `showLotLabels`, `lotLabels[]`, `loadingLabels` — added to GRForm component | `client/src/pages/inventory/goods-receiving-form.tsx` line 104-106 | ✅ dev |
+| T34-4 | `handlePrintLotLabels()` — fetches lot-labels API, sets state, opens Dialog | `client/src/pages/inventory/goods-receiving-form.tsx` line 424 | ✅ dev |
+| T34-5 | Print button "พิมพ์ QR วัตถุดิบ" — shows only when `form.status === "approved" && editingId`, green border/text, calls handlePrintLotLabels | `client/src/pages/inventory/goods-receiving-form.tsx` line 466 | ✅ dev |
+| T34-6 | Dialog modal — QR label grid (3 cols), print CSS (`@media print` hides sidebar/header), per-label: canvas QR + product info (name, code, lot, vendor, grDate, mfgDate, expDate, grNo), "พิมพ์" button calls `window.print()` | `client/src/pages/inventory/goods-receiving-form.tsx` line 839 | ✅ dev |
+
+**Task #34 COMPLETE.** Task #35 (material-issue-lot-scan) is now unblocked.
+
+**⚠️ Still pending before next production push:**
+- S7 DEBUG logs from session 2026-05-16 (`console.log(req.body)` in products-routes.ts ~line 1835) — must remove before push
 
 ---
 
@@ -106,7 +124,7 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 | S4 | GR barcode scan: fix lot tracking — `handleBarcodeScan` now sets `trackLots`, `lotNumber`, `manufacturingDate`, `expiryDate` on new item | `client/src/pages/inventory/goods-receiving-form.tsx` | ✅ dev |
 | S5 | QR encode logic fixed — Thai code+barcode→encode barcode; Thai code+no barcode→error label; no code→error label; English code→encode code. No `||` chains. | `client/src/pages/inventory/barcode-labels.tsx` | ✅ dev |
 | S6 | GR POST 400 fix — added `goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems` to import in `products-routes.ts` line 8. Previously `goodsReceivings is not defined` error. | `server/routes/products-routes.ts` | ✅ dev |
-| S7 | GR POST debug — added `console.log(req.body)` + `console.error` on catch + explicit per-item productId/quantity validation with human-readable Thai error messages to POST handler (TEMPORARY — remove before production push) | `server/routes/products-routes.ts` ~line 1835 | 🔄 DEBUG |
+| S7 | GR POST debug — added `console.log(req.body)` + `console.error` on catch + explicit per-item productId/quantity validation with human-readable Thai error messages to POST handler (TEMPORARY — remove before production push) | `server/routes/products-routes.ts` ~line 1835 | 🔄 DEBUG — REMOVE BEFORE PUSH |
 | S8 | GR form handleSubmit — added frontend guards: (1) `!companyId` → toast "ไม่พบข้อมูลบริษัท" + return; (2) `!it.productId` for any valid item → toast "สินค้า ... ไม่มี productId" + return | `client/src/pages/inventory/goods-receiving-form.tsx` handleSubmit ~line 362 | ✅ dev |
 
 **Key user guidance given this session (for context):**

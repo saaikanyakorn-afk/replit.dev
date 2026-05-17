@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Plus, Trash2, Package, Save, ArrowDownToLine, FileText, ScanBarcode } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Plus, Trash2, Package, Save, ArrowDownToLine, FileText, ScanBarcode, Printer, QrCode } from "lucide-react";
 import ThaiDateInput from "@/components/thai-date-input";
 import { useDateSettings } from "@/hooks/use-date-settings";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,7 @@ import { useCompany } from "@/lib/company-context";
 import { apiRequest } from "@/lib/queryClient";
 import type { Contact, Product } from "@shared/schema";
 import { toLocalDateStr } from "@/lib/utils";
+import QRCode from "qrcode";
 
 interface GRItemForm {
   productId?: number;
@@ -35,6 +37,16 @@ interface GRItemForm {
 function fmt(val: string | number | null | undefined): string {
   const n = parseFloat(String(val || "0"));
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function LotQRCanvas({ value, size }: { value: string; size: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (canvasRef.current && value) {
+      QRCode.toCanvas(canvasRef.current, value, { width: size, margin: 1, errorCorrectionLevel: "M" }).catch(() => {});
+    }
+  }, [value, size]);
+  return <canvas ref={canvasRef} style={{ width: size, height: size }} />;
 }
 
 const emptyItem = (): GRItemForm => ({
@@ -86,6 +98,9 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
   const [barcodeFlash, setBarcodeFlash] = useState(false);
   const [keyboardWarning, setKeyboardWarning] = useState(false);
   const barcodeRef = useRef<HTMLInputElement>(null);
+  const [showLotLabels, setShowLotLabels] = useState(false);
+  const [lotLabels, setLotLabels] = useState<any[]>([]);
+  const [loadingLabels, setLoadingLabels] = useState(false);
 
   function isThai(str: string) {
     return /[ก-๙]/.test(str);
@@ -403,6 +418,21 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     }
   }
 
+  async function handlePrintLotLabels() {
+    if (!editingId) return;
+    setLoadingLabels(true);
+    try {
+      const res = await fetch(`/api/goods-receivings/${editingId}/lot-labels`, { credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).message || "โหลดข้อมูลไม่สำเร็จ");
+      setLotLabels(await res.json());
+      setShowLotLabels(true);
+    } catch (err: any) {
+      toast({ title: "ไม่สามารถโหลดข้อมูล lot", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingLabels(false);
+    }
+  }
+
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const statusInfo = STATUS_MAP[form.status] || STATUS_MAP.draft;
 
@@ -430,6 +460,19 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
               </Badge>
             )}
           </div>
+          {form.status === "approved" && editingId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-sm gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              onClick={handlePrintLotLabels}
+              disabled={loadingLabels}
+              data-testid="button-print-lot-labels"
+            >
+              <Printer className="h-4 w-4" />
+              {loadingLabels ? "กำลังโหลด..." : "พิมพ์ QR วัตถุดิบ"}
+            </Button>
+          )}
         </div>
 
         <Card className="border shadow-sm">
@@ -793,6 +836,128 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
           </Button>
         </div>
       </div>
+      <Dialog open={showLotLabels} onOpenChange={setShowLotLabels}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-emerald-600" />
+              QR Label วัตถุดิบ — {form.grNo}
+            </DialogTitle>
+          </DialogHeader>
+
+          <style>{`
+            @media print {
+              body > * { display: none !important; }
+              .lot-label-print-area { display: grid !important; }
+              .lot-label-print-area * { display: revert !important; }
+              .no-print { display: none !important; }
+            }
+            .lot-label-print-area {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 8px;
+              padding: 8px;
+            }
+            .lot-label-card {
+              border: 1px solid #ccc;
+              border-radius: 4px;
+              padding: 6px 8px;
+              display: flex;
+              flex-direction: row;
+              align-items: center;
+              gap: 8px;
+              width: 234px;
+              min-height: 151px;
+              box-sizing: border-box;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .lot-label-info {
+              flex: 1;
+              font-size: 9px;
+              line-height: 1.4;
+              word-break: break-all;
+            }
+            .lot-label-info .label-product {
+              font-size: 10px;
+              font-weight: bold;
+              margin-bottom: 3px;
+            }
+            .lot-label-info .label-row {
+              color: #444;
+              margin-bottom: 1px;
+            }
+            .lot-label-info .label-warn {
+              color: #cc6600;
+              font-style: italic;
+            }
+          `}</style>
+
+          <div className="no-print mb-3 flex justify-between items-center">
+            <p className="text-sm text-slate-500">QR แต่ละดวงมีข้อมูล: ประเภทล็อต, สินค้า, เลขล็อต, ผู้ขาย, วันรับ</p>
+            <Button
+              size="sm"
+              className="gap-1.5 text-white"
+              style={{ background: "#fb9678" }}
+              onClick={() => window.print()}
+              data-testid="button-print-labels-now"
+            >
+              <Printer className="h-4 w-4" />
+              พิมพ์
+            </Button>
+          </div>
+
+          <div className="lot-label-print-area">
+            {lotLabels.map((label, idx) => {
+              const qrData = label.hasLot ? JSON.stringify({
+                type: "MATERIAL_LOT",
+                lotId: label.lotId,
+                productId: label.productId,
+                productName: label.productName,
+                productCode: label.productCode,
+                lotNumber: label.lotNumber,
+                vendor: label.vendor,
+                grDate: label.grDate,
+                grNo: label.grNo,
+                mfgDate: label.mfgDate,
+                expDate: label.expDate,
+                companyId: label.companyId,
+              }) : null;
+              return (
+                <div key={idx} className="lot-label-card">
+                  <div style={{ flexShrink: 0 }}>
+                    {qrData
+                      ? <LotQRCanvas value={qrData} size={90} />
+                      : <div style={{ width: 90, height: 90, background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#999", textAlign: "center", borderRadius: 4 }}>ยังไม่มี<br/>lot ID</div>
+                    }
+                  </div>
+                  <div className="lot-label-info">
+                    <div className="label-product" data-testid={`text-lot-label-product-${idx}`}>{label.productName}</div>
+                    {label.productCode && <div className="label-row">รหัส: {label.productCode}</div>}
+                    {label.lotNumber
+                      ? <div className="label-row">ล็อต: <strong>{label.lotNumber}</strong></div>
+                      : <div className="label-warn">ไม่มีเลขล็อต</div>
+                    }
+                    {label.vendor && <div className="label-row">ผู้ขาย: {label.vendor}</div>}
+                    <div className="label-row">วันรับ: {label.grDate || "-"}</div>
+                    {label.mfgDate && <div className="label-row">ผลิต: {label.mfgDate}</div>}
+                    {label.expDate && <div className="label-row">หมดอายุ: {label.expDate}</div>}
+                    <div className="label-row">GR: {label.grNo}</div>
+                    {!label.hasLot && (
+                      <div className="label-warn">⚠ ยังไม่มี lot ID (GR ต้อง approved ก่อน)</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {lotLabels.length === 0 && (
+              <div className="col-span-3 text-center py-8 text-slate-400 text-sm no-print">
+                ไม่มีรายการสินค้าใน GR นี้
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </LayoutComponent>
   );
 }
