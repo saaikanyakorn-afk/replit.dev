@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Search, AlertTriangle, Clock, CalendarX, Trash2, Pencil, X, Check, ChevronDown, ChevronRight, History, ExternalLink } from "lucide-react";
+import { Package, Search, AlertTriangle, Clock, CalendarX, Trash2, Pencil, X, Check, ChevronDown, ChevronRight, History, ExternalLink, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
 import { apiRequest } from "@/lib/queryClient";
@@ -43,7 +44,24 @@ interface IssueHistoryItem {
   mo_id: number | null;
 }
 
-function IssueHistoryPanel({ lotId, companyId, urlBase }: { lotId: number; companyId: number; urlBase: string }) {
+function exportHistoryToExcel(lotNumber: string, history: IssueHistoryItem[]) {
+  const rows = history.map((item) => ({
+    "เลขล็อต": lotNumber,
+    "เลขที่ใบเบิก": item.issue_no,
+    "วันที่": item.issued_at ? new Date(item.issued_at).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" }) : "-",
+    "จำนวน": Number(item.quantity),
+    "หน่วย": item.unit,
+    "ผู้เบิก": item.issued_by_name || "-",
+    "MO": item.mo_no || "-",
+    "สถานะ": item.status === "confirmed" ? "ยืนยันแล้ว" : "ร่าง",
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ประวัติการเบิก");
+  XLSX.writeFile(wb, `issue-history-${lotNumber}.xlsx`);
+}
+
+function IssueHistoryPanel({ lotId, lotNumber, companyId, urlBase }: { lotId: number; lotNumber: string; companyId: number; urlBase: string }) {
   const [, navigate] = useLocation();
   const { data: history = [], isLoading } = useQuery<IssueHistoryItem[]>({
     queryKey: ["/api/product-lots/issue-history", lotId, companyId],
@@ -70,6 +88,18 @@ function IssueHistoryPanel({ lotId, companyId, urlBase }: { lotId: number; compa
             <History className="h-3.5 w-3.5 text-slate-500" />
             <span className="text-xs font-semibold text-slate-600">ประวัติการเบิก</span>
             <Badge variant="outline" className="text-[10px] px-1.5 py-0">{history.length} รายการ</Badge>
+            {history.length > 0 && (
+              <Button
+                data-testid={`button-export-excel-${lotId}`}
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-[11px] gap-1 text-green-700 border-green-300 hover:bg-green-50 ml-auto"
+                onClick={() => exportHistoryToExcel(lotNumber, history)}
+              >
+                <Download className="h-3 w-3" />
+                ดาวน์โหลด Excel
+              </Button>
+            )}
           </div>
           {history.length === 0 ? (
             <p className="text-xs text-gray-400 py-1">ยังไม่มีประวัติการเบิกสำหรับล็อตนี้</p>
@@ -374,7 +404,7 @@ export default function ProductLotsPage() {
                               </TableCell>
                             </TableRow>
                             {isExpanded && (
-                              <IssueHistoryPanel key={`history-${lot.id}`} lotId={lot.id} companyId={companyId!} urlBase={urlBase} />
+                              <IssueHistoryPanel key={`history-${lot.id}`} lotId={lot.id} lotNumber={lot.lotNumber} companyId={companyId!} urlBase={urlBase} />
                             )}
                           </Fragment>
                         );
