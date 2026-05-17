@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
 import { Button } from "@/components/ui/button";
-import { X, Camera, Loader2, Flashlight, FlashlightOff, ZoomIn, ZoomOut } from "lucide-react";
+import { X, Camera, Loader2, Flashlight, FlashlightOff, ZoomIn, ZoomOut, SwitchCamera } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -26,6 +26,10 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
   const rafRef = useRef<number | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "scanning" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Camera facing mode
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
 
   // Torch state
   const [torchOn, setTorchOn] = useState(false);
@@ -66,13 +70,24 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
     setZoomMax(1);
   };
 
-  const startCamera = async () => {
+  // Check how many video input devices are available
+  const checkMultipleCameras = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter(d => d.kind === "videoinput");
+      setHasMultipleCameras(videoInputs.length > 1);
+    } catch {
+      setHasMultipleCameras(false);
+    }
+  };
+
+  const startCamera = useCallback(async (facing: "environment" | "user" = facingMode) => {
     setStatus("loading");
     setErrorMsg(null);
     setTorchOn(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -80,6 +95,9 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
         videoRef.current.setAttribute("playsinline", "true");
         await videoRef.current.play();
       }
+
+      // After getting stream permissions, re-check device count (labels now available)
+      await checkMultipleCameras();
 
       // Detect torch and zoom support from track capabilities (defensive — some browsers lack getCapabilities)
       const track = stream.getVideoTracks()[0];
@@ -122,7 +140,8 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
       setErrorMsg(msg);
       setStatus("error");
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facingMode]);
 
   const scanFrame = () => {
     const video = videoRef.current;
@@ -146,6 +165,14 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
       return;
     }
     rafRef.current = requestAnimationFrame(scanFrame);
+  };
+
+  // Switch between front and back camera
+  const switchCamera = () => {
+    const nextFacing = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(nextFacing);
+    stopCamera();
+    startCamera(nextFacing);
   };
 
   // Toggle torch
@@ -208,13 +235,15 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
 
   useEffect(() => {
     if (open) {
-      startCamera();
+      checkMultipleCameras();
+      startCamera(facingMode);
     } else {
       stopCamera();
       setStatus("idle");
       setErrorMsg(null);
     }
     return () => stopCamera();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!open) return null;
@@ -234,6 +263,19 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
           <span className="font-medium text-sm">{title}</span>
         </div>
         <div className="flex items-center gap-1">
+          {/* Switch camera button — only shown when multiple cameras are available */}
+          {hasMultipleCameras && (status === "scanning" || status === "loading") && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              onClick={switchCamera}
+              data-testid="button-switch-camera"
+              title={facingMode === "environment" ? "สลับเป็นกล้องหน้า" : "สลับเป็นกล้องหลัง"}
+            >
+              <SwitchCamera className="h-5 w-5" />
+            </Button>
+          )}
           {/* Torch button — only shown when supported */}
           {torchSupported && status === "scanning" && (
             <Button
@@ -341,7 +383,7 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
             <Button
               variant="outline"
               className="text-white border-white hover:bg-white/20"
-              onClick={startCamera}
+              onClick={() => startCamera(facingMode)}
               data-testid="button-retry-camera"
             >
               ลองอีกครั้ง
