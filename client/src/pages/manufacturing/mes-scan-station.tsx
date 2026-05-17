@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { QrCode, User, Battery, CheckCircle2, Zap, Wrench, Shield, Package, ArrowLeft, Camera, Plus, Trash2, ChevronRight } from "lucide-react";
 import { useLocation } from "wouter";
+import { CameraQrScanner } from "@/components/camera-qr-scanner";
 
 const PROCESSES = [
   { no: 1, label: "P1: เริ่มงาน / วางเคส", icon: Package, short: "เริ่มงาน" },
@@ -40,6 +41,10 @@ export default function MesScanStation() {
   const [balanceImage, setBalanceImage] = useState<File | null>(null);
   const [scanInput, setScanInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [empCameraOpen, setEmpCameraOpen] = useState(false);
+  const [unitCameraOpen, setUnitCameraOpen] = useState(false);
+  const [cellCameraOpen, setCellCameraOpen] = useState(false);
 
   const scanRef = useRef<HTMLInputElement>(null);
   const cellRef = useRef<HTMLInputElement>(null);
@@ -189,18 +194,31 @@ export default function MesScanStation() {
         {/* ── Step: Employee ── */}
         {step === "employee" && (
           <Card title="ขั้นตอนที่ 1: ยืนยันตัวตน" subtitle="ยิง QR บัตรพนักงานของคุณ">
-            <div className="relative">
-              <QrCode className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-              <Input
-                ref={scanRef}
-                value={scanInput}
-                onChange={e => setScanInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") handleScan(scanInput); }}
-                placeholder="ยิง QR หรือพิมพ์รหัสพนักงาน..."
-                className="pl-10 h-12 text-base"
-                disabled={loading}
-                data-testid="input-employee-qr"
-              />
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <QrCode className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                <Input
+                  ref={scanRef}
+                  value={scanInput}
+                  onChange={e => setScanInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleScan(scanInput); }}
+                  placeholder="ยิง QR หรือพิมพ์รหัสพนักงาน..."
+                  className="pl-10 h-12 text-base"
+                  disabled={loading}
+                  data-testid="input-employee-qr"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="md:hidden shrink-0 gap-1.5 h-12"
+                onClick={() => setEmpCameraOpen(true)}
+                aria-label="สแกนด้วยกล้อง"
+                data-testid="button-emp-camera-scan"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="text-xs">กล้อง</span>
+              </Button>
             </div>
             <Button className="w-full h-12 text-base mt-3 bg-cyan-500 hover:bg-cyan-600" onClick={() => handleScan(scanInput)} disabled={loading || !scanInput.trim()} data-testid="btn-confirm-employee">
               {loading ? "กำลังตรวจสอบ..." : "ยืนยัน →"}
@@ -216,18 +234,31 @@ export default function MesScanStation() {
               <span className="text-cyan-700 text-sm font-medium">{employeeName}</span>
               <Button variant="ghost" size="sm" className="ml-auto text-gray-500 hover:text-gray-900 text-xs h-6 px-2" onClick={resetAll}>เปลี่ยน</Button>
             </div>
-            <div className="relative">
-              <QrCode className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-              <Input
-                ref={scanRef}
-                value={scanInput}
-                onChange={e => setScanInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") handleScan(scanInput); }}
-                placeholder="ยิง QR Master ที่กล่องแบต..."
-                className="pl-10 h-12 text-base"
-                disabled={loading}
-                data-testid="input-unit-qr"
-              />
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <QrCode className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                <Input
+                  ref={scanRef}
+                  value={scanInput}
+                  onChange={e => setScanInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleScan(scanInput); }}
+                  placeholder="ยิง QR Master ที่กล่องแบต..."
+                  className="pl-10 h-12 text-base"
+                  disabled={loading}
+                  data-testid="input-unit-qr"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="md:hidden shrink-0 gap-1.5 h-12"
+                onClick={() => setUnitCameraOpen(true)}
+                aria-label="สแกนด้วยกล้อง"
+                data-testid="button-unit-camera-scan"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="text-xs">กล้อง</span>
+              </Button>
             </div>
             <Button className="w-full h-12 text-base mt-3 bg-cyan-500 hover:bg-cyan-600" onClick={() => handleScan(scanInput)} disabled={loading || !scanInput.trim()} data-testid="btn-confirm-unit">
               {loading ? "กำลังค้นหา..." : "ค้นหา →"}
@@ -299,17 +330,30 @@ export default function MesScanStation() {
                 ))}
               </div>
             )}
-            <div className="relative mb-3">
-              <Battery className="absolute left-3 top-3 w-5 h-5 text-purple-400" />
-              <Input
-                ref={cellRef}
-                value={cellInput}
-                onChange={e => setCellInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") handleCellScan(cellInput); }}
-                placeholder="ยิง QR เซลล์แบต..."
-                className="pl-10 h-12 text-base border-purple-300 focus-visible:ring-purple-400"
-                data-testid="input-cell-qr"
-              />
+            <div className="flex gap-2 items-center mb-3">
+              <div className="relative flex-1">
+                <Battery className="absolute left-3 top-3 w-5 h-5 text-purple-400" />
+                <Input
+                  ref={cellRef}
+                  value={cellInput}
+                  onChange={e => setCellInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") handleCellScan(cellInput); }}
+                  placeholder="ยิง QR เซลล์แบต..."
+                  className="pl-10 h-12 text-base border-purple-300 focus-visible:ring-purple-400"
+                  data-testid="input-cell-qr"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="md:hidden shrink-0 gap-1.5 h-12 border-purple-300 text-purple-600"
+                onClick={() => setCellCameraOpen(true)}
+                aria-label="สแกนด้วยกล้อง"
+                data-testid="button-cell-camera-scan"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="text-xs">กล้อง</span>
+              </Button>
             </div>
             <Button className="w-full h-10 mb-3 bg-purple-500 hover:bg-purple-600" onClick={() => handleCellScan(cellInput)} disabled={!cellInput.trim()}>
               <Plus className="w-4 h-4 mr-1" /> เพิ่มเซลล์
@@ -375,6 +419,25 @@ export default function MesScanStation() {
           </Card>
         )}
       </div>
+
+      <CameraQrScanner
+        open={empCameraOpen}
+        onClose={() => setEmpCameraOpen(false)}
+        onScan={raw => { setScanInput(raw); handleScan(raw); }}
+        title="สแกน QR บัตรพนักงาน"
+      />
+      <CameraQrScanner
+        open={unitCameraOpen}
+        onClose={() => setUnitCameraOpen(false)}
+        onScan={raw => { setScanInput(raw); handleScan(raw); }}
+        title="สแกน QR หน่วยผลิต"
+      />
+      <CameraQrScanner
+        open={cellCameraOpen}
+        onClose={() => setCellCameraOpen(false)}
+        onScan={raw => handleCellScan(raw)}
+        title="สแกน QR เซลล์แบต"
+      />
     </div>
   );
 }

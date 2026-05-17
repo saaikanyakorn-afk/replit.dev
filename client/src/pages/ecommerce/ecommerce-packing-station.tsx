@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, ScanLine, Package, Loader2, Play, Square, Clock, CheckCircle2, User, AlertCircle } from "lucide-react";
+import { CameraQrScanner } from "@/components/camera-qr-scanner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,7 @@ export default function EcommercePackingStation() {
 
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [scanInput, setScanInput] = useState("");
+  const [qrCameraOpen, setQrCameraOpen] = useState(false);
   const [activeRecording, setActiveRecording] = useState<any>(null);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [recordingTimer, setRecordingTimer] = useState(0);
@@ -98,18 +100,21 @@ export default function EcommercePackingStation() {
     onError: (err: any) => { setPendingScanAfterStop(null); toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }); },
   });
 
-  const handleScan = useCallback(() => {
-    const val = scanInput.trim();
-    if (!val) return;
-
+  const triggerScan = useCallback((val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed) return;
     if (activeRecording) {
-      setPendingScanAfterStop(val);
+      setPendingScanAfterStop(trimmed);
       stopMutation.mutate();
     } else {
-      startMutation.mutate(val);
+      startMutation.mutate(trimmed);
     }
     setScanInput("");
-  }, [scanInput, activeRecording]);
+  }, [activeRecording]);
+
+  const handleScan = useCallback(() => {
+    triggerScan(scanInput);
+  }, [scanInput, triggerScan]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -162,6 +167,17 @@ export default function EcommercePackingStation() {
                       />
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="md:hidden shrink-0 gap-1 h-9"
+                    onClick={() => setQrCameraOpen(true)}
+                    aria-label="สแกนด้วยกล้อง"
+                    data-testid="button-camera-scan"
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span className="text-xs">กล้อง</span>
+                  </Button>
                   <Button
                     className="h-9 bg-[#03c9d7] hover:bg-[#02b4c1] text-white gap-1"
                     onClick={handleScan}
@@ -345,6 +361,13 @@ export default function EcommercePackingStation() {
           </Card>
         )}
       </div>
+
+      <CameraQrScanner
+        open={qrCameraOpen}
+        onClose={() => setQrCameraOpen(false)}
+        onScan={raw => triggerScan(raw)}
+        title="สแกน QR / บาร์โค้ดออเดอร์"
+      />
     </EcommerceLayout>
   );
 }

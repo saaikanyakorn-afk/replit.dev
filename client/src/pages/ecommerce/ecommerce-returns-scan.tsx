@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScanLine, Package, Check, X, Search, ArrowLeft, Loader2, PackageCheck, AlertTriangle } from "lucide-react";
+import { ScanLine, Package, Check, X, Search, ArrowLeft, Loader2, PackageCheck, AlertTriangle, Camera } from "lucide-react";
+import { CameraQrScanner } from "@/components/camera-qr-scanner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { useState, useRef, useEffect } from "react";
@@ -35,6 +36,7 @@ export default function EcommerceReturnsScan() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [scanCode, setScanCode] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedReturn, setSelectedReturn] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -60,11 +62,11 @@ export default function EcommerceReturnsScan() {
     enabled: !!selectedCompanyId,
   });
 
-  const handleScan = async () => {
-    if (!scanCode.trim() || !selectedCompanyId) return;
+  const handleScanCode = async (code: string) => {
+    if (!code.trim() || !selectedCompanyId) return;
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/ecommerce/returns/scan-lookup?companyId=${selectedCompanyId}&code=${encodeURIComponent(scanCode.trim())}`);
+      const res = await fetch(`/api/ecommerce/returns/scan-lookup?companyId=${selectedCompanyId}&code=${encodeURIComponent(code.trim())}`);
       const data = await res.json();
       if (data.items && data.items.length > 0) {
         setSearchResults(data.items);
@@ -82,6 +84,10 @@ export default function EcommerceReturnsScan() {
     setIsSearching(false);
     setScanCode("");
     inputRef.current?.focus();
+  };
+
+  const handleScan = async () => {
+    await handleScanCode(scanCode);
   };
 
   const loadReturnDetail = async (returnId: number) => {
@@ -179,6 +185,17 @@ export default function EcommerceReturnsScan() {
                   data-testid="input-scan-code"
                 />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="md:hidden shrink-0 gap-1.5 h-12"
+                onClick={() => setCameraOpen(true)}
+                aria-label="สแกนด้วยกล้อง"
+                data-testid="button-camera-scan"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="text-xs">กล้อง</span>
+              </Button>
               <Button onClick={handleScan} disabled={isSearching || !scanCode.trim()} className="h-12 px-6 text-white" style={{ background: "#fb9678" }} data-testid="button-search">
                 {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5 mr-1" />}
                 ค้นหา
@@ -414,6 +431,13 @@ export default function EcommerceReturnsScan() {
           </div>
         )}
       </div>
+
+      <CameraQrScanner
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onScan={raw => handleScanCode(raw)}
+        title="สแกน QR / บาร์โค้ดสินค้าคืน"
+      />
     </EcommerceLayout>
   );
 }

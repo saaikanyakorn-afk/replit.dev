@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState, useRef, useCallback } from "react";
-import { ScanLine, CheckCircle2, Package, X, Truck } from "lucide-react";
+import { ScanLine, CheckCircle2, Package, X, Truck, Camera } from "lucide-react";
+import { CameraQrScanner } from "@/components/camera-qr-scanner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +24,7 @@ export default function DeliveryScan() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scanInput, setScanInput] = useState("");
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const scanMutation = useMutation({
     mutationFn: async (tracking: string) => {
@@ -96,6 +98,17 @@ export default function DeliveryScan() {
                 className="text-lg h-12 font-mono"
                 autoFocus
               />
+              <Button
+                type="button"
+                variant="outline"
+                className="md:hidden shrink-0 gap-1.5 h-12"
+                onClick={() => setCameraOpen(true)}
+                aria-label="สแกนด้วยกล้อง"
+                data-testid="button-camera-scan"
+              >
+                <Camera className="h-4 w-4" />
+                <span className="text-xs">กล้อง</span>
+              </Button>
               <Button
                 style={{ background: "#03c9d7" }}
                 className="text-white hover:opacity-90 h-12 px-6"
@@ -204,6 +217,13 @@ export default function DeliveryScan() {
           </CardContent>
         </Card>
       </div>
+
+      <CameraQrScanner
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onScan={raw => { const val = raw.trim(); if (!val) return; setScanInput(val); scanMutation.mutate(val); inputRef.current?.focus(); }}
+        title="สแกน QR / บาร์โค้ด Tracking"
+      />
     </DeliveryLayout>
   );
 }
