@@ -27,8 +27,11 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
   const [status, setStatus] = useState<"idle" | "loading" | "scanning" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Camera facing mode
-  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  // Camera facing mode — persisted in localStorage
+  const [facingMode, setFacingMode] = useState<"environment" | "user">(() => {
+    const saved = localStorage.getItem("qr-scanner-facing-mode");
+    return saved === "user" ? "user" : "environment";
+  });
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
 
   // Torch state
@@ -186,6 +189,7 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
   const switchCamera = () => {
     const nextFacing = facingMode === "environment" ? "user" : "environment";
     setFacingMode(nextFacing);
+    localStorage.setItem("qr-scanner-facing-mode", nextFacing);
     stopCamera();
     startCamera(nextFacing);
   };
@@ -251,8 +255,14 @@ export function CameraQrScanner({ open, onClose, onScan, title = "สแกน Q
 
   useEffect(() => {
     if (open) {
+      // Re-read the saved facing mode each time the scanner opens so that
+      // multiple scanner instances on the same page all pick up the latest
+      // preference (not just the value captured at mount time).
+      const saved = localStorage.getItem("qr-scanner-facing-mode");
+      const currentFacing: "environment" | "user" = saved === "user" ? "user" : "environment";
+      setFacingMode(currentFacing);
       checkMultipleCameras();
-      startCamera(facingMode);
+      startCamera(currentFacing);
     } else {
       stopCamera();
       setStatus("idle");
