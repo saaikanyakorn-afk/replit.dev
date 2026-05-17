@@ -1839,7 +1839,9 @@ app.get("/api/goods-receivings/:id", requireAuth, requireModule("inventory"), as
     const [gr] = await db.select().from(goodsReceivings).where(eq(goodsReceivings.id, id));
     if (!gr) return res.status(404).json({ message: "ไม่พบใบรับสินค้า" });
     const items = await db.select().from(goodsReceivingItems).where(eq(goodsReceivingItems.goodsReceivingId, id));
-    res.json({ ...gr, items });
+    const whRaw = await db.execute(sql.raw(`SELECT warehouse_id FROM goods_receivings WHERE id = ${id}`));
+    const warehouseId = (whRaw as any).rows?.[0]?.warehouse_id ?? null;
+    res.json({ ...gr, warehouseId, items });
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
