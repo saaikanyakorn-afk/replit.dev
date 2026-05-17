@@ -132,6 +132,11 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 | T35-13 | NO FALLBACK fix: `getNextMaterialIssueNo()` — explicit throw if COUNT returns no rows or cnt is null | `server/routes/products-routes.ts` line 2683 | ✅ dev |
 | T35-14 | NO FALLBACK fix: POST handler — explicit `moIdSql`, `issuedByUserIdSql`, `notesSql`, `lotIdSql`, `lotNumberSql` — no `\|\|` chains | `server/routes/products-routes.ts` line 2745 | ✅ dev |
 | T35-15 | schema-history.md ENTRY #009 — material_issues tables added | `db/schema-history.md` | ✅ |
+| T35-16 | CODE REVIEW FIX — Move `runMaterialIssueMigration` from `server/schema-extra.ts` → `shared/schema-extra.ts`; stub comment left in server file; import `@shared/schema-extra` now resolves correctly | `shared/schema-extra.ts` lines 994-1029; `server/schema-extra.ts` line 66 | ✅ |
+| T35-17 | CODE REVIEW FIX — MATERIAL_LOT QR flow: `handleProductQrKeyDown` now tries JSON.parse first; if JSON → calls `/api/scan/decode` to validate; routes MATERIAL_LOT to direct item add (productId, productName, lotId, lotNumber, unit extracted from payload); routes EMPLOYEE to explicit error; plain string falls through to product-code search | `client/src/pages/inventory/material-issue-form.tsx` lines 292-348 | ✅ |
+| T35-18 | CODE REVIEW FIX — Backend confirm: enforce lot_id required for lot-tracked products; queries `SELECT track_lots FROM products WHERE id=productId`; throws explicit error if trackLots=true and lot_id missing | `server/routes/products-routes.ts` lines 2790-2798 | ✅ |
+| T35-19 | CODE REVIEW FIX — MO dropdown filters to `status=in_progress` only: query adds `&status=in_progress`, client also `.filter(m => m.status === "in_progress")` as double guard | `client/src/pages/inventory/material-issue-form.tsx` lines 152-163 | ✅ |
+| T35-20 | CODE REVIEW FIX — SQL injection guard: `item.productId` coerced to `Number(itemProductId)` before sql.raw; `issue.id` also wrapped `Number(issue.id)`; confirm route productId/lotId all coerced | `server/routes/products-routes.ts` lines 2760-2762, 2799, 2811 | ✅ |
 
 **⚠️ Before production push:**
 - This commit contains NEW TABLES (schema change) — alert พี่ช้าง: `material_issues` + `material_issue_items` will be auto-created by `runMaterialIssueMigration()` on first server start

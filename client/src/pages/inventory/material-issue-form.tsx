@@ -147,13 +147,14 @@ export default function MaterialIssueForm({ idProp }: Props) {
   });
 
   const { data: mos = [] } = useQuery<MoOption[]>({
-    queryKey: ["/api/manufacturing-orders", company?.id],
+    queryKey: ["/api/manufacturing-orders", company?.id, "in_progress"],
     queryFn: async () => {
       if (!company?.id) return [];
-      const r = await fetch(`/api/manufacturing-orders?companyId=${company.id}`, { credentials: "include" });
+      const r = await fetch(`/api/manufacturing-orders?companyId=${company.id}&status=in_progress`, { credentials: "include" });
       if (!r.ok) return [];
       const data = await r.json();
-      return (data.data ?? data) as MoOption[];
+      const all = (data.data ?? data) as MoOption[];
+      return all.filter(m => m.status === "in_progress");
     },
     enabled: !!company?.id && !isEditMode,
   });
@@ -287,6 +288,63 @@ export default function MaterialIssueForm({ idProp }: Props) {
       return;
     }
     setScanError(null);
+
+    // ── Try to decode as JSON (MATERIAL_LOT or EMPLOYEE QR) ──
+    let maybeJson: any = null;
+    try { maybeJson = JSON.parse(raw); } catch { /* not JSON — treat as product code */ }
+
+    if (maybeJson !== null) {
+      // Route through /api/scan/decode for server-side validation
+      const dr = await fetch("/api/scan/decode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ raw }),
+      });
+      const decoded = await dr.json();
+      if (!dr.ok) {
+        setScanError(`[QR-DECODE] ${decoded.message || "QR ไม่รู้จัก"} — raw="${raw.slice(0, 80)}"`);
+        return;
+      }
+
+      if (decoded.type === "EMPLOYEE") {
+        setScanError(`[QR-PROD-WRONG-TYPE] QR นี้คือบัตรพนักงาน — กรุณาใช้ช่อง "สแกนบัตรพนักงาน" ด้านบน`);
+        return;
+      }
+
+      if (decoded.type === "MATERIAL_LOT") {
+        const d = decoded.data;
+        const pId = Number(d.productId);
+        const pName = String(d.productName || "");
+        const lId = d.lotId ? Number(d.lotId) : null;
+        const lNo = d.lotNumber ? String(d.lotNumber) : "";
+        const unit = d.unit ? String(d.unit) : "ชิ้น";
+        if (!pId) {
+          setScanError(`[QR-LOT-NO-PRODUCT] QR ล็อตไม่มี productId — ข้อมูล QR ผิดพลาด`);
+          return;
+        }
+        if (!lId) {
+          setScanError(`[QR-LOT-NO-LOTID] QR ล็อตไม่มี lotId — ตรวจสอบ QR หรือเลือก Lot ด้วยตนเอง`);
+          return;
+        }
+        setItems(prev => [...prev, {
+          productId: pId,
+          productName: pName,
+          lotId: lId,
+          lotNumber: lNo,
+          quantity: 1,
+          unit,
+          trackLots: true,
+        }]);
+        toast({ title: "สแกน Lot QR สำเร็จ", description: `${pName} — Lot: ${lNo}` });
+        return;
+      }
+
+      setScanError(`[QR-PROD-UNKNOWN] QR type "${decoded.type}" ไม่รองรับในใบเบิก`);
+      return;
+    }
+
+    // ── Plain string → search by product code ──
     const r = await fetch(`/api/products?companyId=${company.id}&search=${encodeURIComponent(raw)}&limit=5`, { credentials: "include" });
     if (!r.ok) {
       setScanError(`[QR-PROD-API] โหลดสินค้าไม่สำเร็จ — code="${raw}"`);

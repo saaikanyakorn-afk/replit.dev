@@ -2754,11 +2754,12 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
       if (!item.productName) throw new Error(`[MAT-ISSUE-ITEM] productName ไม่ครบ — productId=${item.productId}`);
       if (!item.quantity || Number(item.quantity) <= 0) throw new Error(`[MAT-ISSUE-ITEM] quantity ต้องมากกว่า 0 — productId=${item.productId}`);
       if (!item.unit) throw new Error(`[MAT-ISSUE-ITEM] unit ไม่ครบ — productId=${item.productId}`);
+      const itemProductId = Number(item.productId);
       const lotIdSql = (item.lotId === null || item.lotId === undefined) ? "NULL" : Number(item.lotId);
       const lotNumberSql = (item.lotNumber === null || item.lotNumber === undefined || String(item.lotNumber).trim() === "") ? "NULL" : `'${String(item.lotNumber).replace(/'/g, "''")}'`;
       await db.execute(sql.raw(`
         INSERT INTO material_issue_items (material_issue_id, product_id, product_name, lot_id, lot_number, quantity, unit)
-        VALUES (${issue.id}, ${item.productId}, '${String(item.productName).replace(/'/g, "''")}',
+        VALUES (${Number(issue.id)}, ${itemProductId}, '${String(item.productName).replace(/'/g, "''")}',
           ${lotIdSql}, ${lotNumberSql},
           ${Number(item.quantity)}, '${String(item.unit).replace(/'/g, "''")}')
       `));
@@ -2782,22 +2783,34 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
     const companyId = Number(issue.company_id);
     const issueNo = issue.issue_no;
     for (const item of itemRows.rows as any[]) {
+      const productId = Number(item.product_id);
       const qty = Number(item.quantity);
-      if (!item.product_id || qty <= 0) continue;
+      if (!productId) throw new Error(`[MAT-ISSUE-CONFIRM] product_id null — item.id=${item.id} — ข้อมูลผิดพลาด`);
+      if (qty <= 0) throw new Error(`[MAT-ISSUE-CONFIRM] quantity=${qty} ไม่ถูกต้อง — item.id=${item.id} productId=${productId}`);
+      // Check if product is lot-tracked — if so, lot_id is required
+      const prodRows = await db.execute(sql.raw(`SELECT track_lots FROM products WHERE id = ${productId} LIMIT 1`));
+      if (prodRows.rows.length > 0) {
+        const trackLots = (prodRows.rows[0] as any).track_lots;
+        if (trackLots === true && !item.lot_id) {
+          throw new Error(`[MAT-ISSUE-CONFIRM] สินค้า productId=${productId} ต้องระบุ Lot — item.id=${item.id} — กรุณาแก้ไขใบเบิกก่อนยืนยัน`);
+        }
+      }
       if (item.lot_id) {
+        const lotId = Number(item.lot_id);
         await db.execute(sql.raw(
-          `UPDATE product_lots SET quantity = GREATEST(0, CAST(quantity AS NUMERIC) - ${qty}) WHERE id = ${item.lot_id}`
+          `UPDATE product_lots SET quantity = GREATEST(0, CAST(quantity AS NUMERIC) - ${qty}) WHERE id = ${lotId}`
         ));
       }
       await storage.adjustStock(
-        companyId, Number(item.product_id), String(-qty), "issue",
+        companyId, productId, String(-qty), "issue",
         `เบิกวัตถุดิบ ${issueNo}`,
         "material_issue", id,
         { referenceNo: issueNo, createdBy: (req.user as any)?.id }
       );
       if (item.lot_id) {
+        const lotId = Number(item.lot_id);
         await db.execute(sql.raw(
-          `UPDATE stock_movements SET lot_id = ${item.lot_id} WHERE reference_type = 'material_issue' AND reference_id = ${id} AND product_id = ${item.product_id} ORDER BY id DESC LIMIT 1`
+          `UPDATE stock_movements SET lot_id = ${lotId} WHERE reference_type = 'material_issue' AND reference_id = ${id} AND product_id = ${productId} ORDER BY id DESC LIMIT 1`
         ));
       }
     }

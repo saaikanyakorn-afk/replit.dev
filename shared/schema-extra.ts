@@ -989,6 +989,43 @@ export async function runMesTablesMigration(db: any) {
 }
 
 // =============================================================================
+// MATERIAL ISSUES TABLES (ENTRY #009, 2026-05-17)
+// Creates material_issues + material_issue_items for เบิกวัตถุดิบ module.
+// History: db/schema-history.md ENTRY #009
+// =============================================================================
+export async function runMaterialIssueMigration(db: any) {
+  const FLAG = "CREATE_MATERIAL_ISSUE_TABLES_20260517";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS material_issues (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER NOT NULL REFERENCES companies(id),
+      issue_no TEXT NOT NULL,
+      mo_id INTEGER REFERENCES manufacturing_orders(id),
+      issued_by_user_id INTEGER REFERENCES users(id),
+      issued_at TIMESTAMP DEFAULT NOW(),
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'draft'
+    )`));
+    await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS material_issue_items (
+      id SERIAL PRIMARY KEY,
+      material_issue_id INTEGER NOT NULL REFERENCES material_issues(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL,
+      product_name TEXT NOT NULL,
+      lot_id INTEGER REFERENCES product_lots(id),
+      lot_number TEXT,
+      quantity NUMERIC NOT NULL,
+      unit TEXT NOT NULL DEFAULT 'ชิ้น'
+    )`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ material_issues + material_issue_items created");
+  } catch (e: any) {
+    console.error("[migration] ❌ runMaterialIssueMigration FAILED:", e.message);
+  }
+}
+
+// =============================================================================
 // INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12) — ❌ CANCELLED
 // Approach changed 2026-05-12: user inputs วันที่เริ่มต้นสต๊อก at Excel import
 // time via product-import-export.tsx date picker. Backfill not needed.
