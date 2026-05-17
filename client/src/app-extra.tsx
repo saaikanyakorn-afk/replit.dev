@@ -123,7 +123,7 @@ function matchMesScan(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/mes/scan";
 }
 
-// [material-issue] Material issue route matchers
+// [material-issue] Material issue route matchers — inventory prefix
 function matchMaterialIssueList(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/inventory/material-issues";
 }
@@ -136,6 +136,20 @@ function matchMaterialIssueFormEdit(location: string): string | null {
 }
 function matchEmployeeQR(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/inventory/employee-qr";
+}
+// [material-issue] Manufacturing-prefix routes (same components, ManufacturingLayout sidebar)
+function matchMfgMaterialIssueList(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/material-issues";
+}
+function matchMfgMaterialIssueForm(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/material-issue/form";
+}
+function matchMfgMaterialIssueFormEdit(location: string): string | null {
+  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/material-issue\/form\/(\d+)$/);
+  return m ? m[1] : null;
+}
+function matchMfgEmployeeQR(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/manufacturing/employee-qr";
 }
 
 export default function AppExtra() {
@@ -192,6 +206,10 @@ export default function AppExtra() {
   const isMaterialIssueForm = matchMaterialIssueForm(location);
   const materialIssueFormEditId = matchMaterialIssueFormEdit(location);
   const isEmployeeQR = matchEmployeeQR(location);
+  const isMfgMaterialIssueList = matchMfgMaterialIssueList(location);
+  const isMfgMaterialIssueForm = matchMfgMaterialIssueForm(location);
+  const mfgMaterialIssueFormEditId = matchMfgMaterialIssueFormEdit(location);
+  const isMfgEmployeeQR = matchMfgEmployeeQR(location);
 
   if (pdfId) {
     return (
@@ -327,6 +345,52 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <MesScanStation />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [material-issue/mfg] ใบเบิกวัตถุดิบ — manufacturing sidebar (same components, /manufacturing prefix)
+  if (isMfgMaterialIssueList) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <MaterialIssueList urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (isMfgMaterialIssueForm) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <MaterialIssueForm urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (mfgMaterialIssueFormEditId) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <MaterialIssueForm idProp={mfgMaterialIssueFormEditId} urlBase="/manufacturing" />
+          </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (isMfgEmployeeQR) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ManufacturingLayout>
+            <EmployeeQRPage />
+          </ManufacturingLayout>
         </Suspense>
       </FullPageOverlay>
     );

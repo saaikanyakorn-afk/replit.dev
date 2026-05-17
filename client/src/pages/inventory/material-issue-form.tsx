@@ -105,7 +105,7 @@ function StatusBadge({ status }: { status: string }) {
 // Main component
 // ──────────────────────────────────────────────
 
-export default function MaterialIssueForm({ idProp }: Props) {
+export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Props & { urlBase?: string }) {
   const [, navigate] = useLocation();
   const search = useSearch();
   const { company } = useCompany();
@@ -272,7 +272,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
     onSuccess: (data) => {
       toast({ title: "บันทึกใบเบิกสำเร็จ", description: `เลขที่ ${data.issueNo || data.issue_no}` });
       queryClient.invalidateQueries({ queryKey: ["/api/material-issues"] });
-      navigate("/inventory/material-issues");
+      navigate(`${urlBase}/material-issues`);
     },
     onError: (e: Error) => toast({ title: "ข้อผิดพลาด", description: e.message, variant: "destructive" }),
   });
@@ -291,7 +291,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
     onSuccess: (data) => {
       toast({ title: "ยืนยันการเบิกวัตถุดิบสำเร็จ", description: `เลขที่ ${data.issueNo}` });
       queryClient.invalidateQueries({ queryKey: ["/api/material-issues"] });
-      navigate("/inventory/material-issues");
+      navigate(`${urlBase}/material-issues`);
     },
     onError: (e: Error) => toast({ title: "ข้อผิดพลาด", description: e.message, variant: "destructive" }),
   });
@@ -506,7 +506,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/inventory/material-issues")} data-testid="button-back">
+            <Button variant="ghost" size="icon" onClick={() => navigate(`${urlBase}/material-issues`)} data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <ClipboardList className="h-6 w-6 text-primary" />
@@ -651,7 +651,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
     <div className="container mx-auto py-6 max-w-4xl space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/inventory/material-issues")} data-testid="button-back">
+        <Button variant="ghost" size="icon" onClick={() => navigate(`${urlBase}/material-issues`)} data-testid="button-back">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <ClipboardList className="h-6 w-6 text-primary" />
@@ -954,7 +954,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2 pb-6">
-        <Button variant="outline" onClick={() => navigate("/inventory/material-issues")} data-testid="button-cancel">
+        <Button variant="outline" onClick={() => navigate(`${urlBase}/material-issues`)} data-testid="button-cancel">
           ยกเลิก
         </Button>
         <Button

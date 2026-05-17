@@ -27,7 +27,7 @@ function statusBadge(status: string) {
   return <Badge variant="outline" data-testid="badge-draft">ร่าง</Badge>;
 }
 
-export default function MaterialIssueList() {
+export default function MaterialIssueList({ urlBase = "/inventory" }: { urlBase?: string }) {
   const [, navigate] = useLocation();
   const { company } = useCompany();
   const { toast } = useToast();
@@ -66,7 +66,7 @@ export default function MaterialIssueList() {
           <ClipboardList className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold" data-testid="title-material-issue-list">ใบเบิกวัตถุดิบ</h1>
         </div>
-        <Button data-testid="button-create-material-issue" onClick={() => navigate("/inventory/material-issue/form")}>
+        <Button data-testid="button-create-material-issue" onClick={() => navigate(`${urlBase}/material-issue/form`)}>
           <Plus className="h-4 w-4 mr-2" />
           สร้างใบเบิกใหม่
         </Button>
@@ -116,7 +116,7 @@ export default function MaterialIssueList() {
                         <Button
                           size="sm" variant="ghost"
                           data-testid={`button-view-${issue.id}`}
-                          onClick={() => navigate(`/inventory/material-issue/form/${issue.id}`)}
+                          onClick={() => navigate(`${urlBase}/material-issue/form/${issue.id}`)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>

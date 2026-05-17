@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Factory, LayoutDashboard, ClipboardList, Barcode, Search,
-  Wrench, ChevronDown, ChevronRight, ArrowLeft, Settings2, Package, ScanLine, ListChecks
+  Wrench, ChevronDown, ChevronRight, ArrowLeft, Settings2, Package, ScanLine, ListChecks,
+  PackageOpen, QrCode
 } from "lucide-react";
 
 const HREF_TO_SUB_KEY: Record<string, string> = {
@@ -19,6 +20,9 @@ const HREF_TO_SUB_KEY: Record<string, string> = {
   "/manufacturing/calibration": "manufacturing/calibration",
   "/manufacturing/mes/work-orders": "manufacturing/mes/work-orders",
   "/manufacturing/mes/scan": "manufacturing/mes/scan",
+  "/manufacturing/material-issues": "manufacturing/material-issues",
+  "/manufacturing/material-issue/form": "manufacturing/material-issues",
+  "/manufacturing/employee-qr": "manufacturing/employee-qr",
 };
 
 interface NavItem {
@@ -55,6 +59,14 @@ const MFG_NAV: { label: string; icon: any; href: string; children?: NavItem[] }[
     children: [
       { label: "ใบสั่งผลิต MES", href: "/manufacturing/mes/work-orders", icon: ListChecks },
       { label: "สถานียิง QR", href: "/manufacturing/mes/scan", icon: ScanLine },
+    ],
+  },
+  {
+    label: "เบิกวัตถุดิบ", icon: PackageOpen, href: "/manufacturing/material-issues",
+    children: [
+      { label: "รายการใบเบิก", href: "/manufacturing/material-issues", icon: ClipboardList },
+      { label: "สร้างใบเบิก", href: "/manufacturing/material-issue/form", icon: PackageOpen },
+      { label: "QR บัตรพนักงาน", href: "/manufacturing/employee-qr", icon: QrCode },
     ],
   },
 ];
