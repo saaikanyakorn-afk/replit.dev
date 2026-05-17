@@ -238,6 +238,13 @@ export default function ProductLotsPage() {
 
   const activeLots = filteredLots.filter((l: any) => Number(l.quantity) > 0);
   const emptyLots = filteredLots.filter((l: any) => Number(l.quantity) <= 0);
+  const companyThresholdGlobal = companySettings?.lotLowStockThreshold ?? 10;
+  const lowStockCount = activeLots.filter((l: any) => {
+    const qty = Number(l.quantity);
+    const productThreshold = l.productLowStockThreshold ?? 0;
+    const threshold = productThreshold > 0 ? productThreshold : companyThresholdGlobal;
+    return qty < threshold;
+  }).length;
 
   function toggleExpand(lotId: number) {
     setExpandedLotId(prev => prev === lotId ? null : lotId);
@@ -275,6 +282,7 @@ export default function ProductLotsPage() {
                     />
                   </div>
                   <Badge variant="outline" className="text-xs">{activeLots.length} ล็อตมีสต็อก</Badge>
+                  {lowStockCount > 0 && <Badge variant="outline" data-testid="badge-low-stock-count" className="text-xs border-amber-400 text-amber-600 bg-amber-50">{lowStockCount} ใกล้หมด</Badge>}
                   {emptyLots.length > 0 && <Badge variant="secondary" className="text-xs">{emptyLots.length} หมดสต็อก</Badge>}
                 </div>
               </CardHeader>
