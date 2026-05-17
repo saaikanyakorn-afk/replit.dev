@@ -19,7 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
-import { ArrowLeft, Plus, Trash2, QrCode, CheckCircle, Save, ScanLine, UserCheck, ClipboardList } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, QrCode, CheckCircle, Save, ScanLine, UserCheck, ClipboardList, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ──────────────────────────────────────────────
 // Types
@@ -65,6 +66,7 @@ interface ItemForm {
   quantity: number;
   unit: string;
   trackLots: boolean;
+  lotAvailableQty?: number;
 }
 
 interface IssueDetail {
@@ -191,6 +193,32 @@ export default function MaterialIssueForm({ idProp }: Props) {
       return r.json();
     },
     enabled: !!company?.id && !!selectedProduct?.id && selectedProduct.trackLots,
+  });
+
+  // ── View mode: fetch live lot quantities for each item that has a lot_id ──
+  const viewModeLotIds = isEditMode && existingIssue
+    ? [...new Set(existingIssue.items.filter(it => it.lot_id).map(it => it.lot_id as number))]
+    : [];
+  const viewModeProductIds = isEditMode && existingIssue
+    ? [...new Set(existingIssue.items.filter(it => it.lot_id).map(it => it.product_id))]
+    : [];
+
+  const { data: viewModeLotQtys = {} } = useQuery<Record<number, number>>({
+    queryKey: ["/api/product-lots-view-mode", company?.id, viewModeLotIds.join(",")],
+    queryFn: async () => {
+      if (!company?.id || viewModeProductIds.length === 0) return {};
+      const lotMap: Record<number, number> = {};
+      await Promise.all(viewModeProductIds.map(async (productId) => {
+        const r = await fetch(`/api/product-lots?companyId=${company.id}&productId=${productId}`, { credentials: "include" });
+        if (!r.ok) return;
+        const lotList: LotOption[] = await r.json();
+        for (const lot of lotList) {
+          lotMap[lot.id] = Number(lot.quantity);
+        }
+      }));
+      return lotMap;
+    },
+    enabled: isEditMode && !!existingIssue && !!company?.id && viewModeLotIds.length > 0,
   });
 
   // ──────────────────────────────────────────────
@@ -327,6 +355,16 @@ export default function MaterialIssueForm({ idProp }: Props) {
           setScanError(`[QR-LOT-NO-LOTID] QR ล็อตไม่มี lotId — ตรวจสอบ QR หรือเลือก Lot ด้วยตนเอง`);
           return;
         }
+        // Fetch current lot quantity to show remaining stock warning
+        let lotAvailableQty: number | undefined = undefined;
+        try {
+          const lotRes = await fetch(`/api/product-lots?companyId=${company.id}&productId=${pId}`, { credentials: "include" });
+          if (lotRes.ok) {
+            const lotList: LotOption[] = await lotRes.json();
+            const found = lotList.find(l => l.id === lId);
+            if (found) lotAvailableQty = Number(found.quantity);
+          }
+        } catch { /* ignore — stock column will show "—" */ }
         setItems(prev => [...prev, {
           productId: pId,
           productName: pName,
@@ -335,6 +373,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
           quantity: 1,
           unit,
           trackLots: true,
+          lotAvailableQty,
         }]);
         toast({ title: "สแกน Lot QR สำเร็จ", description: `${pName} — Lot: ${lNo}` });
         return;
@@ -366,7 +405,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
     }
   }
 
-  function addItemFromProduct(prod: ProductOption, lotId: number | null, lotNumber: string | null, qty: number) {
+  function addItemFromProduct(prod: ProductOption, lotId: number | null, lotNumber: string | null, qty: number, lotAvailableQty?: number) {
     if (!prod.id) {
       throw new Error(`[MAT-ISSUE-ADD] productId null — สินค้า "${prod.name}" ไม่มี id`);
     }
@@ -382,6 +421,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
       quantity: qty,
       unit: prod.unit || "ชิ้น",
       trackLots: prod.trackLots,
+      lotAvailableQty,
     }]);
     setSelectedProduct(null);
     setSelectedLotId(null);
@@ -398,14 +438,16 @@ export default function MaterialIssueForm({ idProp }: Props) {
       return;
     }
     let lotNum: string | null = null;
+    let lotAvailableQty: number | undefined = undefined;
     if (selectedLotId) {
       const found = lots.find(l => l.id === selectedLotId);
       if (!found) {
         throw new Error(`[MAT-ISSUE-LOT] lotId=${selectedLotId} ไม่พบใน lots list — ข้อมูลผิดพลาด`);
       }
       lotNum = found.lotNumber;
+      lotAvailableQty = Number(found.quantity);
     }
-    addItemFromProduct(selectedProduct, selectedLotId, lotNum, addQty);
+    addItemFromProduct(selectedProduct, selectedLotId, lotNum, addQty, lotAvailableQty);
   }
 
   function removeItem(idx: number) {
@@ -455,17 +497,44 @@ export default function MaterialIssueForm({ idProp }: Props) {
             <h1 className="text-xl font-bold" data-testid="title-issue-view">ใบเบิกวัตถุดิบ {existingIssue.issue_no}</h1>
             <StatusBadge status={existingIssue.status} />
           </div>
-          {existingIssue.status === "draft" && (
-            <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => confirmMutation.mutate(existingIssue.id)}
-              disabled={confirmMutation.isPending}
-              data-testid="button-confirm-issue"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {confirmMutation.isPending ? "กำลังยืนยัน..." : "ยืนยันการเบิก"}
-            </Button>
-          )}
+          {existingIssue.status === "draft" && (() => {
+            const hasStockIssue = existingIssue.items.some(it => {
+              if (!it.lot_id) return false;
+              const avail = viewModeLotQtys[it.lot_id as number];
+              // Block if over-stock OR if stock data couldn't be fetched for a lot item
+              if (avail === undefined && viewModeLotIds.length > 0 && Object.keys(viewModeLotQtys).length > 0) return false;
+              return avail !== undefined && Number(it.quantity) > avail;
+            });
+            const hasFetchGap = viewModeLotIds.length > 0
+              && Object.keys(viewModeLotQtys).length > 0
+              && existingIssue.items.some(it => it.lot_id && viewModeLotQtys[it.lot_id as number] === undefined);
+            const isBlocked = hasStockIssue || hasFetchGap;
+            const tooltipMsg = hasFetchGap
+              ? "ตรวจสอบสต็อกไม่ได้ — กรุณา refresh หน้า"
+              : hasStockIssue ? "สต็อกไม่เพียงพอ" : null;
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => confirmMutation.mutate(existingIssue.id)}
+                        disabled={confirmMutation.isPending || isBlocked}
+                        data-testid="button-confirm-issue"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {confirmMutation.isPending ? "กำลังยืนยัน..." : "ยืนยันการเบิก"}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {tooltipMsg && (
+                    <TooltipContent>{tooltipMsg}</TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })()}
         </div>
 
         {/* Details card */}
@@ -517,6 +586,7 @@ export default function MaterialIssueForm({ idProp }: Props) {
                   <TableHead className="w-8">#</TableHead>
                   <TableHead>สินค้า</TableHead>
                   <TableHead>Lot</TableHead>
+                  <TableHead className="text-right">คงเหลือ</TableHead>
                   <TableHead className="text-right">จำนวน</TableHead>
                   <TableHead>หน่วย</TableHead>
                 </TableRow>
@@ -524,20 +594,30 @@ export default function MaterialIssueForm({ idProp }: Props) {
               <TableBody>
                 {existingIssue.items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8" data-testid="text-empty-items">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8" data-testid="text-empty-items">
                       ไม่มีรายการ
                     </TableCell>
                   </TableRow>
                 ) : (
-                  existingIssue.items.map((it, idx) => (
-                    <TableRow key={it.id} data-testid={`row-issue-item-${it.id}`}>
-                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                      <TableCell data-testid={`text-item-product-${it.id}`}>{it.product_name}</TableCell>
-                      <TableCell data-testid={`text-item-lot-${it.id}`}>{it.lot_number || "—"}</TableCell>
-                      <TableCell className="text-right" data-testid={`text-item-qty-${it.id}`}>{Number(it.quantity).toLocaleString()}</TableCell>
-                      <TableCell data-testid={`text-item-unit-${it.id}`}>{it.unit}</TableCell>
-                    </TableRow>
-                  ))
+                  existingIssue.items.map((it, idx) => {
+                    const avail = it.lot_id ? viewModeLotQtys[it.lot_id as number] : undefined;
+                    const isOver = avail !== undefined && Number(it.quantity) > avail;
+                    return (
+                      <TableRow key={it.id} data-testid={`row-issue-item-${it.id}`} className={isOver ? "bg-red-50" : undefined}>
+                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell data-testid={`text-item-product-${it.id}`}>
+                          {isOver && <AlertTriangle className="inline h-3 w-3 text-red-500 mr-1" />}
+                          {it.product_name}
+                        </TableCell>
+                        <TableCell data-testid={`text-item-lot-${it.id}`}>{it.lot_number || "—"}</TableCell>
+                        <TableCell className={`text-right ${isOver ? "text-red-600 font-medium" : "text-muted-foreground"}`} data-testid={`text-item-avail-${it.id}`}>
+                          {avail !== undefined ? avail.toLocaleString() : "—"}
+                        </TableCell>
+                        <TableCell className="text-right" data-testid={`text-item-qty-${it.id}`}>{Number(it.quantity).toLocaleString()}</TableCell>
+                        <TableCell data-testid={`text-item-unit-${it.id}`}>{it.unit}</TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -786,12 +866,19 @@ export default function MaterialIssueForm({ idProp }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
+          {items.some(it => it.lotAvailableQty !== undefined && it.quantity > it.lotAvailableQty) && (
+            <div className="flex items-center gap-2 mx-4 mt-4 p-3 rounded border border-red-300 bg-red-50 text-sm text-red-700" data-testid="alert-stock-insufficient">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>มีรายการที่จำนวนเบิกเกินสต็อกคงเหลือ — กรุณาตรวจสอบก่อนบันทึก</span>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8">#</TableHead>
                 <TableHead>สินค้า</TableHead>
                 <TableHead>Lot</TableHead>
+                <TableHead className="text-right">คงเหลือ</TableHead>
                 <TableHead className="text-right w-28">จำนวน</TableHead>
                 <TableHead className="w-16">หน่วย</TableHead>
                 <TableHead className="w-10"></TableHead>
@@ -800,40 +887,49 @@ export default function MaterialIssueForm({ idProp }: Props) {
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-10" data-testid="text-items-empty">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-10" data-testid="text-items-empty">
                     ยังไม่มีรายการ — สแกน QR หรือเลือกสินค้าด้านบน
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((it, idx) => (
-                  <TableRow key={idx} data-testid={`row-new-item-${idx}`}>
-                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                    <TableCell data-testid={`text-new-product-${idx}`}>{it.productName}</TableCell>
-                    <TableCell data-testid={`text-new-lot-${idx}`}>{it.lotNumber || "—"}</TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        min={1}
-                        className="w-24 text-right ml-auto"
-                        value={it.quantity}
-                        onChange={e => updateQty(idx, Number(e.target.value))}
-                        data-testid={`input-qty-${idx}`}
-                      />
-                    </TableCell>
-                    <TableCell data-testid={`text-unit-${idx}`}>{it.unit}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500 hover:text-red-700"
-                        onClick={() => removeItem(idx)}
-                        data-testid={`button-remove-item-${idx}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                items.map((it, idx) => {
+                  const isOver = it.lotAvailableQty !== undefined && it.quantity > it.lotAvailableQty;
+                  return (
+                    <TableRow key={idx} data-testid={`row-new-item-${idx}`} className={isOver ? "bg-red-50" : undefined}>
+                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell data-testid={`text-new-product-${idx}`}>
+                        {isOver && <AlertTriangle className="inline h-3 w-3 text-red-500 mr-1" />}
+                        {it.productName}
+                      </TableCell>
+                      <TableCell data-testid={`text-new-lot-${idx}`}>{it.lotNumber || "—"}</TableCell>
+                      <TableCell className={`text-right ${isOver ? "text-red-600 font-medium" : "text-muted-foreground"}`} data-testid={`text-new-avail-${idx}`}>
+                        {it.lotAvailableQty !== undefined ? it.lotAvailableQty.toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min={1}
+                          className={`w-24 text-right ml-auto ${isOver ? "border-red-400 focus-visible:ring-red-400" : ""}`}
+                          value={it.quantity}
+                          onChange={e => updateQty(idx, Number(e.target.value))}
+                          data-testid={`input-qty-${idx}`}
+                        />
+                      </TableCell>
+                      <TableCell data-testid={`text-unit-${idx}`}>{it.unit}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => removeItem(idx)}
+                          data-testid={`button-remove-item-${idx}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

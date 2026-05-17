@@ -2897,11 +2897,18 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
         const lotId = Number(item.lot_id);
         // Validate lot belongs to this product AND company (prevents cross-product lot deduction)
         const lotCheck = await db.execute(sql.raw(
-          `SELECT CAST(quantity AS NUMERIC) AS q FROM product_lots WHERE id = ${lotId} AND product_id = ${productId} AND company_id = ${companyId} LIMIT 1`
+          `SELECT CAST(pl.quantity AS NUMERIC) AS q, pl.lot_number, p.name AS product_name
+           FROM product_lots pl
+           JOIN products p ON p.id = pl.product_id
+           WHERE pl.id = ${lotId} AND pl.product_id = ${productId} AND pl.company_id = ${companyId} LIMIT 1`
         ));
         if (!lotCheck.rows.length) throw new Error(`[MAT-ISSUE-CONFIRM] lotId=${lotId} ไม่ตรงกับ productId=${productId} หรือ companyId=${companyId} — ข้อมูล QR ไม่ถูกต้อง`);
         const available = Number((lotCheck.rows[0] as any).q || 0);
-        if (available < qty) throw new Error(`[MAT-ISSUE-CONFIRM] ล็อต lotId=${lotId} มีสต๊อก ${available} ไม่เพียงพอ (ต้องการ ${qty}) — item.id=${item.id}`);
+        const lotNumber = String((lotCheck.rows[0] as any).lot_number || `lotId=${lotId}`);
+        const productName = String((lotCheck.rows[0] as any).product_name || `productId=${productId}`);
+        if (available < qty) throw new Error(
+          `สต็อกไม่เพียงพอ: ${productName} (Lot: ${lotNumber}) — คงเหลือ ${available} แต่ต้องการเบิก ${qty} — [TWO-LAYER][MAT-ISSUE-CONFIRM-STOCK] lotId=${lotId} item.id=${item.id}`
+        );
       }
     }
 
@@ -2935,7 +2942,7 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
              RETURNING id`
           ));
           if (!deducted.rows.length) {
-            throw new Error(`[MAT-ISSUE-CONFIRM] lotId=${lotId} สต๊อกไม่เพียงพอขณะยืนยัน (ต้องการ ${qty}) — อาจมีการเบิกพร้อมกัน — กรุณา refresh และลองใหม่`);
+            throw new Error(`สต็อกไม่เพียงพอขณะยืนยัน (ต้องการ ${qty}) — อาจมีการเบิกพร้อมกัน กรุณา refresh และลองใหม่ — [TWO-LAYER][MAT-ISSUE-CONFIRM-RACE] lotId=${lotId}`);
           }
         }
 
