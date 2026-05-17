@@ -176,14 +176,17 @@ export default function ManufacturingList(props: { Wrapper?: React.ComponentType
                         {o.createdAt ? formatDate(o.createdAt) : "-"}
                       </TableCell>
                       <TableCell>
-                        {o.status === "draft" && (
+                        {(o.status === "draft" || o.status === "in_progress") && (
                           <Button
                             size="sm"
                             variant="ghost"
                             className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
                             onClick={e => {
                               e.stopPropagation();
-                              if (confirm("ลบใบสั่งผลิตนี้?")) deleteMO.mutate(o.id);
+                              const msg = o.status === "in_progress"
+                                ? `ลบใบสั่งผลิต ${o.orderNo} ที่อยู่ระหว่างผลิต? ข้อมูลจะหายถาวร`
+                                : "ลบใบสั่งผลิตนี้?";
+                              if (confirm(msg)) deleteMO.mutate(o.id);
                             }}
                             data-testid={`button-delete-mo-${o.id}`}
                           >
