@@ -129,6 +129,7 @@ export default function ProcessScanStation() {
           stepName: selectedStep.name,
           qtyPassed: Number(qtyPassed) || 0,
           notes: notes || undefined,
+          employeeQr: employeeQr || undefined,
         }),
       });
       if (!r.ok) {

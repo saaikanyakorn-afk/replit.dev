@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
-import { manufacturingOrders, manufacturingOrderLines, bomHeaders, bomLines, products, productLots, stockMovements, productStock, journalEntries, journalLines, accounts, warehouseStockLevels, goodsReceivings } from "@shared/schema";
+import { manufacturingOrders, manufacturingOrderLines, bomHeaders, bomLines, products, productLots, stockMovements, productStock, journalEntries, journalLines, accounts, warehouseStockLevels, goodsReceivings, employees } from "@shared/schema";
 import { requireAuth, requireModule , checkDocOwnership} from "../route-middleware";
 import { getNextJournalEntryNo, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 
@@ -662,19 +662,34 @@ export function registerManufacturingRoutes(app: Express) {
       const moId = Number(req.params.id);
       const companyId = Number(req.body.companyId);
       if (!companyId) return res.status(400).json({ message: "companyId required" });
-      const { stepNo, stepName, qtyPassed, notes } = req.body;
+      const { stepNo, stepName, qtyPassed, notes, employeeQr } = req.body;
       if (!stepNo || !stepName) return res.status(400).json({ message: "stepNo, stepName required" });
       const [mo] = await db.select().from(manufacturingOrders)
         .where(and(eq(manufacturingOrders.id, moId), eq(manufacturingOrders.companyId, companyId)));
       if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
-      const serverIdentity = (req.user as any)?.fullName || (req.user as any)?.username || null;
+      let loggedByEmployeeId: number | null = null;
+      let loggedByName: string | null = null;
+      if (employeeQr) {
+        const [emp] = await db.select({ id: employees.id, firstName: employees.firstName, lastName: employees.lastName })
+          .from(employees)
+          .where(and(
+            eq(employees.companyId, companyId),
+            sql`(${employees.employeeCode} = ${String(employeeQr)} OR ${(employees as any).qrCode} = ${String(employeeQr)} OR ${employees.id}::text = ${String(employeeQr)})`
+          )).limit(1);
+        if (!emp) return res.status(404).json({ message: "ไม่พบพนักงานจาก QR นี้" });
+        loggedByEmployeeId = emp.id;
+        loggedByName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || null;
+      } else {
+        loggedByName = (req.user as any)?.fullName || (req.user as any)?.username || null;
+      }
       const safeName = String(stepName).replace(/'/g, "''");
       const safeNotes = notes ? `'${String(notes).replace(/'/g, "''")}'` : "NULL";
-      const safeLoggedBy = serverIdentity ? `'${String(serverIdentity).replace(/'/g, "''")}'` : "NULL";
+      const safeLoggedBy = loggedByName ? `'${String(loggedByName).replace(/'/g, "''")}'` : "NULL";
+      const safeEmpId = loggedByEmployeeId !== null ? String(loggedByEmployeeId) : "NULL";
       const result = await db.execute(sql.raw(`
-        INSERT INTO mo_process_logs (mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at)
-        VALUES (${moId}, ${Number(stepNo)}, '${safeName}', ${Number(qtyPassed || 0)}, ${safeNotes}, ${safeLoggedBy}, NOW())
-        RETURNING id, mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at
+        INSERT INTO mo_process_logs (mo_id, step_no, step_name, qty_passed, notes, logged_by_employee_id, logged_by_name, logged_at)
+        VALUES (${moId}, ${Number(stepNo)}, '${safeName}', ${Number(qtyPassed || 0)}, ${safeNotes}, ${safeEmpId}, ${safeLoggedBy}, NOW())
+        RETURNING id, mo_id, step_no, step_name, qty_passed, notes, logged_by_employee_id, logged_by_name, logged_at
       `));
       res.json(((result as any).rows || [])[0] || {});
     } catch (err: any) { res.status(400).json({ message: err.message }); }
