@@ -85,11 +85,13 @@ export default function GoodsReceivingList(props: { Wrapper?: React.ComponentTyp
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/goods-receivings/${id}`);
+      const res = await fetch(`/api/goods-receivings/${id}`, { method: "DELETE", credentials: "include" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "ลบไม่สำเร็จ");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
-      toast({ title: "ลบใบรับสินค้าสำเร็จ", variant: "success" as any });
+      toast({ title: "ลบใบรับสินค้าสำเร็จ" });
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
   });
@@ -251,22 +253,21 @@ export default function GoodsReceivingList(props: { Wrapper?: React.ComponentTyp
                                     </DropdownMenuItem>
                                   </>
                                 )}
-                                {gr.status === "draft" && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      data-testid={`action-delete-${gr.id}`}
-                                      onClick={() => {
-                                        if (confirm("ยืนยันลบใบรับสินค้านี้?")) {
-                                          deleteMutation.mutate(gr.id);
-                                        }
-                                      }}
-                                      className="flex gap-2 text-red-500"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" /> ลบ
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    data-testid={`action-delete-${gr.id}`}
+                                    onClick={() => {
+                                      const msg = gr.status === "approved"
+                                        ? `ใบรับ ${gr.grNo} อนุมัติแล้ว — ระบบจะยกเลิกสต็อก, ล็อต และคลังที่รับเข้าทั้งหมด\nยืนยันลบ?`
+                                        : "ยืนยันลบใบรับสินค้านี้?";
+                                      if (confirm(msg)) deleteMutation.mutate(gr.id);
+                                    }}
+                                    className="flex gap-2 text-red-500"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" /> ลบ
+                                  </DropdownMenuItem>
+                                </>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

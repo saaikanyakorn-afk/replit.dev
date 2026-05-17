@@ -2087,9 +2087,45 @@ app.delete("/api/goods-receivings/:id", requireAuth, requireModule("inventory"),
     const id = Number(req.params.id);
     const [gr] = await db.select().from(goodsReceivings).where(eq(goodsReceivings.id, id));
     if (!gr) return res.status(404).json({ message: "ไม่พบใบรับสินค้า" });
-    if (gr.status === "approved") return res.status(400).json({ message: "ไม่สามารถลบใบรับที่อนุมัติแล้ว" });
+    const { allowed, message: acMsg } = await checkDocOwnership(gr.companyId, req.user);
+    if (!allowed) return res.status(403).json({ message: acMsg });
+
+    const items = await db.select().from(goodsReceivingItems).where(eq(goodsReceivingItems.goodsReceivingId, id));
+    const whRaw = await db.execute(sql.raw(`SELECT warehouse_id FROM goods_receivings WHERE id = ${id}`));
+    const grWarehouseId: number | null = (whRaw as any).rows?.[0]?.warehouse_id ?? null;
+
     await db.transaction(async (tx) => {
+      // Reverse stock movements + recalc product_stock
       await deleteStockMovementsForDoc(tx, "goods_receiving", id);
+
+      if (gr.status === "approved") {
+        // Reverse lot quantities (lots created by this GR have grId = id)
+        for (const item of items) {
+          if (item.lotId) {
+            const lotRows = await tx.execute(sql.raw(
+              `SELECT gr_id, CAST(quantity AS NUMERIC) AS q FROM product_lots WHERE id = ${item.lotId} LIMIT 1`
+            ));
+            const lot = (lotRows as any).rows?.[0] as any;
+            if (lot) {
+              if (lot.gr_id === id) {
+                // Lot was created entirely by this GR — delete it
+                await tx.execute(sql.raw(`DELETE FROM product_lots WHERE id = ${item.lotId}`));
+              } else {
+                // Lot existed before — reduce qty back
+                const reduced = Number(lot.q) - Number(item.quantity);
+                await tx.execute(sql.raw(
+                  `UPDATE product_lots SET quantity = ${reduced} WHERE id = ${item.lotId}`
+                ));
+              }
+            }
+          }
+          // Reverse warehouse stock level
+          if (grWarehouseId && item.productId) {
+            await upsertWarehouseStockLevel(gr.companyId, item.productId, grWarehouseId, -Number(item.quantity), tx);
+          }
+        }
+      }
+
       await tx.delete(goodsReceivingItems).where(eq(goodsReceivingItems.goodsReceivingId, id));
       await tx.delete(goodsReceivings).where(eq(goodsReceivings.id, id));
     });
