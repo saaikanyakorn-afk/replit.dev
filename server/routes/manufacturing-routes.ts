@@ -41,12 +41,42 @@ export function registerManufacturingRoutes(app: Express) {
         }
       }
 
+      const bomIds = [...new Set(rows.filter(r => r.bomId).map(r => r.bomId as number))];
+      const stepCountMap = new Map<number, number>();
+      if (bomIds.length > 0) {
+        const stepCounts = await db.execute(sql`
+          SELECT bom_id, COUNT(*) as cnt
+          FROM bom_process_steps
+          WHERE bom_id IN (${sql.raw(bomIds.join(","))})
+          GROUP BY bom_id
+        `);
+        for (const sc of (stepCounts as any).rows || []) {
+          stepCountMap.set(Number(sc.bom_id), Number(sc.cnt));
+        }
+      }
+
+      const moIds = rows.map(r => r.id);
+      const loggedCountMap = new Map<number, number>();
+      if (moIds.length > 0) {
+        const logCounts = await db.execute(sql`
+          SELECT mo_id, COUNT(DISTINCT step_no) as cnt
+          FROM mo_process_logs
+          WHERE mo_id IN (${sql.raw(moIds.join(","))})
+          GROUP BY mo_id
+        `);
+        for (const lc of (logCounts as any).rows || []) {
+          loggedCountMap.set(Number(lc.mo_id), Number(lc.cnt));
+        }
+      }
+
       const result = rows.map(r => ({
         ...r,
         productName: prodMap.get(r.productId)?.name || "",
         productCode: prodMap.get(r.productId)?.code || "",
         unitCost: costMap.get(r.id)?.unitCost || 0,
         totalCost: costMap.get(r.id)?.totalCost || 0,
+        processStepCount: r.bomId ? (stepCountMap.get(r.bomId as number) || 0) : 0,
+        loggedStepCount: loggedCountMap.get(r.id) || 0,
       }));
       res.json(result);
     } catch (err: any) { res.status(400).json({ message: err.message }); }

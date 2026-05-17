@@ -125,6 +125,7 @@ export default function ManufacturingList(props: { Wrapper?: React.ComponentType
                   <TableHead className="w-28 text-center">วันหมดอายุ</TableHead>
                   <TableHead className="w-28 text-right">ต้นทุน/หน่วย</TableHead>
                   <TableHead className="w-28 text-right">ต้นทุนรวม</TableHead>
+                  <TableHead className="w-32 text-center">ขั้นตอน</TableHead>
                   <TableHead className="w-24 text-center">สถานะ</TableHead>
                   <TableHead className="w-28 text-center">วันที่สร้าง</TableHead>
                   <TableHead className="w-20"></TableHead>
@@ -133,7 +134,7 @@ export default function ManufacturingList(props: { Wrapper?: React.ComponentType
               <TableBody>
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
                       {isLoading ? "กำลังโหลด..." : "ยังไม่มีใบสั่งผลิต"}
                     </TableCell>
                   </TableRow>
@@ -168,6 +169,25 @@ export default function ManufacturingList(props: { Wrapper?: React.ComponentType
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-sm" data-testid={`text-total-cost-${o.id}`}>
                         {o.status === "completed" && o.totalCost > 0 ? Number(o.totalCost).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}
+                      </TableCell>
+                      <TableCell className="text-center" data-testid={`step-progress-${o.id}`}>
+                        {o.processStepCount > 0 ? (() => {
+                          const logged = Math.min(o.loggedStepCount, o.processStepCount);
+                          const pct = Math.round((logged / o.processStepCount) * 100);
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs font-medium text-cyan-700">
+                                {logged}/{o.processStepCount} ขั้นตอน
+                              </span>
+                              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${pct}%`, backgroundColor: pct === 100 ? "#22c55e" : "#06b6d4" }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })() : null}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge className={st.color + " text-xs"}>{st.label}</Badge>
