@@ -1223,6 +1223,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         { label: "สมุดรายวัน", href: "/journal", module: "accounting" },
                         { label: "รายงาน", href: "/reports/general", module: "accounting" },
                         { label: "พนักงาน", href: "/hr/employees", module: "hr" },
+                        { label: "QR บัตรพนักงาน", href: "/hr/employee-qr", module: "hr" },
                         { label: "ผู้ใช้ & สิทธิ์", href: "/settings/users", module: "settings" },
                         { label: "ตั้งค่าอนุมัติ", href: "/settings/approval", module: "settings" },
                         { label: "ตั้งค่าระบบ", href: "/settings/general", module: "settings" },

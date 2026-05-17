@@ -62,7 +62,7 @@ function EmployeeCard({ emp }: { emp: EmployeeQRItem }) {
 }
 
 export default function EmployeeQRPage() {
-  const { company } = useCompany();
+  const { selectedCompany: company } = useCompany();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
 

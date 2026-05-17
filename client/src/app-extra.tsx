@@ -145,6 +145,9 @@ function matchMaterialIssueFormEdit(location: string): string | null {
 function matchEmployeeQR(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/inventory/employee-qr";
 }
+function matchHrEmployeeQR(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/hr/employee-qr";
+}
 // [material-issue] Manufacturing-prefix routes (same components, ManufacturingLayout sidebar)
 function matchMfgMaterialIssueList(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/material-issues";
@@ -238,6 +241,7 @@ export default function AppExtra() {
   const isMaterialIssueForm = matchMaterialIssueForm(location);
   const materialIssueFormEditId = matchMaterialIssueFormEdit(location);
   const isEmployeeQR = matchEmployeeQR(location);
+  const isHrEmployeeQR = matchHrEmployeeQR(location);
   const isMfgMaterialIssueList = matchMfgMaterialIssueList(location);
   const isMfgMaterialIssueForm = matchMfgMaterialIssueForm(location);
   const mfgMaterialIssueFormEditId = matchMfgMaterialIssueFormEdit(location);
@@ -469,6 +473,17 @@ export default function AppExtra() {
 
   // [material-issue] QR บัตรพนักงาน
   if (isEmployeeQR) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <EmployeeQRPage />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [hr] QR บัตรพนักงาน (HR context)
+  if (isHrEmployeeQR) {
     return (
       <FullPageOverlay>
         <Suspense fallback={null}>
