@@ -48,7 +48,7 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
     if (editingId) {
       Promise.all([
         fetch(`/api/bom/${editingId}`, { credentials: "include" }).then(r => r.ok ? r.json() : Promise.reject()),
-        fetch(`/api/bom/${editingId}/process-steps`, { credentials: "include" }).then(r => r.ok ? r.json() : []),
+        fetch(`/api/bom/${editingId}/process-steps?companyId=${selectedCompanyId}`, { credentials: "include" }).then(r => r.ok ? r.json() : []),
       ])
         .then(([data, steps]) => {
           setForm({
@@ -93,7 +93,7 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ steps: form.processSteps }),
+          body: JSON.stringify({ steps: form.processSteps, companyId: selectedCompanyId }),
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/bom"] });
@@ -119,7 +119,7 @@ export default function BomFormPage(props: { Wrapper?: React.ComponentType<{ chi
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ steps: form.processSteps }),
+        body: JSON.stringify({ steps: form.processSteps, companyId: selectedCompanyId }),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/bom"] });
       toast({ title: "แก้ไข BOM สำเร็จ", variant: "success" as any });

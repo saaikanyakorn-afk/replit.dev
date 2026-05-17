@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzle-orm";
-import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders } from "@shared/schema";
+import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders, bomHeaders } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
 import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration, runLotLowStockThresholdMigration, runWarehouseColumnsForMfgMigration, runBomProcessStepsMigration } from "@shared/schema-extra";
@@ -1185,6 +1185,10 @@ app.delete("/api/bom/:id", requireAuth, requireModule("inventory"), async (req, 
 app.get("/api/bom/:id/process-steps", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
     const bomId = Number(req.params.id);
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const [bom] = await db.select().from(bomHeaders).where(and(eq(bomHeaders.id, bomId), eq(bomHeaders.companyId, companyId)));
+    if (!bom) return res.status(404).json({ message: "ไม่พบสูตรผลิต" });
     const rows = await db.execute(sql.raw(`SELECT id, bom_id, step_no, name, description FROM bom_process_steps WHERE bom_id = ${bomId} ORDER BY step_no ASC`));
     res.json((rows as any).rows || []);
   } catch (err: any) { res.status(400).json({ message: err.message }); }
@@ -1193,6 +1197,10 @@ app.get("/api/bom/:id/process-steps", requireAuth, requireModule("inventory"), a
 app.post("/api/bom/:id/process-steps", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
     const bomId = Number(req.params.id);
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const [bom] = await db.select().from(bomHeaders).where(and(eq(bomHeaders.id, bomId), eq(bomHeaders.companyId, companyId)));
+    if (!bom) return res.status(404).json({ message: "ไม่พบสูตรผลิต" });
     const steps: { stepNo: number; name: string; description?: string }[] = req.body.steps;
     if (!Array.isArray(steps)) return res.status(400).json({ message: "steps array required" });
     await db.execute(sql.raw(`DELETE FROM bom_process_steps WHERE bom_id = ${bomId}`));

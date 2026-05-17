@@ -662,14 +662,15 @@ export function registerManufacturingRoutes(app: Express) {
       const moId = Number(req.params.id);
       const companyId = Number(req.body.companyId);
       if (!companyId) return res.status(400).json({ message: "companyId required" });
-      const { stepNo, stepName, qtyPassed, notes, loggedByName } = req.body;
+      const { stepNo, stepName, qtyPassed, notes } = req.body;
       if (!stepNo || !stepName) return res.status(400).json({ message: "stepNo, stepName required" });
       const [mo] = await db.select().from(manufacturingOrders)
         .where(and(eq(manufacturingOrders.id, moId), eq(manufacturingOrders.companyId, companyId)));
       if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
+      const serverIdentity = (req.user as any)?.fullName || (req.user as any)?.username || null;
       const safeName = String(stepName).replace(/'/g, "''");
       const safeNotes = notes ? `'${String(notes).replace(/'/g, "''")}'` : "NULL";
-      const safeLoggedBy = loggedByName ? `'${String(loggedByName).replace(/'/g, "''")}'` : "NULL";
+      const safeLoggedBy = serverIdentity ? `'${String(serverIdentity).replace(/'/g, "''")}'` : "NULL";
       const result = await db.execute(sql.raw(`
         INSERT INTO mo_process_logs (mo_id, step_no, step_name, qty_passed, notes, logged_by_name, logged_at)
         VALUES (${moId}, ${Number(stepNo)}, '${safeName}', ${Number(qtyPassed || 0)}, ${safeNotes}, ${safeLoggedBy}, NOW())

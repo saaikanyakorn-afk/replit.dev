@@ -116,14 +116,14 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
   });
 
   const { data: bomProcessSteps = [] } = useQuery<any[]>({
-    queryKey: ["/api/bom", bomId, "process-steps"],
+    queryKey: ["/api/bom", bomId, "process-steps", selectedCompanyId],
     queryFn: async () => {
-      if (!bomId) return [];
-      const r = await fetch(`/api/bom/${bomId}/process-steps`, { credentials: "include" });
+      if (!bomId || !selectedCompanyId) return [];
+      const r = await fetch(`/api/bom/${bomId}/process-steps?companyId=${selectedCompanyId}`, { credentials: "include" });
       if (!r.ok) return [];
       return r.json();
     },
-    enabled: !!bomId,
+    enabled: !!bomId && !!selectedCompanyId,
   });
 
   const { data: materialIssues = [] } = useQuery<any[]>({
@@ -766,6 +766,26 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
+              {bomProcessSteps.length > 0 && (() => {
+                const completedCount = bomProcessSteps.filter((ps: any) =>
+                  processLogs.some((l: any) => Number(l.step_no) === Number(ps.step_no))
+                ).length;
+                const pct = Math.round((completedCount / bomProcessSteps.length) * 100);
+                return (
+                  <div data-testid="progress-process-steps">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-500">ขั้นตอนที่เสร็จ</span>
+                      <span className="text-xs font-semibold text-cyan-700">{completedCount}/{bomProcessSteps.length} ({pct}%)</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-cyan-500 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="flex gap-2 flex-wrap">
                 {bomProcessSteps.map((ps: any) => {
                   const logsForStep = processLogs.filter((l: any) => Number(l.step_no) === Number(ps.step_no));
@@ -1110,7 +1130,6 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                       stepName: ps?.name || `ขั้นตอน ${logStepNo}`,
                       qtyPassed: Number(logStepQty) || 0,
                       notes: logStepNotes || undefined,
-                      loggedByName: user?.fullName || user?.username || undefined,
                     }),
                   });
                   if (r.ok) {
