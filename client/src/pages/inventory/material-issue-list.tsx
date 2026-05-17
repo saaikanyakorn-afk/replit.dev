@@ -19,6 +19,7 @@ interface MaterialIssue {
   issued_at: string | null;
   notes: string | null;
   status: "draft" | "confirmed";
+  item_count: string | number | null;
 }
 
 function statusBadge(status: string) {
@@ -91,6 +92,7 @@ export default function MaterialIssueList() {
                   <TableHead>เลขที่ใบเบิก</TableHead>
                   <TableHead>ใบสั่งผลิต</TableHead>
                   <TableHead>พนักงาน</TableHead>
+                  <TableHead className="text-center">จำนวน item</TableHead>
                   <TableHead>วันที่เบิก</TableHead>
                   <TableHead>หมายเหตุ</TableHead>
                   <TableHead>สถานะ</TableHead>
@@ -103,6 +105,7 @@ export default function MaterialIssueList() {
                     <TableCell className="font-medium" data-testid={`text-issue-no-${issue.id}`}>{issue.issue_no}</TableCell>
                     <TableCell data-testid={`text-mo-no-${issue.id}`}>{issue.mo_no || "-"}</TableCell>
                     <TableCell data-testid={`text-issued-by-${issue.id}`}>{issue.issued_by_name || "-"}</TableCell>
+                    <TableCell className="text-center" data-testid={`text-item-count-${issue.id}`}>{issue.item_count !== null && issue.item_count !== undefined ? Number(issue.item_count) : 0}</TableCell>
                     <TableCell data-testid={`text-issued-at-${issue.id}`}>
                       {issue.issued_at ? new Date(issue.issued_at).toLocaleDateString("th-TH") : "-"}
                     </TableCell>

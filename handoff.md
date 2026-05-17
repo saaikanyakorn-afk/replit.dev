@@ -137,6 +137,9 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 | T35-18 | CODE REVIEW FIX — Backend confirm: enforce lot_id required for lot-tracked products; queries `SELECT track_lots FROM products WHERE id=productId`; throws explicit error if trackLots=true and lot_id missing | `server/routes/products-routes.ts` lines 2790-2798 | ✅ |
 | T35-19 | CODE REVIEW FIX — MO dropdown filters to `status=in_progress` only: query adds `&status=in_progress`, client also `.filter(m => m.status === "in_progress")` as double guard | `client/src/pages/inventory/material-issue-form.tsx` lines 152-163 | ✅ |
 | T35-20 | CODE REVIEW FIX — SQL injection guard: `item.productId` coerced to `Number(itemProductId)` before sql.raw; `issue.id` also wrapped `Number(issue.id)`; confirm route productId/lotId all coerced | `server/routes/products-routes.ts` lines 2760-2762, 2799, 2811 | ✅ |
+| T35-21 | CODE REVIEW FIX (round 2) — `companyId` from POST body coerced: `const companyId = Number(rawCompanyId)` + `isNaN` guard before any sql.raw or checkDocOwnership call | `server/routes/products-routes.ts` line 2741-2742 | ✅ |
+| T35-22 | CODE REVIEW FIX (round 2) — list endpoint adds `item_count` via subquery `COUNT(*) FROM material_issue_items WHERE material_issue_id = mi.id` | `server/routes/products-routes.ts` line 2706-2707 | ✅ |
+| T35-23 | CODE REVIEW FIX (round 2) — frontend list UI: added `item_count` field to `MaterialIssue` interface; added column header "จำนวน item"; added `<TableCell>` with `data-testid="text-item-count-{id}"` | `client/src/pages/inventory/material-issue-list.tsx` lines 25, 98, 111 | ✅ |
 
 **⚠️ Before production push:**
 - This commit contains NEW TABLES (schema change) — alert พี่ช้าง: `material_issues` + `material_issue_items` will be auto-created by `runMaterialIssueMigration()` on first server start

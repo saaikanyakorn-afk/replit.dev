@@ -2700,7 +2700,8 @@ app.get("/api/material-issues", requireAuth, requireModule("inventory"), async (
     const ac = await checkDocOwnership(companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
     const rows = await db.execute(sql.raw(`
-      SELECT mi.*, u.full_name as issued_by_name, mo.order_no as mo_no
+      SELECT mi.*, u.full_name as issued_by_name, mo.order_no as mo_no,
+        (SELECT COUNT(*) FROM material_issue_items mii WHERE mii.material_issue_id = mi.id) AS item_count
       FROM material_issues mi
       LEFT JOIN users u ON u.id = mi.issued_by_user_id
       LEFT JOIN manufacturing_orders mo ON mo.id = mi.mo_id
@@ -2734,8 +2735,9 @@ app.get("/api/material-issues/:id", requireAuth, requireModule("inventory"), asy
 
 app.post("/api/material-issues", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
-    const { companyId, moId, issuedByUserId, notes, items } = req.body;
-    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const { companyId: rawCompanyId, moId, issuedByUserId, notes, items } = req.body;
+    const companyId = Number(rawCompanyId);
+    if (!companyId || isNaN(companyId)) return res.status(400).json({ message: "companyId required and must be a number" });
     if (!items || !Array.isArray(items) || items.length === 0) return res.status(400).json({ message: "ต้องมีรายการอย่างน้อย 1 รายการ" });
     const ac = await checkDocOwnership(companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
