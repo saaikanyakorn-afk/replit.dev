@@ -205,6 +205,7 @@ export function registerManufacturingRoutes(app: Express) {
 
       const updates: any = {};
       if (req.body.plannedQty !== undefined) updates.plannedQty = String(req.body.plannedQty);
+      if (req.body.unit !== undefined) updates.unit = req.body.unit || "ชิ้น";
       if (req.body.lotNumber !== undefined) updates.lotNumber = req.body.lotNumber || null;
       if (req.body.manufacturingDate !== undefined) updates.manufacturingDate = req.body.manufacturingDate || null;
       if (req.body.expiryDate !== undefined) updates.expiryDate = req.body.expiryDate || null;

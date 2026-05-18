@@ -164,7 +164,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
     if (moDetail) {
       setBomId(moDetail.bomId ? String(moDetail.bomId) : "");
       setProductId(String(moDetail.productId));
-      setPlannedQty(moDetail.plannedQty || "1");
+      setPlannedQty(String(parseFloat(moDetail.plannedQty || "1")));
       setUnit(moDetail.unit || "ชิ้น");
       setLotNumber(moDetail.lotNumber || "");
       setMfgDate(moDetail.manufacturingDate || "");
@@ -526,8 +526,10 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                   <Label className="text-xs">จำนวนที่ต้องการผลิต</Label>
                   <Input
                     type="number"
+                    min={0}
                     value={plannedQty}
                     onChange={e => setPlannedQty(e.target.value)}
+                    onFocus={e => e.target.select()}
                     disabled={isReadOnly}
                     data-testid="input-planned-qty"
                   />
