@@ -381,8 +381,10 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - พี่ทราย: "preview แสดง 4111000 ถูก แต่กดบันทึกจริง ระบบไม่บันทึกตามพรีวิว"
 - ตรวจ DB: item id เปลี่ยนแล้ว (14124→14127) แสดงว่า PATCH ถูกเรียก ✅ แต่ journal (SV) ยังเป็นเลขเดิม = ไม่มีการ recreate
 - **Root cause จริง:** สถานะเอกสาร = `"cash"` แต่ `journalStatuses = ["approved", "issued", "debtor"]` — **ไม่มี "cash"** → `shouldCreateTxJournal = false` ทุกครั้ง → journal ไม่เคยถูก delete+recreate
-- **Fix:** เพิ่ม `"cash"` เข้า `journalStatuses` array ใน `tax-invoice-routes.ts`
-- สถานะ: กำลัง fix
+- **Fix:** เพิ่ม `"cash"` เข้า `journalStatuses` array ใน `tax-invoice-routes.ts` — DONE ✅
+- Server restart แล้ว พร้อมทดสอบ
+- **วิธีแก้ RE26051800003:** เปิด → กดแก้ไข → กดบันทึก (ไม่ต้องเปลี่ยนอะไร) → journal จะลบเก่า+สร้างใหม่ใช้ 4111000 ✅
+- สถานะ: รอพี่ทรายยืนยัน
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
