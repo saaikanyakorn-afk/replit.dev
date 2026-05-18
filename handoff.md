@@ -316,9 +316,11 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
   2. **แก้ journal entry ตรงๆ** — เร็วกว่า แต่ต้องพี่ช้างอนุมัติก่อน (sensitive)
 - รอพี่ช้างตัดสินใจว่าใช้แนวทางไหน
 
-**Bug ใหม่ที่พี่ทรายพบระหว่างเทส — ใบแจ้งหนี้:**
-- พี่ทรายกด "เอกสารอ้างอิง" ในใบแจ้งหนี้ → ควรกรองไปที่เอกสารใบนั้นโดยเฉพาะ แต่กลับไปที่หน้ารายการทั้งหมดแทน
-- ยังไม่ได้ investigate — รอพี่ทรายเทสต่อก่อน
+**Bug ใหม่: Related Docs Navigation ไม่ filter — DIAGNOSED ✅**
+- พี่ทรายกด "เอกสารอ้างอิง" → ควร filter ไปที่เอกสารใบนั้น แต่กลับไปหน้ารายการทั้งหมด
+- **Root cause:** Dialog navigate ไปที่ list page พร้อม `?invoiceNo=IV26051800001` แต่ list page อ่านแค่ `?search=` — ไม่รู้จัก param `invoiceNo`
+- **Fix:** แก้ `related-docs` component ให้ navigate ด้วย `?search=<invoiceNo>` แทน (หรือแก้ list page ให้อ่าน `invoiceNo` param)
+- **ไฟล์ที่ต้องแก้:** `related-docs` component (navigate logic) — ยังไม่ได้แก้ รอพี่ช้างยืนยันก่อน
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
