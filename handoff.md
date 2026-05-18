@@ -292,10 +292,16 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 
 **พี่ทรายทดสอบแล้ว:** "ส่วนของการลงบัญชีถูกแล้ว แต่หน้ารายการยังแสดงไม่ถูก — ทรรศนีย์จ่ายเงินแล้วด้วยธนาคารกรุงศรี"
 
-**Bug ต่อเนื่องใน `tax-invoice-list.tsx` — FIXED ✅:**
-- Line 467 (badge): `isCashMethod(pm)` = true แค่ "เงินสด" → bank transfer แสดง "Credit[TIV]" แทนชื่อ PM ❌ → แก้แล้ว
-- Line 557 (status): `isCashMethod(pm)` → bank transfer → ใช้ `inv.status` จาก DB ซึ่งยังเป็น "debtor" → แสดง "ยังไม่ชำระ" ❌ → แก้แล้ว
-- Line 519 (`isCreditUnpaid`): ตรวจสอบแล้ว — ใช้ logic เดียวกัน แก้พร้อมกัน
+**Bug ต่อเนื่องใน `tax-invoice-list.tsx` — FIXED ✅ (3 จุด):**
+
+| จุด | เดิม (ผิด) | ใหม่ (ถูก) |
+|-----|-----------|-----------|
+| Badge (Credit/Cash) | "เงินสด" เท่านั้น → Cash | ทุก PM ที่ไม่ใช่ "เครดิต" → Cash badge |
+| สถานะ (badge ขวา) | "เงินสด" เท่านั้น → "เงินสด" | ทุก PM ที่ไม่ใช่ "เครดิต" → "เงินสด" |
+| ยอดค้างชำระ (`isPaid`) | ดูจาก DB status เท่านั้น | ถ้ามี PM จริง (ไม่ใช่เครดิต) → outstanding = 0 |
+
+- HMR x3 ผ่านแล้ว ✅
+- ผลที่เห็นหลังแก้: badge เป็น "Cash[TIV]" สีเขียว + ยอดค้างชำระ = 0 ✅
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
