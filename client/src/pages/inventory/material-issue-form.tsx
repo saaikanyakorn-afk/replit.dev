@@ -519,6 +519,21 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
     await processProductQr(raw);
   }
 
+  // ── Auto-process when scanner outputs a complete JSON (no Enter needed) ──
+  useEffect(() => {
+    const trimmed = productQrInput.trim();
+    if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return;
+    let parsed: any;
+    try { parsed = JSON.parse(trimmed); } catch { return; } // not complete yet
+    if (!parsed.type) return;
+    // Debounce 80ms to let scanner finish before processing
+    const t = setTimeout(() => {
+      setProductQrInput("");
+      processProductQr(trimmed);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [productQrInput]);
+
   function addItemFromProduct(prod: ProductOption, lotId: number | null, lotNumber: string | null, qty: number, lotAvailableQty?: number) {
     if (!prod.id) {
       throw new Error(`[MAT-ISSUE-ADD] productId null — สินค้า "${prod.name}" ไม่มี id`);

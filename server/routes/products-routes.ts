@@ -2763,6 +2763,8 @@ app.post("/api/scan/decode", requireAuth, async (req, res) => {
     let parsed: any;
     try { parsed = JSON.parse(raw); } catch { return res.status(400).json({ message: "QR ไม่ใช่ JSON ที่ถูกต้อง", raw }); }
     if (!parsed.type) return res.status(400).json({ message: "QR ไม่มี type field", raw });
+    // Normalize common variants: "MATERIAL LOT" (space) → "MATERIAL_LOT"
+    if (parsed.type === "MATERIAL LOT") parsed.type = "MATERIAL_LOT";
     const knownTypes = ["MATERIAL_LOT", "EMPLOYEE"];
     if (!knownTypes.includes(parsed.type)) return res.status(400).json({ message: `QR type "${parsed.type}" ไม่รู้จัก`, raw });
     return res.json({ type: parsed.type, data: parsed });
