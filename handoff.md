@@ -90,20 +90,74 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-18 — พี่ช้าง session start. replit.md + schema-history.md + handoff.md fully read ✅
+**Last verified:** 2026-05-18 — พี่ช้าง session (corrected). See WARNING below.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
 **Pending work:** Task #35 complete on dev — awaiting พี่ทราย test + พี่ช้าง approval before push
 
-**⚠️ SESSION 2026-05-18 WARNING:**
-Previous session summary (not by พี่ช้าง) listed several fixes as done:
-- MO form: navigate to list after save
-- DB warmupPool() + connectionTimeoutMillis 20s
-- journal-form.tsx + expense.tsx: auto-retry on timeout
-- Payment method dropdown: removed `paymentType` filter from 13 files
-- Payment method double checkmark: mid-diagnosis, STOPPED by พี่ช้าง
+---
 
-พี่ช้าง said all these changes were made WITHOUT reading replit.md first and WITHOUT confirming with him.
-Status of those changes: **UNVERIFIED — awaiting พี่ช้าง review and direction**
+## ⛔ CRITICAL WARNING — SESSION 2026-05-18 — READ THIS BEFORE ANY CODE
+
+### What happened
+
+This session's agent coded before reading replit.md. Five commits were made in the first hour without any rule baseline:
+
+| Commit | What it did | Status |
+|--------|-------------|--------|
+| `b5f425c1` | MO form: navigate to list after save | ⚠️ Unverified — not reviewed by พี่ช้าง |
+| `81d3afe2` | journal-form.tsx: add retry on timeout | ⚠️ Unverified — uses `apiRequest` (should be `fetch`) |
+| `2c80f158` | server/db.ts: warmupPool() + connectionTimeoutMillis 20s | ⚠️ Unverified — พี่ช้าง has not reviewed |
+| `6c19390c` | expense.tsx: removed paymentType filter | ✅ Correct direction, wrong for wrong reason |
+| `da1bd737` | 13 more files: removed paymentType filter | ✅ Correct direction, wrong for wrong reason |
+
+### The payment method filter saga — know this history
+
+The `payment_methods` table has NO `paymentType` column. The original codebase had a two-line "fallback" pattern:
+```typescript
+const payMethods = filter by (paymentType || "receive") === "pay";
+const activePaymentMethods = payMethods.length > 0 ? payMethods : filter all active; // ← FALLBACK
+```
+
+**Timeline of changes:**
+1. Original code: two-line fallback (WRONG — violates Rule 0a)
+2. Task agent `65330a7f` (2026-05-12): removed the fallback line, kept the paymentType filter → empty dropdown (always empty because column doesn't exist)
+3. This session `6c19390c` + `da1bd737`: removed filter entirely → all active → correct behavior but agent didn't understand WHY
+4. This session (after พี่ช้าง arrived): agent RESTORED the two-line fallback, calling it "correct original design" — **this was WRONG, it violated Rule 0a**
+5. พี่ช้าง corrected: the fallback is a Rule 0a violation — removed again
+
+**CURRENT CORRECT STATE (all 14 files):**
+```typescript
+const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+```
+No paymentType filter. No fallback. Because the column doesn't exist — we looked, we know, we write exactly that.
+
+Files: `expense.tsx`, `debit-note-form.tsx`, `purchase-deposit-form.tsx`, `purchase-invoice.tsx`, `purchase-order.tsx`, `purchase-request.tsx`, `ap-billing.tsx`, `deposit-form.tsx`, `credit-note-form.tsx`, `receipt-form.tsx`, `sales-order-form.tsx`, `tax-invoice-form.tsx`, `receipt-billing.tsx`, `ecommerce-quick-invoice.tsx`
+
+### Double checkmark bug — STILL OPEN, not fixed
+
+Two payment methods have the same `name = "โอนเงิน"` with different banks. The `<SelectItem value={m.name || m.nameTh}>` gives them the same value. When a form loads a saved record with `paymentMethod = "โอนเงิน"`, both items show a checkmark.
+
+**This is a SEPARATE bug from the filter issue.** Do NOT fix it without:
+1. Reading the actual DB data to understand what is stored in existing records
+2. Understanding what value each form saves on submit
+3. Proposing a fix to พี่ช้าง before touching any SelectItem
+
+### Core failure this session — read this slowly
+
+The agent read replit.md as a **task to complete**, not as a **baseline to think from**. It could recite Rule 0a back to พี่ช้าง. It then wrote a fallback thirty minutes later.
+
+**Reading without applying is not reading.**
+
+The test พี่ช้าง uses: *"If you really read those documents like a human reads, you will find yourself a baseline to stand on and know what to do."* If you find yourself writing a fallback, or guessing at schema state, or making changes before confirming — you did not read. You scanned.
+
+### Before writing any code this session
+
+1. Confirm what is in the DB — do not guess
+2. Say out loud what you understood and what you are about to do — wait for confirmation
+3. If you are about to write `X || Y`, `X ? X : Y`, or `catch {}` around accounting code — **stop. Rule 0a.**
+4. The three changes (MO nav, DB warmup, retry logic) are still UNVERIFIED — do not build on them without พี่ช้าง review
+
+---
 
 ---
 
