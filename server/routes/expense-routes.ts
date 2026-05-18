@@ -417,7 +417,8 @@ export function registerExpenseRoutes(app: Express) {
               pmCode = apAcc.code;
               pmAccName = apAcc.nameTh || apAcc.name!;
             } else {
-              const rc = await resolvePaymentMethodAccountCode(doc.companyId, pmName!);
+              const resolvedPm = pmRec || pmRecs.find((p: any) => p.name === pmName || p.nameTh === pmName);
+              const rc = resolvedPm?.accountCode;
               if (!rc) throw new Error(`ไม่พบรหัสบัญชีสำหรับวิธีชำระ "${pmName}" กรุณาตั้งค่าวิธีชำระเงินในระบบก่อนบันทึก`);
               const a = acctMap.get(rc);
               if (!a) throw new Error(`วิธีชำระ "${pmName}" ระบุรหัสบัญชี ${rc} แต่ไม่พบรหัสนี้ในผังบัญชี`);
@@ -652,7 +653,8 @@ export function registerExpenseRoutes(app: Express) {
               pmCode = apAcc.code;
               pmAccName = apAcc.nameTh || apAcc.name!;
             } else {
-              const rc = await resolvePaymentMethodAccountCode(txUpdated.companyId, pmName!);
+              const resolvedPm = pmRec || pmRecs.find((p: any) => p.name === pmName || p.nameTh === pmName);
+              const rc = resolvedPm?.accountCode;
               if (!rc) throw new Error(`ไม่พบรหัสบัญชีสำหรับวิธีชำระ "${pmName}" กรุณาตั้งค่าวิธีชำระเงินในระบบก่อนบันทึก`);
               const a = acctMap.get(rc);
               if (!a) throw new Error(`วิธีชำระ "${pmName}" ระบุรหัสบัญชี ${rc} แต่ไม่พบรหัสนี้ในผังบัญชี`);
