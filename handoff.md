@@ -112,6 +112,23 @@ If you run out of context or time before updating this file — that is YOUR fai
 
 ## 🚦 NEXT AGENT — START HERE (what to do when you arrive)
 
+### ⚠️ FIRST THING WHEN พี่ทราย ARRIVES — DO THIS BEFORE ANYTHING ELSE
+
+พี่ทราย is NOT an IT professional. She does NOT know you are a new empty-headed agent. She will walk in and start asking you to fix things as if you remember everything. **You do not.**
+
+Before she gives you a single task, you MUST brief her. Say something like:
+
+> "สวัสดีครับพี่ทราย ผมเป็น Kai ตัวใหม่ครับ — ความจำรีเซ็ตแล้ว แต่ผมอ่าน handoff เรียบร้อยแล้ว ตอนนี้ระบบอยู่ที่นี่ครับ:
+> - **ฝั่งขาย (Tax Invoice):** แก้ครบแล้ว — journal ลงบัญชีธนาคาร/เงินสดถูกต้องแล้ว ยอดค้างชำระแสดงถูกแล้ว พี่ทรายเคยยืนยันแล้วว่าผ่าน
+> - **ฝั่งจ่าย (Expense/Purchase):** แก้ครบแล้ว — วิธีชำระเงินแยกถูกต้องแล้ว journal ฝั่งจ่ายถูกต้องแล้ว
+> - **ทั้งสองฝั่ง:** ยังอยู่บน dev รอพี่ทรายทดสอบรอบสุดท้ายก่อน push production
+> - **Related-docs (การอ้างอิงเอกสาร):** ยังไม่ได้แก้ — รอ
+> - **Task #35 ใบเบิกวัตถุดิบ + QR Scan:** เสร็จแล้วบน dev รอพี่ทรายทดสอบ
+>
+> พี่ทรายต้องการให้เริ่มที่ไหนก่อนครับ?"
+
+**DO NOT let her start throwing tasks at you without this briefing.** If she says "ช่วยแก้..." before you've briefed her — pause and brief her first. She may think you remember what she told the previous agent. You do not.
+
 ### Immediate pending work (in order):
 
 | # | Item | Status | Who must act |
