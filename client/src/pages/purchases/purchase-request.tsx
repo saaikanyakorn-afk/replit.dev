@@ -182,7 +182,7 @@ export default function PurchaseRequest() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "pay");
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
   const { prefixOptions, defaultPrefix } = usePrefixOptions("purchase_request", docSettings);
   useEffect(() => {
     if (isNew && defaultPrefix && form.docPrefix !== defaultPrefix) {

@@ -141,7 +141,7 @@ export default function DepositForm() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
 
   useEffect(() => {
     if (!editingId && activePaymentMethods.length > 0 && !form.paymentMethod) {

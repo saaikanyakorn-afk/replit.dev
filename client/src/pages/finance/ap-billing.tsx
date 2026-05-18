@@ -95,7 +95,7 @@ export default function APBilling() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = (paymentMethodsList || []).filter((m: any) => m.active !== false && (m.paymentType || "receive") === "pay");
+  const activePaymentMethods = (paymentMethodsList || []).filter((m: any) => m.active !== false);
 
   const batchPayment = useMutation({
     mutationFn: async (payload: any) => {

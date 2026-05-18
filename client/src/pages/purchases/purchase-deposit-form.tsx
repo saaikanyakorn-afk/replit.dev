@@ -145,7 +145,7 @@ export default function PurchaseDepositForm() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "pay");
+  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
 
   const { dateEra, dateFmt } = useDateSettings();
   const { data: docSettings } = useQuery<any>({
