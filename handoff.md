@@ -329,12 +329,15 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 
 ---
 
-**Bug ใหม่: Tax Invoice ไม่ใช้ revenue account จาก product — DIAGNOSED ✅**
-- พี่ทรายเทสออกใบกำกับภาษีโดยตรง (ไม่อ้างอิงเอกสาร) → ระบบไม่ลงบัญชีรายได้ตาม product account ที่ผังบัญชีกำหนด
-- **Root cause:** Tax invoice ไม่ส่ง `lineItemAccounts` ให้ `createAutoJournalEntry` → ไม่ใช้ product account → ใช้ hardcode account แทน
-- **Fix area:** `tax-invoice-routes.ts` หรือ form — ต้อง build `lineItemAccounts` แบบเดียวกับ invoice (line 1005-1039 ใน invoice routes ที่ทำงานถูก)
-- **ไฟล์อ้างอิง:** invoice routes line 1005-1039 มี `buildInvoiceLineItemAccounts` ที่ถูกต้อง
-- สถานะ: รอ investigate + แก้
+**Bug ใหม่: Tax Invoice ไม่ใช้ revenue account จาก product — FIXING 🔧**
+- พี่ทรายเทสออกใบกำกับภาษีโดยตรง → ระบบไม่ลงบัญชีรายได้ตาม product account ที่ผังบัญชีกำหนด
+- **Root cause:** tax invoice routes ทั้ง CREATE และ UPDATE ไม่มี `lineItemAccounts` ส่งให้ `createAutoJournalEntry`
+- **อ้างอิง:** invoice routes line 1005-1039 build `invoiceLineItemAccounts` ถูกต้อง → ใช้เป็น template
+- **แก้ 3 จุดพร้อมกันใน `tax-invoice-routes.ts`:**
+  1. เพิ่ม `lineItemAccounts` build logic ก่อน CREATE journal (savedItems มีทั้ง CREATE line 2075)
+  2. เพิ่ม `lineItemAccounts` build logic หลัง savedItems fetch ใน UPDATE path
+  3. ส่ง `lineItemAccounts` ให้ทั้งสอง `createAutoJournalEntry` call ใน UPDATE path
+- สถานะ: กำลัง fix — รอ HMR confirm
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
