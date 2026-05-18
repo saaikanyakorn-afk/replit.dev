@@ -263,17 +263,16 @@ isCreditPayment: result.status !== "cash"
 ```
 backend ใช้ `status === "cash"` เพื่อตัดสินว่า debit bank หรือ AR — ถ้า status ≠ "cash" → ลง AR เสมอ
 
-**Bug chain:**
-1. User เลือก KBANK → `form.paymentMethod` = accountCode ✅
-2. Preview: client-side คำนวณจาก paymentMethod → แสดง KBANK debit ✅ (preview logic ถูก)
-3. Submit: `isCashMethod(form.paymentMethod)` → false (ไม่ใช่ "เงินสด") → ส่ง status = "debtor"
-4. Backend: `isCreditPayment = result.status !== "cash"` → true → ลง AR แทน KBANK
+**Bug chain confirmed:**
+1. User เลือก KBANK → `form.paymentMethod` = "1012000" ✅
+2. Preview: client-side คำนวณถูก → แสดง KBANK debit ✅
+3. Submit: `isCashMethod("1012000")` = false → `computedStatus = "debtor"` ❌
+4. Backend: `isCreditPayment = "debtor" !== "cash"` = true → ลง AR ❌
+5. Status ไม่ได้ mark paid ❌
 
-**Fix needed:**
-- frontend: เปลี่ยน logic จาก binary (cash/debtor) เป็น ส่ง PM accountCode จริงๆ ไปให้ backend
-- OR: เปลี่ยน `isCashMethod` ให้ครอบคลุม non-credit PMs ทั้งหมด (เงินสด + โอน + เช็ค + bank) ไม่ใช่แค่ "เงินสด"
-- backend: ใช้ PM accountCode เพื่อตัดสิน journal line ไม่ใช่ binary cash/debtor status
-- **ต้องถามพี่ช้าง confirm approach ก่อน fix**
+**Fixes applied (tax-invoice-form.tsx):**
+- Lines 619 & 1000: fixed `isCashMethod` logic — was sending "debtor" for all non-cash PMs → backend always posted to AR
+- Lines 733 & 738: replaced `apiRequest` → `fetch()` in both create and update mutations (Rule violation fixed)
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
