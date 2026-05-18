@@ -322,10 +322,19 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - แก้ `related-docs-dialog.tsx` ให้ navigate ตรงไปที่ `editPath + doc.id` (เปิดหน้าแก้ไข)
 - doc types ที่ครอบคลุม: ใบเสนอราคา, ใบสั่งขาย, ใบแจ้งหนี้, ใบกำกับภาษี, ใบเร็จ, ใบลดหนี้, ใบเพิ่มหนี้, ใบขอซื้อ, ใบสั่งซื้อ, เปรียบเทียบราคา
 
-**พี่ทรายแจ้ง:** "มันวิ่งไปหน้าแก้ไขแทน — ควรเป็นหน้า**อ่าน** (view) ไม่ใช่ edit"
-- ความต้องการจริง: กดเอกสารอ้างอิง → เปิดหน้า view-only (อ่านอย่างเดียว) ไม่ใช่ edit form
-- **ต้องแก้:** เปลี่ยน `editPath` → `viewPath` หรือ navigate ไปที่ path สำหรับอ่าน
-- **รอ:** ข้อความพี่ทรายให้ครบก่อน (ข้อความค้างอยู่ "การอ่า...")
+**พี่ทรายยืนยัน behavior ที่ถูกต้อง:** "การอ้างอิงต้องวิ่งไปหน้า**รายการ**ก่อนเสมอ ไม่ให้วิ่งไปหน้าแก้ไข"
+- ความต้องการจริง: กด related doc → ไปหน้ารายการ + filter ให้เห็นเอกสารนั้น ไม่ใช่เปิด edit form โดยตรง
+- **ต้องแก้:** `related-docs-dialog.tsx` ให้ navigate ไปที่ listPath พร้อม `?search=<docNo>` แทน `editPath + doc.id`
+- สถานะ: ยังไม่ได้แก้
+
+---
+
+**Bug ใหม่: Tax Invoice ไม่ใช้ revenue account จาก product — DIAGNOSED ✅**
+- พี่ทรายเทสออกใบกำกับภาษีโดยตรง (ไม่อ้างอิงเอกสาร) → ระบบไม่ลงบัญชีรายได้ตาม product account ที่ผังบัญชีกำหนด
+- **Root cause:** Tax invoice ไม่ส่ง `lineItemAccounts` ให้ `createAutoJournalEntry` → ไม่ใช้ product account → ใช้ hardcode account แทน
+- **Fix area:** `tax-invoice-routes.ts` หรือ form — ต้อง build `lineItemAccounts` แบบเดียวกับ invoice (line 1005-1039 ใน invoice routes ที่ทำงานถูก)
+- **ไฟล์อ้างอิง:** invoice routes line 1005-1039 มี `buildInvoiceLineItemAccounts` ที่ถูกต้อง
+- สถานะ: รอ investigate + แก้
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
