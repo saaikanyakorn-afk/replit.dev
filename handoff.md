@@ -393,9 +393,16 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 
 **Bug ต่อเนื่อง: สมุดรายวัน sort ผิดหลัง recreate — FIXED ✅**
 - **Root cause:** ตอน recreate journal → id ใหม่สูงกว่าเดิม → frontend sort แบบ `desc(id)` (line 205: `(b.id||0)-(a.id||0)`) → entry ที่ recreate ขึ้นมาบนสุดเสมอ
-- **Fix:** เปลี่ยน sort ให้ใช้ `entryNo` (เลขเอกสาร เช่น SV26051800003) แทน `id` — เลขเอกสารไม่เปลี่ยนตอน recreate
-- HMR ผ่าน ✅
+- **Fix:** เปลี่ยน tiebreaker จาก `desc(id)` → `desc(reference)` — reference = เลขเอกสาร (RE26051800003) ไม่เปลี่ยนเมื่อ recreate
+- **ผลลัพธ์:** RE26051800003 กลับมาอยู่ที่ 3 ตามเดิม ✅ เรียง DESC: 005, 004, 003, 002, 001
 - สถานะ: FIXED ✅
+
+---
+
+### ฝั่งขาย (Sales) — COMPLETE ✅ พี่ทรายยืนยัน
+
+**พี่ทรายแจ้ง: "ฝั่งขายเสร็จแล้ว ไปฝั่งจ่าย"**
+- Agent รอบต่อไปต้องตรวจฝั่งจ่ายทั้งหมด: payment method bug + lineItemAccounts สำหรับ expense/purchase docs
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
