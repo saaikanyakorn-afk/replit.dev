@@ -340,7 +340,13 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - **Root cause:** tax invoice ไม่เคยส่ง `lineItemAccounts` → journal engine ใช้ revenue account จาก formula default (4100100) แทน ทั้งที่สินค้าผูก 4111000 ไว้
 - **Fix:** เพิ่ม `lineItemAccounts` build logic ใน `tax-invoice-routes.ts` ทั้ง 3 จุด (CREATE + UPDATE x2)
 - **อ้างอิง:** invoice routes line 1005-1039 (`buildInvoiceLineItemAccounts`) ใช้เป็น template
-- สถานะ: แก้แล้ว — รอพี่ทรายเทสยืนยัน
+- สถานะ: แก้แล้ว ✅ — เอกสารใหม่ทุกใบลง 4111000 ถูกต้องแล้ว
+
+**Bug ต่อเนื่อง: UPDATE ไม่อัพเดท journal ที่มีอยู่แล้ว — DIAGNOSED 🔍**
+- พี่ทรายเข้าไปกดแก้ไข RE26051800003 แล้วบันทึกใหม่ → ระบบควรอัพเดท journal แต่ไม่ทำ
+- **Root cause:** `createAutoJournalEntry` บรรทัด 309-310 — **skip ทันที** ถ้ามี journal อยู่แล้ว (ไม่ delete+recreate)
+- **แนวทางแก้:** ต้อง delete journal เก่าก่อน แล้ว recreate ใหม่เมื่อ UPDATE (หรือ upsert)
+- สถานะ: กำลัง investigate — รอดูว่า invoice routes จัดการอย่างไร (เป็น reference)
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
