@@ -437,22 +437,23 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - `purchase-deposit` ใช้ `depositStatus` (ไม่ใช่ `paymentStatus`)
 - `debit-note` ไม่มี payment field — ถูกต้องตาม design
 
-#### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
+#### PART B (SESSION 2026-05-18 PART C): ฝั่งจ่าย — COMPLETE ✅
 
-**Root cause:** `isCredit` checks in `expense-routes.ts` used `pmName === "เครดิต"` — but since paymentMethod now stores accountCode ("1001000"), this is always false → credit PM treated as cash → wrong journal entry.
+**Root cause หลัก:** `paymentMethod` เก็บ accountCode ("1001000") แต่โค้ดเทียบ string "เครดิต" → credit PM ถูกมองเป็น cash → journal entry ผิด
 
-| File | Line | Fix |
-|------|------|-----|
-| `expense-routes.ts` | import | Added `paymentMethods` to schema import |
-| `expense-routes.ts` | ~17 | Added `isCreditPm(name)` function |
-| `expense-routes.ts` | CREATE ~412 | `isCredit` now does DB lookup of PM record → calls `isCreditPm(pmRec.name)` |
-| `expense-routes.ts` | UPDATE ~648 | same |
-| `expense-routes.ts` | bulk-import ~1132 | same |
-| `expense.tsx` | 649 | `paymentStatus: form.paymentStatus \|\| (form.paymentMethod ? "paid" : "unpaid")` — preserves "unpaid" when credit PM selected |
-| `purchase-deposit-form.tsx` | 370 | default PM: `m.accountCode` only — removed `m.name \|\| m.nameTh \|\|` prefix |
+**สรุป fixes ทั้งหมด:**
+| ไฟล์ | จุด | รายละเอียด |
+|---|---|---|
+| expense-routes.ts | CREATE (~412) | `isCredit` lookup `paymentMethods` table แทนเทียบชื่อ |
+| expense-routes.ts | UPDATE (~648) | เหมือนกัน |
+| expense-routes.ts | bulk-import (~1132) | เหมือนกัน |
+| expense.tsx | line 649 | `paymentStatus: form.paymentStatus \|\| (...)` แทน override |
+| purchase-deposit-form.tsx | line 370 | default PM ใช้ `m.accountCode` แทน `m.name` |
 
-**purchase-deposit backend:** uses `createAutoJournalEntry` with `paymentMethodAccountCode: pmAccCode` — no isCredit bug, safe
-**debit-note / purchase-deposit:** no `paymentStatus` column in schema — correct not to add
+**ไม่ต้องแก้:**
+- `purchase-invoice.tsx` — `paymentStatus: form.paymentStatus` ✅ journal ถูกต้อง
+- `debit-note-form.tsx` / `purchase-deposit` — ไม่มี `paymentStatus` field ในสกีมา = ถูก design
+- `purchase-deposit` backend: ใช้ `createAutoJournalEntry` + `paymentMethodAccountCode: pmAccCode` — ไม่มี isCredit bug ✅
 
 ---
 
