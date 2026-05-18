@@ -270,9 +270,15 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 4. Backend: `isCreditPayment = "debtor" !== "cash"` = true → ลง AR ❌
 5. Status ไม่ได้ mark paid ❌
 
-**Fixes applied (tax-invoice-form.tsx):**
+**Fixes applied (tax-invoice-form.tsx) — COMPLETE ✅:**
 - Lines 619 & 1000: fixed `isCashMethod` logic — was sending "debtor" for all non-cash PMs → backend always posted to AR
-- Lines 733 & 738: replaced `apiRequest` → `fetch()` in both create and update mutations (Rule violation fixed)
+- Lines 733 & 738 + 3 more points: replaced ALL `apiRequest` → `fetch()` (Rule violation fixed, import removed)
+- Compile: HMR x8 ผ่านไม่มี error ✅
+
+**สาเหตุที่แท้จริงของ bug (สำหรับ Kai ถัดไป):**
+- เดิม (ผิด): "ถ้าเลือกวิธีชำระ = เงินสด → ลงธนาคาร / ทุกอย่างอื่น → ลง AR (ลูกหนี้)"
+- ถูกต้อง: "ถ้าเลือกวิธีชำระ ≠ เครดิต → ลงธนาคาร (PM account) / เครดิต = ลง AR (ลูกหนี้)"
+- Logic ต้องแยก "เครดิต" (ยังไม่รับเงิน) จาก "อื่นๆ ทั้งหมด" (รับเงินแล้ว) — ไม่ใช่แยก "เงินสด" จาก "อื่นๆ"
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
