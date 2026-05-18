@@ -50,7 +50,7 @@ export default function APBilling() {
   const [filter, setFilter] = useState<"all" | "unpaid" | "partial" | "overdue">("all");
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [batchDialog, setBatchDialog] = useState(false);
-  const [batchMethod, setBatchMethod] = useState("โอนเงิน");
+  const [batchMethod, setBatchMethod] = useState("");
   const [batchDate, setBatchDate] = useState(() => toLocalDateStr(new Date()));
   const [batchNotes, setBatchNotes] = useState("");
   const [expandedPvs, setExpandedPvs] = useState<Set<number>>(new Set());
@@ -58,7 +58,7 @@ export default function APBilling() {
   const [batchWht, setBatchWht] = useState("");
 
   const [singlePayDialog, setSinglePayDialog] = useState<{ open: boolean; doc: any | null }>({ open: false, doc: null });
-  const [singleMethod, setSingleMethod] = useState("โอนเงิน");
+  const [singleMethod, setSingleMethod] = useState("");
   const [singleDate, setSingleDate] = useState(() => toLocalDateStr(new Date()));
   const [singleNotes, setSingleNotes] = useState("");
   const [singleWht, setSingleWht] = useState("");
@@ -87,10 +87,10 @@ export default function APBilling() {
   });
 
   const { data: paymentMethodsList } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", companyId],
+    queryKey: ["/api/payment-methods", companyId, "pay"],
     queryFn: async () => {
       if (!companyId) return [];
-      const r = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      const r = await fetch(`/api/payment-methods?companyId=${companyId}&type=pay`, { credentials: "include" });
       return r.ok ? r.json() : [];
     },
     enabled: !!companyId,
@@ -215,7 +215,7 @@ export default function APBilling() {
 
   const openBatchDialog = () => {
     setBatchDate(toLocalDateStr(new Date()));
-    setBatchMethod(activePaymentMethods[0]?.name || "โอนเงิน");
+    setBatchMethod(activePaymentMethods[0]?.accountCode ?? "");
     setBatchNotes("");
     setBatchWht("");
     setBatchDialog(true);
@@ -243,7 +243,7 @@ export default function APBilling() {
   };
 
   const openSinglePayDialog = (doc: any) => {
-    setSingleMethod(activePaymentMethods[0]?.name || "โอนเงิน");
+    setSingleMethod(activePaymentMethods[0]?.accountCode ?? "");
     setSingleDate(toLocalDateStr(new Date()));
     setSingleNotes(`จ่ายเงิน ${doc.docNo}`);
     setSingleWht("");
@@ -560,7 +560,7 @@ export default function APBilling() {
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-xs text-muted-foreground">{formatDate(pv.pvDate, dateEra, dateFmt)}</span>
-                            <Badge className="text-[9px] bg-blue-50 text-blue-600 border-0">{pv.paymentMethod || "โอนเงิน"}</Badge>
+                            <Badge className="text-[9px] bg-blue-50 text-blue-600 border-0">{pv.paymentMethod}</Badge>
                             <span className="text-sm font-bold" style={{ color: "#03c9d7" }}>฿{fmt(pv.totalAmount)}</span>
                             <button
                               data-testid={`button-journal-pv-${pv.id}`}
@@ -703,13 +703,23 @@ export default function APBilling() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">วิธีจ่ายเงิน</Label>
-                <Select value={batchMethod} onValueChange={setBatchMethod}>
+                <Select
+                  value={(() => {
+                    const found = activePaymentMethods.find((pm: any) => pm.accountCode === batchMethod);
+                    return found ? `pm_${found.id}` : batchMethod;
+                  })()}
+                  onValueChange={v => {
+                    const pm = activePaymentMethods.find((pm: any) => `pm_${pm.id}` === v);
+                    if (!pm) return;
+                    setBatchMethod(pm.accountCode);
+                  }}
+                >
                   <SelectTrigger className="mt-1" data-testid="select-batch-method">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {activePaymentMethods.map((pm: any) => (
-                      <SelectItem key={pm.id} value={pm.name}>{pm.name}{pm.bankName ? ` · ${pm.bankName}` : ""}{pm.bankAccountNo ? ` ${pm.bankAccountNo}` : ""}</SelectItem>
+                      <SelectItem key={pm.id} value={`pm_${pm.id}`}>{pm.nameTh || pm.name}{pm.bankName ? ` · ${pm.bankName}` : ""}{pm.bankAccountNo ? ` ${pm.bankAccountNo}` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -816,17 +826,24 @@ export default function APBilling() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">วิธีจ่ายเงิน</Label>
-                  <Select value={singleMethod} onValueChange={setSingleMethod}>
+                  <Select
+                    value={(() => {
+                      const found = activePaymentMethods.find((pm: any) => pm.accountCode === singleMethod);
+                      return found ? `pm_${found.id}` : singleMethod;
+                    })()}
+                    onValueChange={v => {
+                      const pm = activePaymentMethods.find((pm: any) => `pm_${pm.id}` === v);
+                      if (!pm) return;
+                      setSingleMethod(pm.accountCode);
+                    }}
+                  >
                     <SelectTrigger className="mt-1" data-testid="select-single-method">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {activePaymentMethods.map((pm: any) => (
-                        <SelectItem key={pm.id} value={pm.name}>{pm.name}{pm.bankName ? ` · ${pm.bankName}` : ""}{pm.bankAccountNo ? ` ${pm.bankAccountNo}` : ""}</SelectItem>
+                        <SelectItem key={pm.id} value={`pm_${pm.id}`}>{pm.nameTh || pm.name}{pm.bankName ? ` · ${pm.bankName}` : ""}{pm.bankAccountNo ? ` ${pm.bankAccountNo}` : ""}</SelectItem>
                       ))}
-                      {activePaymentMethods.length === 0 && (
-                        <SelectItem value="โอนเงิน">โอนเงิน</SelectItem>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>

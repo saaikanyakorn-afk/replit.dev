@@ -136,10 +136,10 @@ export default function PurchaseDepositForm() {
   });
 
   const { data: paymentMethodsList = [] } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", companyId],
+    queryKey: ["/api/payment-methods", companyId, "pay"],
     queryFn: async () => {
       if (!companyId) return [];
-      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}&type=pay`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -159,10 +159,10 @@ export default function PurchaseDepositForm() {
     enabled: !!companyId,
   });
   useEffect(() => {
-    if (isNew && !loaded && activePaymentMethods.length > 0 && (form.paymentMethod === "" || form.paymentMethod === "transfer")) {
-      const defaultMethod = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0];
-      if (defaultMethod) {
-        setForm(p => ({ ...p, paymentMethod: defaultMethod.name || defaultMethod.nameTh || defaultMethod.accountCode }));
+    if (isNew && !loaded && activePaymentMethods.length > 0 && !form.paymentMethod) {
+      const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
+      if (defaultPm) {
+        setForm(p => ({ ...p, paymentMethod: defaultPm.accountCode }));
       }
     }
   }, [activePaymentMethods, isNew, loaded]);
@@ -598,13 +598,25 @@ export default function PurchaseDepositForm() {
                     </td>
                     <td className="px-3 pt-1.5 pb-1 border-r align-top bg-amber-50/70" colSpan={2}>
                       <div className="text-[10px] text-amber-600 font-semibold mb-0.5">วิธีชำระเงิน</div>
-                      <Select value={form.paymentMethod || ""} onValueChange={v => setForm(p => ({ ...p, paymentMethod: v }))}>
+                      <Select
+                        value={(() => {
+                          const pm = form.paymentMethod;
+                          if (!pm) return "";
+                          const found = activePaymentMethods.find((m: any) => m.accountCode === pm);
+                          return found ? `pm_${found.id}` : pm;
+                        })()}
+                        onValueChange={v => {
+                          const pm = activePaymentMethods.find((m: any) => `pm_${m.id}` === v);
+                          if (!pm) return;
+                          setForm(p => ({ ...p, paymentMethod: pm.accountCode }));
+                        }}
+                      >
                         <SelectTrigger data-testid="select-payment-method" className="h-7 text-xs border-dashed border-emerald-300 bg-white focus:border-emerald-500 focus:ring-emerald-200">
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
                           {activePaymentMethods.map((m: any) => (
-                              <SelectItem key={m.id} value={m.name || m.nameTh}>
+                              <SelectItem key={m.id} value={`pm_${m.id}`}>
                                 {acctName(m)}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
                               </SelectItem>
                             ))}

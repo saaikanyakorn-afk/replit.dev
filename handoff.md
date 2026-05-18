@@ -110,37 +110,35 @@ This session's agent coded before reading replit.md. Five commits were made in t
 | `6c19390c` | expense.tsx: removed paymentType filter | ✅ Correct direction, wrong for wrong reason |
 | `da1bd737` | 13 more files: removed paymentType filter | ✅ Correct direction, wrong for wrong reason |
 
-### The payment method filter saga — know this history
+### The payment method filter saga — RESOLVED 2026-05-18
 
-The `payment_methods` table has NO `paymentType` column. The original codebase had a two-line "fallback" pattern:
-```typescript
-const payMethods = filter by (paymentType || "receive") === "pay";
-const activePaymentMethods = payMethods.length > 0 ? payMethods : filter all active; // ← FALLBACK
-```
+The `payment_methods` table has a `paymentType` column (NOT NULL DEFAULT 'receive'). The backend already supported `?type=pay` and `?type=receive` query params. The settings UI has two tabs (receive/pay) — users can add 'pay' type methods.
 
-**Timeline of changes:**
-1. Original code: two-line fallback (WRONG — violates Rule 0a)
-2. Task agent `65330a7f` (2026-05-12): removed the fallback line, kept the paymentType filter → empty dropdown (always empty because column doesn't exist)
-3. This session `6c19390c` + `da1bd737`: removed filter entirely → all active → correct behavior but agent didn't understand WHY
-4. This session (after พี่ช้าง arrived): agent RESTORED the two-line fallback, calling it "correct original design" — **this was WRONG, it violated Rule 0a**
-5. พี่ช้าง corrected: the fallback is a Rule 0a violation — removed again
+**DB facts confirmed:**
+- 82 methods have `payment_type = 'receive'` (default)
+- Only 2 methods (company 3684) have `payment_type = 'pay'`
+- Expenses stored "transfer" (hardcoded), names, NOT accountCode — historically incorrect
 
-**CURRENT CORRECT STATE (all 14 files):**
-```typescript
-const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
-```
-No paymentType filter. No fallback. Because the column doesn't exist — we looked, we know, we write exactly that.
+**Root cause chain:**
+1. Original: `filter paymentType === 'pay'` + fallback (show all if empty) — Rule 0a violation
+2. Agent removed fallback → empty dropdown for all companies (no 'pay' type data)
+3. Agent removed filter entirely → all methods shown → company 3684 has two methods named "โอนเงิน" → double checkmark (both select items have same `value = name`)
+
+**CURRENT CORRECT STATE (all 14 files) — FIXED:**
+- Purchase/AP forms: `?type=pay` API filter + queryKey `"pay"` — shows only pay-type methods
+- Sales/Receipt forms: `?type=receive` API filter + queryKey `"receive"` — shows only receive-type methods
+- `SelectItem value=pm_${m.id}` (unique ID, never duplicates regardless of name)
+- Select value: IIFE translating `form.paymentMethod` (accountCode) → `pm_${found.id}`
+- onValueChange: translate `pm_${id}` → store `m.accountCode`
+- Default effects: use `defaultPm.accountCode` — no `||` chains
+- State inits: "" not hardcoded names — useEffect sets default from data
+- Badge display: no `|| "โอนเงิน"` fallback
+- Removed 2nd broken effect in deposit-form.tsx
+- Removed hardcoded fallback SelectItem in ap-billing.tsx
+
+**If a company has NO 'pay' methods → expense dropdown is empty.** This is CORRECT — they need to configure 'pay' type methods in Settings > Payment Methods (Pay tab). No fallback — Rule 0a.
 
 Files: `expense.tsx`, `debit-note-form.tsx`, `purchase-deposit-form.tsx`, `purchase-invoice.tsx`, `purchase-order.tsx`, `purchase-request.tsx`, `ap-billing.tsx`, `deposit-form.tsx`, `credit-note-form.tsx`, `receipt-form.tsx`, `sales-order-form.tsx`, `tax-invoice-form.tsx`, `receipt-billing.tsx`, `ecommerce-quick-invoice.tsx`
-
-### Double checkmark bug — STILL OPEN, not fixed
-
-Two payment methods have the same `name = "โอนเงิน"` with different banks. The `<SelectItem value={m.name || m.nameTh}>` gives them the same value. When a form loads a saved record with `paymentMethod = "โอนเงิน"`, both items show a checkmark.
-
-**This is a SEPARATE bug from the filter issue.** Do NOT fix it without:
-1. Reading the actual DB data to understand what is stored in existing records
-2. Understanding what value each form saves on submit
-3. Proposing a fix to พี่ช้าง before touching any SelectItem
 
 ### Core failure this session — read this slowly
 

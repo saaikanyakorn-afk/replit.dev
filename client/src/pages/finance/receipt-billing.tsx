@@ -53,7 +53,7 @@ export default function ReceiptBilling() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
-  const [payMethod, setPayMethod] = useState("โอนเงิน");
+  const [payMethod, setPayMethod] = useState("");
   const [payDate, setPayDate] = useState(() => toLocalDateStr(new Date()));
   const [payNotes, setPayNotes] = useState("");
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
@@ -119,15 +119,22 @@ export default function ReceiptBilling() {
   const outstandingDocs: any[] = outstandingData?.documents || [];
 
   const { data: paymentMethodsList } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", companyId],
+    queryKey: ["/api/payment-methods", companyId, "receive"],
     queryFn: async () => {
       if (!companyId) return [];
-      const r = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      const r = await fetch(`/api/payment-methods?companyId=${companyId}&type=receive`, { credentials: "include" });
       return r.ok ? r.json() : [];
     },
     enabled: !!companyId,
   });
   const activePaymentMethods = (paymentMethodsList || []).filter((m: any) => m.active !== false);
+
+  useEffect(() => {
+    if (!payMethod && activePaymentMethods.length > 0) {
+      const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
+      if (defaultPm) setPayMethod(defaultPm.accountCode);
+    }
+  }, [activePaymentMethods]);
 
   const batchPayment = useMutation({
     mutationFn: async (payload: any) => {
@@ -451,13 +458,23 @@ export default function ReceiptBilling() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
                       <Label className="text-xs">วิธีรับเงิน</Label>
-                      <Select value={payMethod} onValueChange={setPayMethod}>
+                      <Select
+                        value={(() => {
+                          const found = activePaymentMethods.find((m: any) => m.accountCode === payMethod);
+                          return found ? `pm_${found.id}` : payMethod;
+                        })()}
+                        onValueChange={v => {
+                          const m = activePaymentMethods.find((m: any) => `pm_${m.id}` === v);
+                          if (!m) return;
+                          setPayMethod(m.accountCode);
+                        }}
+                      >
                         <SelectTrigger className="mt-1 h-9 text-sm" data-testid="select-pay-method">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {activePaymentMethods.map((m: any) => (
-                            <SelectItem key={m.id} value={m.name}>{m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}</SelectItem>
+                            <SelectItem key={m.id} value={`pm_${m.id}`}>{m.nameTh || m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -663,7 +680,7 @@ export default function ReceiptBilling() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground">{formatDate(rc.receiptDate, dateEra, dateFmt)}</span>
-                          <Badge className="text-[9px] bg-blue-50 text-blue-600 border-0">{rc.paymentMethod || "โอนเงิน"}</Badge>
+                          <Badge className="text-[9px] bg-blue-50 text-blue-600 border-0">{rc.paymentMethod}</Badge>
                           <span className="text-sm font-bold" style={{ color: "#05b187" }}>฿{fmt(parseFloat(rc.totalAmount) || 0)}</span>
                           <Button
                             size="sm"

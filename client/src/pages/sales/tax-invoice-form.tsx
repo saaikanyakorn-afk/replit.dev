@@ -340,10 +340,10 @@ export default function TaxInvoiceForm() {
   });
 
   const { data: paymentMethodsList = [] } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", companyId],
+    queryKey: ["/api/payment-methods", companyId, "receive"],
     queryFn: async () => {
       if (!companyId) return [];
-      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}&type=receive`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },

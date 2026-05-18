@@ -247,10 +247,10 @@ export default function CreditNoteForm() {
     enabled: !!companyId,
   });
   const { data: paymentMethodsList = [] } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", companyId],
+    queryKey: ["/api/payment-methods", companyId, "receive"],
     queryFn: async () => {
       if (!companyId) return [];
-      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}&type=receive`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -262,7 +262,7 @@ export default function CreditNoteForm() {
     if (!editingId && activePaymentMethods.length > 0 && !form.paymentMethod) {
       const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
       if (defaultPm) {
-        setForm(p => ({ ...p, paymentMethod: defaultPm.accountCode || defaultPm.name || defaultPm.nameTh || "" }));
+        setForm(p => ({ ...p, paymentMethod: defaultPm.accountCode }));
       }
     }
   }, [activePaymentMethods, editingId]);
@@ -741,14 +741,26 @@ export default function CreditNoteForm() {
                     </td>
                     <td className="px-3 pt-1.5 pb-1 align-top bg-amber-50/70" colSpan={2}>
                       <div className="text-[10px] text-amber-600 font-semibold mb-0.5">วิธีชำระเงิน</div>
-                      <Select value={form.paymentMethod} onValueChange={v => setForm(p => ({ ...p, paymentMethod: v }))}>
+                      <Select
+                        value={(() => {
+                          const pm = form.paymentMethod;
+                          if (!pm) return "";
+                          const found = activePaymentMethods.find((m: any) => m.accountCode === pm);
+                          return found ? `pm_${found.id}` : pm;
+                        })()}
+                        onValueChange={v => {
+                          const pm = activePaymentMethods.find((m: any) => `pm_${m.id}` === v);
+                          if (!pm) return;
+                          setForm(p => ({ ...p, paymentMethod: pm.accountCode }));
+                        }}
+                      >
                         <SelectTrigger data-testid="select-payment-method" className="h-7 text-xs border-dashed">
                           <SelectValue placeholder="เลือกวิธีชำระเงิน" />
                         </SelectTrigger>
                         <SelectContent>
                           {activePaymentMethods.map((m: any) => (
-                            <SelectItem key={m.id} value={m.accountCode || m.name || m.nameTh || String(m.id)}>
-                              {acctName(m)} ({m.accountCode || m.name || m.nameTh})
+                            <SelectItem key={m.id} value={`pm_${m.id}`}>
+                              {acctName(m)}{m.accountCode ? ` (${m.accountCode})` : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>

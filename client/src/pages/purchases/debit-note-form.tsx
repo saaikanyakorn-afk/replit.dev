@@ -137,10 +137,10 @@ export default function DebitNoteForm() {
     enabled: !!companyId,
   });
   const { data: paymentMethodsList = [] } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", companyId],
+    queryKey: ["/api/payment-methods", companyId, "pay"],
     queryFn: async () => {
       if (!companyId) return [];
-      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}&type=pay`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },

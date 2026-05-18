@@ -41,22 +41,29 @@ export default function EcommerceQuickInvoice() {
   const [customerTaxId, setCustomerTaxId] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("เงินสด");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [notes, setNotes] = useState("");
   const [docDate, setDocDate] = useState(new Date().toISOString().split("T")[0]);
   const [items, setItems] = useState<LineItem[]>([emptyItem()]);
   const [showRecent, setShowRecent] = useState(false);
 
   const { data: paymentMethodsList = [] } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", selectedCompanyId],
+    queryKey: ["/api/payment-methods", selectedCompanyId, "receive"],
     queryFn: async () => {
       if (!selectedCompanyId) return [];
-      const r = await fetch(`/api/payment-methods?companyId=${selectedCompanyId}`, { credentials: "include" });
+      const r = await fetch(`/api/payment-methods?companyId=${selectedCompanyId}&type=receive`, { credentials: "include" });
       return r.ok ? r.json() : [];
     },
     enabled: !!selectedCompanyId,
   });
   const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+
+  useEffect(() => {
+    if (!paymentMethod && activePaymentMethods.length > 0) {
+      const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
+      if (defaultPm) setPaymentMethod(defaultPm.accountCode);
+    }
+  }, [activePaymentMethods]);
 
   const recentQuery = useQuery({
     queryKey: ["/api/ecommerce/quick-invoice/recent", selectedCompanyId],
@@ -175,13 +182,23 @@ export default function EcommerceQuickInvoice() {
                   </div>
                   <div>
                     <Label className="text-sm font-medium">วิธีชำระเงิน</Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <Select
+                      value={(() => {
+                        const found = activePaymentMethods.find((m: any) => m.accountCode === paymentMethod);
+                        return found ? `pm_${found.id}` : paymentMethod;
+                      })()}
+                      onValueChange={v => {
+                        const m = activePaymentMethods.find((m: any) => `pm_${m.id}` === v);
+                        if (!m) return;
+                        setPaymentMethod(m.accountCode);
+                      }}
+                    >
                       <SelectTrigger data-testid="select-payment-method">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {activePaymentMethods.map((m: any) => (
-                          <SelectItem key={m.id} value={m.name || m.nameTh}>
+                          <SelectItem key={m.id} value={`pm_${m.id}`}>
                             {m.nameTh || m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
                           </SelectItem>
                         ))}

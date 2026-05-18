@@ -161,10 +161,10 @@ export default function SalesOrderForm() {
   }, [form.creditDays, form.orderDate, loaded]);
 
   const { data: paymentMethodsList = [] } = useQuery<any[]>({
-    queryKey: ["/api/payment-methods", companyId],
+    queryKey: ["/api/payment-methods", companyId, "receive"],
     queryFn: async () => {
       if (!companyId) return [];
-      const res = await fetch(`/api/payment-methods?companyId=${companyId}`, { credentials: "include" });
+      const res = await fetch(`/api/payment-methods?companyId=${companyId}&type=receive`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -948,14 +948,27 @@ export default function SalesOrderForm() {
                     </td>
                     <td className="px-3 pt-1.5 pb-1 align-top bg-amber-50/70" colSpan={2}>
                       <div className="text-[10px] text-amber-600 font-semibold mb-0.5">วิธีชำระเงิน</div>
-                      <Select value={form.paymentMethod || "none"} onValueChange={v => setForm(p => ({ ...p, paymentMethod: v === "none" ? "" : v }))}>
+                      <Select
+                        value={(() => {
+                          const pm = form.paymentMethod;
+                          if (!pm) return "none";
+                          const found = activePaymentMethods.find((m: any) => m.accountCode === pm);
+                          return found ? `pm_${found.id}` : pm;
+                        })()}
+                        onValueChange={v => {
+                          if (v === "none") { setForm(p => ({ ...p, paymentMethod: "" })); return; }
+                          const pm = activePaymentMethods.find((m: any) => `pm_${m.id}` === v);
+                          if (!pm) return;
+                          setForm(p => ({ ...p, paymentMethod: pm.accountCode }));
+                        }}
+                      >
                         <SelectTrigger data-testid="select-payment-method" className="h-7 text-xs border-dashed">
                           <SelectValue placeholder="เลือก" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">ไม่ระบุ</SelectItem>
                           {activePaymentMethods.map((m: any) => (
-                            <SelectItem key={m.id} value={m.accountCode || m.name || m.nameTh || String(m.id)}>
+                            <SelectItem key={m.id} value={`pm_${m.id}`}>
                               {m.nameTh || m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
                             </SelectItem>
                           ))}
