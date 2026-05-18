@@ -422,16 +422,20 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - แก้ทุกจุดพร้อมกัน: เพิ่ม `isCreditPm` + import + แก้ 4 จุด `isCredit` + แก้ line 646 ✅
 - `/api/expense-journal-preview` endpoint — Server ยังรัน ไม่มี error ✅
 
-**ตรวจฟอร์มฝั่งจ่ายอื่นๆ — findings:**
+**สรุป fixes ฝั่งจ่ายทั้งหมด — FIXED ✅ Server พร้อม ไม่มี error**
 
-| ฟอร์ม | สถานะ | ปัญหา |
+| ไฟล์ | จุดที่แก้ | รายละเอียด |
 |---|---|---|
-| purchase-invoice.tsx | ✅ | `paymentStatus: form.paymentStatus` ถูกต้องแล้ว |
-| debit-note-form.tsx | ❓ | ไม่มี `paymentStatus` ใน body build — กำลังตรวจ |
-| purchase-deposit-form.tsx | ❓ | ไม่มี `paymentStatus` ใน body build + line 367 default PM ใช้... (รอ screenshot ต่อ) |
+| expense-routes.ts | import | เพิ่ม `paymentMethods` เข้า schema import |
+| expense-routes.ts | line ~17 | เพิ่ม `isCreditPm()` function |
+| expense-routes.ts | CREATE/UPDATE | `isCredit` ตอนนี้ lookup `paymentMethods` table แทนเทียบชื่อ |
+| expense.tsx | line 646 | แก้ `paymentStatus` override |
+| purchase-deposit-form.tsx | line 367 | default PM เปลี่ยนจาก `m.name` → `m.accountCode` |
+| debit-note + purchase-deposit | onChange | ทั้งสองฟอร์มไม่มี `paymentStatus` field ในสกีมา (deposit ใช้ `depositStatus`) — ไม่ใช่ bug ✅ |
 
-- `purchase-deposit` ใช้ `createAutoJournalEntry` handle ถูกต้องแล้ว
-- Server compile ผ่าน ✅ กำลัง fix ที่เหลือ
+**หมายเหตุ schema:**
+- `purchase-deposit` ใช้ `depositStatus` (ไม่ใช่ `paymentStatus`)
+- `debit-note` ไม่มี payment field — ถูกต้องตาม design
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
