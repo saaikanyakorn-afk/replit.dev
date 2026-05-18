@@ -354,8 +354,17 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 **สรุปการแก้ทั้งหมดสำหรับ bug นี้ใน `tax-invoice-routes.ts`:**
 | จุด | ปัญหา | Fix |
 |---|---|---|
-| Tax invoice สร้างใหม่ | ไม่ส่ง `lineItemAccounts` → journal ใช้ 4100100 | เพิ่ม build logic ก่อน CREATE journal |
-| Tax invoice UPDATE | ไม่ส่ง `lineItemAccounts` + skip ถ้ามี journal แล้ว | เพิ่ม delete+recreate + `lineItemAccounts` |
+| Tax invoice สร้างใหม่ | ไม่ส่ง `lineItemAccounts` → journal ใช้ 4100100 hardcode | ✅ แก้แล้ว |
+| Tax invoice UPDATE path 1 (linked invoice ไม่มี journal) | เดียวกัน | ✅ แก้แล้ว |
+| Tax invoice UPDATE path 2 (standalone) | เดียวกัน | ✅ แก้แล้ว |
+| Tax invoice แก้ไข+บันทึกซ้ำ | `createAutoJournalEntry` skip เพราะ journal มีอยู่แล้ว | ✅ แก้แล้ว (delete+recreate) |
+
+**Bug ใหม่: Journal Preview ไม่ใช้ lineItemAccounts — INVESTIGATING 🔍**
+- พี่ทราย: "ลบรายการสินค้า แล้วเพิ่มใหม่ ชื่อบัญชีไม่เปลี่ยนตามที่ผูกไว้กับสินค้า"
+- ไม่มี PATCH call ใน logs → ปัญหาอยู่ที่ **journal preview** ในหน้าฟอร์ม (ก่อนบันทึก)
+- **สงสัย:** `/api/journal-preview` endpoint ไม่ได้รับ `lineItemAccounts` → preview แสดงบัญชีผิด
+- **ไฟล์ที่ต้องดู:** `journal-preview` endpoint + `tax-invoice-form.tsx` ส่ว่นที่ call preview
+- สถานะ: กำลัง investigate
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
