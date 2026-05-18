@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer, Trash2, Search } from "lucide-react";
 import QRCodeLib from "qrcode";
 import { useState, useEffect, useRef, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -73,6 +73,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
   const [logStepNo, setLogStepNo] = useState<string>("");
   const [logStepQty, setLogStepQty] = useState("1");
   const [logStepNotes, setLogStepNotes] = useState("");
+  const [logReporterFilter, setLogReporterFilter] = useState("");
   const [completedQty, setCompletedQty] = useState("");
   const [completeLot, setCompleteLot] = useState("");
   const [completeMfgDate, setCompleteMfgDate] = useState("");
@@ -899,52 +900,83 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                 })}
               </div>
               {processLogs.length > 0 && (
-                <div className="border rounded-lg overflow-hidden mt-2">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-50">
-                        <TableHead className="text-xs py-2">ขั้นตอน</TableHead>
-                        <TableHead className="text-xs py-2">ผู้บันทึก</TableHead>
-                        <TableHead className="text-right text-xs py-2">จำนวน</TableHead>
-                        <TableHead className="text-xs py-2">หมายเหตุ</TableHead>
-                        <TableHead className="text-right text-xs py-2">เวลา</TableHead>
-                        {isSupervisor && <TableHead className="w-10 py-2" />}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {processLogs.map((log: any, idx: number) => (
-                        <TableRow key={idx} data-testid={`row-process-log-${idx}`}>
-                          <TableCell className="py-2 text-sm font-medium text-cyan-700">
-                            P{log.step_no}: {log.step_name}
-                          </TableCell>
-                          <TableCell className="py-2 text-sm text-gray-600">{log.logged_by_name || "—"}</TableCell>
-                          <TableCell className="py-2 text-right tabular-nums text-sm">{log.qty_passed || 0}</TableCell>
-                          <TableCell className="py-2 text-xs text-gray-400">{log.notes || "—"}</TableCell>
-                          <TableCell className="py-2 text-right text-xs text-gray-400">
-                            {log.logged_at ? new Date(log.logged_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}
-                          </TableCell>
-                          {isSupervisor && (
-                            <TableCell className="py-2 text-center">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
-                                data-testid={`button-delete-process-log-${log.id || idx}`}
-                                disabled={deleteProcessLogMutation.isPending}
-                                onClick={() => {
-                                  if (window.confirm(`ยืนยันการลบบันทึกขั้นตอน P${log.step_no}: ${log.step_name}?`)) {
-                                    deleteProcessLogMutation.mutate(log.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-2 mt-2">
+                  {isSupervisor && (
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                      <Input
+                        className="pl-8 h-8 text-sm"
+                        placeholder="กรองตามชื่อผู้บันทึก..."
+                        value={logReporterFilter}
+                        onChange={(e) => setLogReporterFilter(e.target.value)}
+                        data-testid="input-filter-log-reporter"
+                      />
+                    </div>
+                  )}
+                  {(() => {
+                    const needle = logReporterFilter.trim().toLowerCase();
+                    const filteredLogs = needle === ""
+                      ? processLogs
+                      : processLogs.filter((log: any) =>
+                          (log.logged_by_name || "").toLowerCase().includes(needle)
+                        );
+                    return (
+                      <div className="border rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-50">
+                              <TableHead className="text-xs py-2">ขั้นตอน</TableHead>
+                              <TableHead className="text-xs py-2">ผู้บันทึก</TableHead>
+                              <TableHead className="text-right text-xs py-2">จำนวน</TableHead>
+                              <TableHead className="text-xs py-2">หมายเหตุ</TableHead>
+                              <TableHead className="text-right text-xs py-2">เวลา</TableHead>
+                              {isSupervisor && <TableHead className="w-10 py-2" />}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredLogs.map((log: any, idx: number) => (
+                              <TableRow key={idx} data-testid={`row-process-log-${idx}`}>
+                                <TableCell className="py-2 text-sm font-medium text-cyan-700">
+                                  P{log.step_no}: {log.step_name}
+                                </TableCell>
+                                <TableCell className="py-2 text-sm text-gray-600">{log.logged_by_name || "—"}</TableCell>
+                                <TableCell className="py-2 text-right tabular-nums text-sm">{log.qty_passed || 0}</TableCell>
+                                <TableCell className="py-2 text-xs text-gray-400">{log.notes || "—"}</TableCell>
+                                <TableCell className="py-2 text-right text-xs text-gray-400">
+                                  {log.logged_at ? new Date(log.logged_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                                </TableCell>
+                                {isSupervisor && (
+                                  <TableCell className="py-2 text-center">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                      data-testid={`button-delete-process-log-${log.id || idx}`}
+                                      disabled={deleteProcessLogMutation.isPending}
+                                      onClick={() => {
+                                        if (window.confirm(`ยืนยันการลบบันทึกขั้นตอน P${log.step_no}: ${log.step_name}?`)) {
+                                          deleteProcessLogMutation.mutate(log.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            ))}
+                            {filteredLogs.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={isSupervisor ? 6 : 5} className="py-4 text-center text-sm text-gray-400" data-testid="text-no-log-filter-results">
+                                  ไม่พบบันทึกสำหรับผู้บันทึก "{logReporterFilter}"
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               {processLogs.length === 0 && (
