@@ -359,12 +359,15 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 | Tax invoice UPDATE path 2 (standalone) | เดียวกัน | ✅ แก้แล้ว |
 | Tax invoice แก้ไข+บันทึกซ้ำ | `createAutoJournalEntry` skip เพราะ journal มีอยู่แล้ว | ✅ แก้แล้ว (delete+recreate) |
 
-**Bug ใหม่: Journal Preview ไม่ใช้ lineItemAccounts — INVESTIGATING 🔍**
+**Bug ใหม่: Journal Preview ไม่ใช้ lineItemAccounts — FIXING 🔧**
 - พี่ทราย: "ลบรายการสินค้า แล้วเพิ่มใหม่ ชื่อบัญชีไม่เปลี่ยนตามที่ผูกไว้กับสินค้า"
-- ไม่มี PATCH call ใน logs → ปัญหาอยู่ที่ **journal preview** ในหน้าฟอร์ม (ก่อนบันทึก)
-- **สงสัย:** `/api/journal-preview` endpoint ไม่ได้รับ `lineItemAccounts` → preview แสดงบัญชีผิด
-- **ไฟล์ที่ต้องดู:** `journal-preview` endpoint + `tax-invoice-form.tsx` ส่ว่นที่ call preview
-- สถานะ: กำลัง investigate
+- **Root cause:** 
+  - `JournalPreviewPanel` รับ `lineItemAccounts` prop อยู่แล้ว ✅
+  - `/api/journal-preview` endpoint มี `isSalesDoc && lineItemAccounts` logic อยู่แล้ว (line 1578) ✅
+  - **ปัญหาจริง:** `tax-invoice-form.tsx` ไม่ได้ส่ง `lineItemAccounts` ให้ `JournalPreviewPanel` → preview ใช้ default account
+- **Fix:** แก้ `tax-invoice-form.tsx` ให้ build `lineItemAccounts` จาก `items` + `products` query แล้วส่งให้ panel
+- **ต้อง import:** `useMemo` + `items` type
+- สถานะ: กำลัง fix
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
