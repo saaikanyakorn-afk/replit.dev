@@ -426,8 +426,11 @@ export default function Expense() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/expenses", data);
-      return res.json();
+      const doCreate = async () => { const res = await apiRequest("POST", "/api/expenses", data); return res.json(); };
+      try { return await doCreate(); } catch (err: any) {
+        if (err?.message?.toLowerCase().includes("timeout")) { await new Promise(r => setTimeout(r, 2000)); return await doCreate(); }
+        throw err;
+      }
     },
     onSuccess: () => {
       invalidateDocCaches(queryClient, [["/api/expenses"], ["/api/contacts"]]);
@@ -439,8 +442,11 @@ export default function Expense() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await apiRequest("PATCH", `/api/expenses/${id}`, data);
-      return res.json();
+      const doUpdate = async () => { const res = await apiRequest("PATCH", `/api/expenses/${id}`, data); return res.json(); };
+      try { return await doUpdate(); } catch (err: any) {
+        if (err?.message?.toLowerCase().includes("timeout")) { await new Promise(r => setTimeout(r, 2000)); return await doUpdate(); }
+        throw err;
+      }
     },
     onSuccess: () => {
       invalidateDocCaches(queryClient, [["/api/expenses"], ["/api/contacts"]]);

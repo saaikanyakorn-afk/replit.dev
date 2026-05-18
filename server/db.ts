@@ -218,7 +218,7 @@ let _pool = new pg.Pool({
   max: isProduction ? 25 : 20,
   min: isProduction ? 3 : 2,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: isProduction ? 20000 : 10000,
   statement_timeout: 30000,
   allowExitOnIdle: false,
   keepAlive: true,
@@ -228,6 +228,19 @@ let _pool = new pg.Pool({
 _pool.on("error", (err) => {
   console.error("[DB Pool] Unexpected error on idle client:", err.message);
 });
+
+async function warmupPool(pool: pg.Pool, label: string): Promise<void> {
+  try {
+    const client = await pool.connect();
+    await client.query("SELECT 1");
+    client.release();
+    console.log(`[DB Pool] ✓ Warmup OK — ${label}`);
+  } catch (err: any) {
+    console.warn(`[DB Pool] Warmup failed (will retry via heartbeat) — ${label}: ${err.message}`);
+  }
+}
+
+warmupPool(_pool, activeDb.label);
 
 if (isProduction) {
   let consecutiveFailures = 0;
@@ -440,7 +453,7 @@ export async function reinitializeFromConfig(): Promise<void> {
     connectionString: activeDb.url,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: isProduction ? 20000 : 10000,
     statement_timeout: 30000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
@@ -450,6 +463,8 @@ export async function reinitializeFromConfig(): Promise<void> {
   });
   _db = drizzle(_pool, { schema });
   _switchVersion++;
+
+  warmupPool(_pool, activeDb.label);
 
   setTimeout(async () => {
     try { await oldPool.end(); } catch {}
