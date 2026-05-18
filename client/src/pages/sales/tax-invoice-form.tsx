@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute, useSearch } from "wouter";
 import Layout from "@/components/layout";
@@ -337,6 +337,19 @@ export default function TaxInvoiceForm() {
     },
     enabled: !!companyId,
   });
+
+  const lineItemAccounts = useMemo(() => {
+    const result: { accountCode: string; accountName: string; amount: number }[] = [];
+    for (const item of items) {
+      if (!item.productId) continue;
+      const prod = (products as any[]).find((p: any) => p.id === item.productId);
+      if (!prod?.accountCode) continue;
+      const amount = parseFloat(item.total || "0");
+      if (amount <= 0) continue;
+      result.push({ accountCode: prod.accountCode, accountName: prod.name || "", amount });
+    }
+    return result.length > 0 ? result : undefined;
+  }, [items, products]);
 
   const { data: paymentMethodsList = [] } = useQuery<any[]>({
     queryKey: ["/api/payment-methods", companyId, "receive"],
@@ -1750,7 +1763,8 @@ export default function TaxInvoiceForm() {
                 currencyCode={form.currencyCode}
                 exchangeRate={form.exchangeRate}
                 linkedInvoiceId={fromInvoiceId ? Number(fromInvoiceId) : ((form as any).invoiceId || null)}
-                              onLinesChange={setJournalOverrideLines}
+                lineItemAccounts={lineItemAccounts}
+                onLinesChange={setJournalOverrideLines}
               />
             </div>
 
