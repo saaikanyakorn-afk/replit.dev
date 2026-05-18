@@ -280,6 +280,18 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - ถูกต้อง: "ถ้าเลือกวิธีชำระ ≠ เครดิต → ลงธนาคาร (PM account) / เครดิต = ลง AR (ลูกหนี้)"
 - Logic ต้องแยก "เครดิต" (ยังไม่รับเงิน) จาก "อื่นๆ ทั้งหมด" (รับเงินแล้ว) — ไม่ใช่แยก "เงินสด" จาก "อื่นๆ"
 
+**Fix summary:**
+| จุด | เดิม (ผิด) | ใหม่ (ถูก) |
+|-----|-----------|-----------|
+| Logic ตัดสิน status | `isCashMethod(pm)` = true แค่ "เงินสด" | `pm && !isCredit(pm)` = ทุก PM ที่ไม่ใช่เครดิต |
+| Mutation calls | `apiRequest()` (Rule violation) | `fetch()` |
+
+**ผลที่ถูกต้องหลังแก้:**
+- เลือก KBANK → status = "cash" → backend ลงบัญชีธนาคาร → paymentStatus = "paid" → ค้างชำระ = 0 ✅
+- เลือก "เครดิต" → status = "debtor" → backend ลง AR → paymentStatus = "unpaid" ✅
+
+**Pending:** พี่ทรายกำลังทดสอบสร้างใบกำกับภาษีใหม่โดยเลือก "โอนเงิน" เพื่อยืนยันว่า journal และสถานะถูกต้อง
+
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
 **Root cause:** `isCredit` checks in `expense-routes.ts` used `pmName === "เครดิต"` — but since paymentMethod now stores accountCode ("1001000"), this is always false → credit PM treated as cash → wrong journal entry.
