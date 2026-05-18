@@ -402,7 +402,13 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 ### ฝั่งขาย (Sales) — COMPLETE ✅ พี่ทรายยืนยัน
 
 **พี่ทรายแจ้ง: "ฝั่งขายเสร็จแล้ว ไปฝั่งจ่าย"**
-- Agent รอบต่อไปต้องตรวจฝั่งจ่ายทั้งหมด: payment method bug + lineItemAccounts สำหรับ expense/purchase docs
+- Agent กำลังตรวจฝั่งจ่ายทั้งหมด — INVESTIGATING 🔍
+
+**ฝั่งจ่าย — investigation in progress:**
+- ตรวจ `expense-entry.tsx`: JournalPreviewPanel props, `expenseAccounts` computation, `paymentMethod` state, save logic
+- ตรวจ `purchase-routes` expense journal logic
+- error 400 timeout ระหว่าง boot — ชั่วคราว ไม่ใช่ bug
+- **ไฟล์หลัก:** `expense-entry.tsx`, `purchase-routes.ts` (expense journal section)
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
