@@ -282,6 +282,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [location]);
 
+  const { data: myPermissions, isFetching: permFetching, isLoading: permLoading } = useQuery<{ modules: string[]; subModules: string[] }>({
+    queryKey: ["/api/permissions/me", user?.id, selectedCompanyId],
+    queryFn: async () => {
+      const params = selectedCompanyId ? `?companyId=${selectedCompanyId}` : "";
+      const r = await fetch(`/api/permissions/me${params}`, { credentials: "include" });
+      if (!r.ok) return { modules: [], subModules: [] };
+      const data = await r.json();
+      if (Array.isArray(data)) return { modules: data, subModules: [] };
+      return { modules: Array.isArray(data.modules) ? data.modules : [], subModules: Array.isArray(data.subModules) ? data.subModules : [] };
+    },
+    enabled: !!user,
+    staleTime: 0,
+  });
+
   const hasInventoryAccess = !!myPermissions?.modules.includes("inventory");
 
   const { data: productLotsData } = useQuery<any[]>({
@@ -355,20 +369,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     enabled: !!user && !!selectedCompanyId,
     refetchInterval: 60000,
     staleTime: 30000,
-  });
-
-  const { data: myPermissions, isFetching: permFetching, isLoading: permLoading } = useQuery<{ modules: string[]; subModules: string[] }>({
-    queryKey: ["/api/permissions/me", user?.id, selectedCompanyId],
-    queryFn: async () => {
-      const params = selectedCompanyId ? `?companyId=${selectedCompanyId}` : "";
-      const r = await fetch(`/api/permissions/me${params}`, { credentials: "include" });
-      if (!r.ok) return { modules: [], subModules: [] };
-      const data = await r.json();
-      if (Array.isArray(data)) return { modules: data, subModules: [] };
-      return { modules: Array.isArray(data.modules) ? data.modules : [], subModules: Array.isArray(data.subModules) ? data.subModules : [] };
-    },
-    enabled: !!user,
-    staleTime: 0,
   });
 
   useEffect(() => {
