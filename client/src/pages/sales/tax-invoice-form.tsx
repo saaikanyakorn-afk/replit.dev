@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import MultiFileAttachment from "@/components/multi-file-attachment";
 import { EtaxSendDialog } from "@/components/etax-send-dialog";
-import { apiRequest } from "@/lib/queryClient";
 import { DatePicker, toDisplayDate } from "@/components/ui/date-picker";
 import type { DateFormat } from "@/components/ui/date-picker";
 import type { Contact, Product } from "@shared/schema";
@@ -616,7 +615,7 @@ export default function TaxInvoiceForm() {
               contactPerson: src.contactPerson || "", contactPhone: src.contactPhone || "",
               contactEmail: src.contactEmail || "", creditDays: src.creditDays ? String(src.creditDays) : "",
               notes: src.notes || "", internalNotes: src.internalNotes || "",
-              status: isCashMethod(src.paymentMethod) ? "cash" : "debtor", paymentStatus: "unpaid",
+              status: (src.paymentMethod && src.paymentMethod !== "เครดิต") ? "cash" : "debtor", paymentStatus: "unpaid",
               salesperson: src.salesperson || "", department: src.department || "",
               project: src.project || "", refDoc: src.refDoc || "",
               paymentTerms: src.paymentTerms || "",
@@ -709,7 +708,7 @@ export default function TaxInvoiceForm() {
             setSavedId(editingId);
 
             try {
-              const dedRes = await apiRequest("GET", `/api/deposit-deductions/by-document?documentType=tax_invoice&documentId=${editingId}`);
+              const dedRes = await fetch(`/api/deposit-deductions/by-document?documentType=tax_invoice&documentId=${editingId}`, { credentials: "include" });
               const existingDeds = await dedRes.json();
               if (Array.isArray(existingDeds) && existingDeds.length > 0) {
                 setDepositDeductions(existingDeds.map((d: any) => ({
@@ -730,19 +729,19 @@ export default function TaxInvoiceForm() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/tax-invoices", data);
+      const res = await fetch("/api/tax-invoices", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(data) });
       const result = await res.json();
       const validDeductions = (data.depositDeductions || []).filter((d: any) => d.amount > 0);
       for (const ded of validDeductions) {
         try {
-          await apiRequest("POST", "/api/deposit-deductions", {
+          await fetch("/api/deposit-deductions", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({
             companyId: data.companyId,
             depositReceiptId: ded.depositReceiptId,
             depositNo: ded.depositNo,
             amount: ded.amount,
             documentType: "tax_invoice",
             documentId: result.id || null,
-          });
+          }) });
         } catch {}
       }
       return result;
@@ -759,9 +758,9 @@ export default function TaxInvoiceForm() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await apiRequest("PATCH", `/api/tax-invoices/${id}`, data);
+      const res = await fetch(`/api/tax-invoices/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(data) });
       const result = await res.json();
-      await apiRequest("PUT", "/api/deposit-deductions/replace", {
+      await fetch("/api/deposit-deductions/replace", { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({
         documentType: "tax_invoice",
         documentId: id,
         deductions: (data.depositDeductions || []).filter((d: any) => d.amount > 0).map((d: any) => ({
@@ -769,7 +768,7 @@ export default function TaxInvoiceForm() {
           documentNo: d.depositNo,
           amount: d.amount,
         })),
-      });
+      }) });
       return result;
     },
     onSuccess: () => {
@@ -785,7 +784,7 @@ export default function TaxInvoiceForm() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await apiRequest("PATCH", `/api/tax-invoices/${id}`, { status, journalOverrideLines: journalOverrideLines || undefined });
+      const res = await fetch(`/api/tax-invoices/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ status, journalOverrideLines: journalOverrideLines || undefined }) });
       return res.json();
     },
     onSuccess: (data: any) => {
@@ -968,7 +967,7 @@ export default function TaxInvoiceForm() {
   async function handleSaveNewContact(): Promise<{ id: number; code: string } | null> {
     if (!form.saveToContacts || form.customerId || !form.customerName || !companyId) return null;
     try {
-      const res = await apiRequest("POST", "/api/contacts", {
+      const res = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({
         companyId,
         name: form.customerName,
         type: "customer",
@@ -977,7 +976,7 @@ export default function TaxInvoiceForm() {
         phone: form.contactPhone || null,
         email: form.contactEmail || null,
         contactPerson: form.contactPerson || null,
-      });
+      }) });
       const saved = await res.json();
       setForm(p => ({ ...p, customerId: saved.id, customerCode: saved.code || "" }));
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
@@ -997,7 +996,7 @@ export default function TaxInvoiceForm() {
     const totals = calcTotals();
     const computedStatus = (() => {
       if (editingId && ["issued", "cancelled", "voided"].includes(form.status)) return form.status;
-      return isCashMethod(form.paymentMethod) ? "cash" : "debtor";
+      return (form.paymentMethod && form.paymentMethod !== "เครดิต") ? "cash" : "debtor";
     })();
     const payload = {
       ...form,
