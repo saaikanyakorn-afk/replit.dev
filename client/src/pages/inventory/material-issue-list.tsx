@@ -29,7 +29,7 @@ function statusBadge(status: string) {
 
 export default function MaterialIssueList({ urlBase = "/inventory" }: { urlBase?: string }) {
   const [, navigate] = useLocation();
-  const { company } = useCompany();
+  const { selectedCompany: company } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<number | null>(null);
