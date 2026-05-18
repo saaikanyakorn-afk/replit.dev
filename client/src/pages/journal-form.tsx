@@ -187,12 +187,23 @@ export default function JournalForm() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
-      if (isEdit) {
-        const res = await apiRequest("PATCH", `/api/journal-entries/${editId}`, data);
+      const doSave = async () => {
+        if (isEdit) {
+          const res = await apiRequest("PATCH", `/api/journal-entries/${editId}`, data);
+          return res.json();
+        }
+        const res = await apiRequest("POST", "/api/journal-entries", data);
         return res.json();
+      };
+      try {
+        return await doSave();
+      } catch (err: any) {
+        if (err?.message?.toLowerCase().includes("timeout")) {
+          await new Promise(r => setTimeout(r, 2000));
+          return await doSave();
+        }
+        throw err;
       }
-      const res = await apiRequest("POST", "/api/journal-entries", data);
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/journal-entries"] });
