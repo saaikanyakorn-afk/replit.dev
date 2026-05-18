@@ -419,10 +419,19 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 | expense-routes.ts | 405, 638, 1120 | `pmName === "เครดิต"` ← ควร lookup PM table ผ่าน `isCreditPm` |
 | expense.tsx | 646 | `form.paymentMethod ? "paid" : "unpaid"` ← override ค่าที่ถูกต้องใน `form.paymentStatus` |
 
-- แก้ทุกจุดพร้อมกัน: เพิ่ม `isCreditPm` + import + แก้ 4 จุด `isCredit` + แก้ line 646
-- ตรวจ `/api/expense-journal-preview` endpoint ด้วย
-- Server ยังรัน ไม่มี error
-- กำลัง fix — รอ HMR
+- แก้ทุกจุดพร้อมกัน: เพิ่ม `isCreditPm` + import + แก้ 4 จุด `isCredit` + แก้ line 646 ✅
+- `/api/expense-journal-preview` endpoint — Server ยังรัน ไม่มี error ✅
+
+**ตรวจฟอร์มฝั่งจ่ายอื่นๆ — findings:**
+
+| ฟอร์ม | สถานะ | ปัญหา |
+|---|---|---|
+| purchase-invoice.tsx | ✅ | `paymentStatus: form.paymentStatus` ถูกต้องแล้ว |
+| debit-note-form.tsx | ❓ | ไม่มี `paymentStatus` ใน body build — กำลังตรวจ |
+| purchase-deposit-form.tsx | ❓ | ไม่มี `paymentStatus` ใน body build + line 367 default PM ใช้... (รอ screenshot ต่อ) |
+
+- `purchase-deposit` ใช้ `createAutoJournalEntry` handle ถูกต้องแล้ว
+- Server compile ผ่าน ✅ กำลัง fix ที่เหลือ
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
