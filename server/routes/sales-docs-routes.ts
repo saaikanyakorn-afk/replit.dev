@@ -2255,6 +2255,18 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
     const journalStatuses = ["approved", "issued", "debtor"];
     const shouldCreateTxJournal = (statusChanged && journalStatuses.includes(body.status)) || journalStatuses.includes(updated.status || "");
     if (shouldCreateTxJournal) {
+      // ลบ journal เก่าก่อน recreate เพื่อให้ account code / formula อัพเดทถูกต้องเมื่อแก้ไขและบันทึกใหม่
+      const [oldTivJE] = await db.select({ id: journalEntries.id })
+        .from(journalEntries)
+        .where(and(
+          eq(journalEntries.companyId, updated.companyId),
+          eq(journalEntries.sourceDocType, "tax_invoice"),
+          eq(journalEntries.sourceDocId, updated.id),
+        ));
+      if (oldTivJE) {
+        await db.delete(journalLines).where(eq(journalLines.journalEntryId, oldTivJE.id));
+        await db.delete(journalEntries).where(eq(journalEntries.id, oldTivJE.id));
+      }
       try {
         if (updated.invoiceId) {
           const [linkedInvoiceJE] = await db.select().from(journalEntries)
