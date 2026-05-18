@@ -129,8 +129,6 @@ export default function RelatedDocsDialog({
                     onOpenChange(false);
                     if (doc.type === "payment_voucher") {
                       navigate(`${config.listPath}?companyId=${companyId}&apId=${docId}`);
-                    } else if (config.editPath && doc.id) {
-                      navigate(`${config.editPath}${doc.id}?companyId=${companyId}`);
                     } else {
                       navigate(`${config.listPath}?companyId=${companyId}&${config.searchParam}=${encodeURIComponent(doc.docNo)}`);
                     }

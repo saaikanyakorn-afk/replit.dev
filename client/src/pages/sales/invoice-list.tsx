@@ -92,7 +92,7 @@ export default function InvoiceList() {
 
   const [searchText, setSearchText] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("search") || "";
+    return params.get("search") || params.get("invoiceNo") || "";
   });
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [relatedDoc, setRelatedDoc] = useState<{ open: boolean; id: number; docNo: string } | null>(null);

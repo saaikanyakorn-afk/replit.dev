@@ -57,7 +57,7 @@ export default function CreditNoteList() {
 
   const [searchText, setSearchText] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("search") || "";
+    return params.get("search") || params.get("creditNoteNo") || "";
   });
   const [filterStatus, setFilterStatus] = useState("all");
   const now = new Date();

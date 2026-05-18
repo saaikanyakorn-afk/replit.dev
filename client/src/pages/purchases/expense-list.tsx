@@ -83,7 +83,7 @@ export default function ExpenseList() {
 
   const [searchText, setSearchText] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("search") || "";
+    return params.get("search") || params.get("expNo") || "";
   });
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
