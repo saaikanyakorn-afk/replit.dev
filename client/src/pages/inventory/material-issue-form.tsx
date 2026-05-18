@@ -990,9 +990,10 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
                 <Label>จำนวน</Label>
                 <Input
                   type="number"
-                  min={1}
+                  min={0}
                   value={addQty}
-                  onChange={e => setAddQty(Number(e.target.value))}
+                  onChange={e => setAddQty(Math.max(0, Number(e.target.value)))}
+                  onFocus={e => e.target.select()}
                   data-testid="input-add-qty"
                 />
               </div>
@@ -1148,10 +1149,11 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
                       <TableCell className="text-right">
                         <Input
                           type="number"
-                          min={1}
+                          min={0}
                           className={`w-24 text-right ml-auto ${isOver ? "border-red-400 focus-visible:ring-red-400" : ""}`}
                           value={it.quantity}
-                          onChange={e => updateQty(idx, Number(e.target.value))}
+                          onChange={e => updateQty(idx, Math.max(0, Number(e.target.value)))}
+                          onFocus={e => e.target.select()}
                           data-testid={`input-qty-${idx}`}
                         />
                       </TableCell>
