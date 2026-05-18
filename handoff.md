@@ -405,10 +405,11 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - Agent กำลังตรวจฝั่งจ่ายทั้งหมด — INVESTIGATING 🔍
 
 **ฝั่งจ่าย — investigation in progress:**
-- ตรวจ `expense-entry.tsx`: JournalPreviewPanel props, `expenseAccounts` computation, `paymentMethod` state, save logic
-- ตรวจ `purchase-routes` expense journal logic
+- `expense-entry.tsx` — เป็น form เก่า/ไม่ได้ใช้งาน ❌
+- **ไฟล์จริง:** `expense.tsx` — มี trigger double checkmark + lineItemAccounts + handleSubmit ✅
+- route `/purchases/exp/new` → `expense.tsx`
+- กำลังตรวจ: `expense.tsx` save block + `itemAccounts` build logic ใน purchase-routes (expense journal)
 - error 400 timeout ระหว่าง boot — ชั่วคราว ไม่ใช่ bug
-- **ไฟล์หลัก:** `expense-entry.tsx`, `purchase-routes.ts` (expense journal section)
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
