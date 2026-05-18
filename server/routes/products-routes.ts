@@ -2840,7 +2840,7 @@ async function getNextMaterialIssueNo(companyId: number): Promise<string> {
   return `MI-${year}-${String(nextSeq).padStart(5, "0")}`;
 }
 
-app.get("/api/material-issues", requireAuth, requireModule("inventory"), async (req, res) => {
+app.get("/api/material-issues", requireAuth, requireAnyModule("inventory", "manufacturing"), async (req, res) => {
   try {
     const companyId = Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "companyId required" });
@@ -2865,7 +2865,7 @@ app.get("/api/material-issues", requireAuth, requireModule("inventory"), async (
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
-app.get("/api/material-issues/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+app.get("/api/material-issues/:id", requireAuth, requireAnyModule("inventory", "manufacturing"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const rows = await db.execute(sql.raw(`
@@ -2886,7 +2886,7 @@ app.get("/api/material-issues/:id", requireAuth, requireModule("inventory"), asy
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
-app.post("/api/material-issues", requireAuth, requireModule("inventory"), async (req, res) => {
+app.post("/api/material-issues", requireAuth, requireAnyModule("inventory", "manufacturing"), async (req, res) => {
   try {
     const { companyId: rawCompanyId, moId, issuedByUserId, notes, items, fromWarehouseId } = req.body;
     const companyId = Number(rawCompanyId);
@@ -2986,7 +2986,7 @@ app.post("/api/material-issues", requireAuth, requireModule("inventory"), async 
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
-app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("inventory"), async (req, res) => {
+app.post("/api/material-issues/:id/confirm", requireAuth, requireAnyModule("inventory", "manufacturing"), async (req, res) => {
   try {
     const id = Number(req.params.id);
 
@@ -3105,7 +3105,7 @@ app.post("/api/material-issues/:id/confirm", requireAuth, requireModule("invento
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
-app.delete("/api/material-issues/:id", requireAuth, requireModule("inventory"), async (req, res) => {
+app.delete("/api/material-issues/:id", requireAuth, requireAnyModule("inventory", "manufacturing"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     const issueRows = await db.execute(sql.raw(`SELECT * FROM material_issues WHERE id = ${id}`));
