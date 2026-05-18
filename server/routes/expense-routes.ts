@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, and, desc, or, sql, count, not } from "drizzle-orm";
-import { expenses, expenseItems, withholdingTaxCerts, whtCertItems, companies, accounts, contacts, journalEntries, journalLines, purchaseInvoices, ftpArchiveItems, documentImportBatches, purchaseDebitNotes, purchaseDebitNoteItems } from "@shared/schema";
+import { expenses, expenseItems, withholdingTaxCerts, whtCertItems, companies, accounts, contacts, journalEntries, journalLines, purchaseInvoices, ftpArchiveItems, documentImportBatches, purchaseDebitNotes, purchaseDebitNoteItems, paymentMethods } from "@shared/schema";
 import { expenseDailyBatches } from "@shared/schema-extra";
 import { requireAuth, requireModule, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo, validateDocNo, getNextJournalEntryNo, resolvePaymentMethodAccountCode, checkDocumentLimit, deleteJournalEntriesForDoc, logActivity } from "../route-helpers";
@@ -11,6 +11,9 @@ import multer from "multer";
 import crypto from "crypto";
 import * as XLSX from "xlsx";
 import * as path from "path";
+const isCreditPm = (name?: string | null) =>
+  !!name && (name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต("));
+
 // pdf-wht-cert is a production-only file — use dynamic require to avoid build-time resolution failure
 let generateWhtCertPdf: (data: any) => Promise<Buffer> = async () => { throw new Error("pdf-wht-cert not available"); };
 try { generateWhtCertPdf = require("../pdf-wht-cert").generateWhtCertPdf; } catch {}
@@ -402,7 +405,9 @@ export function registerExpenseRoutes(app: Express) {
             jL = body.customJournalLines;
           } else {
             const pmName = doc.paymentMethod || null;
-            const isCredit = !pmName || pmName === "เครดิต";
+            const pmRecs = pmName ? await tx.select().from(paymentMethods).where(eq(paymentMethods.companyId, doc.companyId)) : [];
+            const pmRec = pmRecs.find((p: any) => p.accountCode === pmName);
+            const isCredit = !pmName || pmName === "เครดิต" || (pmRec ? isCreditPm(pmRec.name || pmRec.nameTh) : false);
             let pmCode: string;
             let pmAccName: string;
 
@@ -635,7 +640,9 @@ export function registerExpenseRoutes(app: Express) {
             jL = body.customJournalLines;
           } else {
             const pmName = txUpdated.paymentMethod || null;
-            const isCredit = !pmName || pmName === "เครดิต";
+            const pmRecs = pmName ? await tx.select().from(paymentMethods).where(eq(paymentMethods.companyId, txUpdated.companyId)) : [];
+            const pmRec = pmRecs.find((p: any) => p.accountCode === pmName);
+            const isCredit = !pmName || pmName === "เครดิต" || (pmRec ? isCreditPm(pmRec.name || pmRec.nameTh) : false);
             let pmCode: string;
             let pmAccName: string;
 
@@ -1117,7 +1124,9 @@ export function registerExpenseRoutes(app: Express) {
               const amJ = new Map(compAcctsJ.map(a => [a.code, a]));
 
               const pmName = newDoc.paymentMethod || null;
-              const isCredit = !pmName || pmName === "เครดิต";
+              const pmRecsJ = pmName ? await tx.select().from(paymentMethods).where(eq(paymentMethods.companyId, newDoc.companyId)) : [];
+              const pmRecJ = pmRecsJ.find((p: any) => p.accountCode === pmName);
+              const isCredit = !pmName || pmName === "เครดิต" || (pmRecJ ? isCreditPm(pmRecJ.name || pmRecJ.nameTh) : false);
               let pmCode: string;
               let pmAccName: string;
 

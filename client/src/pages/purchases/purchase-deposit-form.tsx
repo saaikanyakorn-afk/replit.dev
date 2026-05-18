@@ -364,7 +364,7 @@ export default function PurchaseDepositForm() {
       exchangeRate: "1",
       withholdingTax: "0",
       discountBeforeVat: "0",
-      paymentMethod: (() => { const m = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0]; return m ? (m.name || m.nameTh || m.accountCode) : ""; })(),
+      paymentMethod: (() => { const m = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0]; return m ? (m.accountCode || "") : ""; })(),
       attachedUrl: "",
       showInTaxReport: true,
     });

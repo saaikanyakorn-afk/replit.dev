@@ -643,7 +643,7 @@ export default function Expense() {
       attachedUrl: form.attachedUrl || null,
       showInTaxReport: form.showInTaxReport,
       saveToContacts: form.saveToContacts,
-      paymentStatus: form.paymentMethod ? "paid" : "unpaid",
+      paymentStatus: form.paymentStatus || (form.paymentMethod ? "paid" : "unpaid"),
       currencyCode: form.currencyCode,
       exchangeRate: form.exchangeRate,
       subtotal: toThb(totals.afterDiscount).toFixed(2),
