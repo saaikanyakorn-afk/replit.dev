@@ -66,6 +66,23 @@ export default function ProcessScanStation() {
     if (step === "mo") setTimeout(() => moRef.current?.focus(), 100);
   }, [step]);
 
+  useEffect(() => {
+    if ((step !== "process" && step !== "confirm") || !moData) return;
+    const fetchLogs = async () => {
+      try {
+        const r = await fetch(`/api/manufacturing-orders/${moData.id}/process-logs?companyId=${companyId}`, { credentials: "include" });
+        if (r.ok) {
+          const logs = await r.json();
+          setMoData(prev => prev ? { ...prev, processLogs: logs } : prev);
+        }
+      } catch {
+      }
+    };
+    fetchLogs();
+    const id = setInterval(fetchLogs, 20000);
+    return () => clearInterval(id);
+  }, [step, moData?.id, companyId]);
+
   const lookupEmployee = async (qr: string) => {
     const trimmed = qr.trim();
     if (!trimmed) return;
