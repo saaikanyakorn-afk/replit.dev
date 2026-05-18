@@ -93,10 +93,28 @@ If you run out of context or time before updating this file — that is YOUR fai
 
 ## PUSH METHOD (never forget)
 
-- **Production push**: GitHub API PUT via `code_execution` only
-- Token: `git remote get-url github-production` — extract from URL (NOT `GITHUB_PAT_PRODUCTION` env var — that is a trap)
-- **Dev push**: `git push github-dev main` — after every code change, no auth needed
-- **NEVER**: push entire branch to github-production
+### Production push — SSH Deploy Key ONLY
+```bash
+GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" git push git@github.com:saaikanyakorn-afk/etaxcenter.git main
+```
+- SSH key never expires — no token rotation needed, ever
+- ❌ Do NOT use `git push github-production main` (HTTPS remote URL is stale)
+- ❌ Do NOT touch `GITHUB_PAT_PRODUCTION` for push
+- ❌ Do NOT push entire branch — cherry-pick individual files only
+- After push confirms `xxx..yyy  main -> main` → production server can cherry-pick
+
+### Dev push
+```bash
+git push github-dev main
+```
+- No auth needed — push every code change immediately
+- `github-dev` = `saaikanyakorn-afk/dev.etaxerp` (dev backup only — NOT production)
+
+### Files NEVER to push (any repo)
+- `shared/schema.ts` — ABSOLUTE ZERO TOLERANCE
+- `client/src/App.tsx`
+- `server/index.ts`
+- `.local/` files, notes, logs, documents
 
 ---
 
@@ -104,9 +122,60 @@ If you run out of context or time before updating this file — that is YOUR fai
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-18 — พี่ช้าง session (payment-side journal fix). See WARNING below.
+**Last verified:** 2026-05-18 — พี่ช้าง session (payment-side journal fix + ฝั่งจ่าย fix). Handoff updated by main agent.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Pending work:** Task #35 complete on dev — awaiting พี่ทราย test + พี่ช้าง approval before push. Payment-side journal fixes also complete on dev — same queue.
+**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
+
+---
+
+## 🚦 NEXT AGENT — START HERE (what to do when you arrive)
+
+### Immediate pending work (in order):
+
+| # | Item | Status | Who must act |
+|---|------|--------|-------------|
+| N1 | **Related-docs navigation** — `related-docs-dialog.tsx` still navigates to `editPath + doc.id`. Must navigate to `listPath + ?search=<docNo>` instead | ❌ NOT YET DONE | Kai implements |
+| N2 | **เอกสารที่ออกผิดก่อนแก้โค้ด** — RE26051800001 จิรา etc. สองแนวทาง: (1) ยกเลิก+ออกใหม่ หรือ (2) แก้ journal ตรงๆ | ⏳ Waiting | พี่ช้าง decides |
+| N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
+| N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes** — complete on dev (all 15 files + expense routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
+| N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
+
+### Business knowledge you MUST know before touching any code:
+
+**Payment Method fundamentals (confirmed by พี่ทราย 2026-05-18):**
+- `paymentMethod` field stores **accountCode** (e.g. "1012000") — NOT name ("KBANK")
+- "เครดิต" = **ยังไม่ได้รับ/จ่ายเงิน** → journal ลง AR/AP เท่านั้น ไม่มี cash/bank movement
+- "ทุกอย่างที่ไม่ใช่เครดิต" = **รับ/จ่ายแล้ว** → journal ใช้ PM's accountCode
+- Frontend dropdown แยก: ฝั่งจ่าย = `?type=pay`, ฝั่งรับ = `?type=receive` — intentional design
+- Options มาจาก Settings > วิธีชำระเงิน เท่านั้น — ไม่ hardcode
+- `SelectItem value="pm_${m.id}"` — unique ID ไม่ซ้ำ, `onValueChange` translate → store accountCode
+
+**isCashMethod() vs isCreditPm():**
+- `isCashMethod()` ใน `tax-invoice-form.tsx`: checks `found.name === "เงินสด"` — TYPE CHECK on PM record name — correct
+- `isCreditPm()` ใน `expense-routes.ts`: checks PM record name from DB lookup — correct
+- ❌ NEVER compare `paymentMethod === "เครดิต"` — stores accountCode not name — always false
+
+**Tax Invoice journal flow (after fixes 2026-05-18):**
+- journalStatuses includes `"cash"` now — was missing, causing delete+recreate to never fire on cash-paid invoices
+- `lineItemAccounts` built per product's `accountCode` — was using formula default 4100100 for all
+- UPDATE path: delete old journal BEFORE recreate (was skipping if journal existed)
+- sort tiebreaker: `desc(reference)` not `desc(id)` — id changes on recreate, reference doesn't
+
+**Schema rules (ZERO TOLERANCE):**
+- `shared/schema.ts` — NEVER modify. New tables/columns → `shared/schema-extra.ts` ONLY
+- `client/src/App.tsx` — NEVER modify
+- `server/index.ts` — NEVER modify
+
+**PDF rule (ALL documents):**
+- pdfmake (Node.js server) = ONLY source for preview + print + download
+- Fix in `server/pdf-pdfmake-generator.ts` ONLY — applies to all three actions simultaneously
+- Exception: ใบกำกับภาษีอย่างย่อ (80mm thermal) = HTML only
+
+**DB Migration rule:**
+- Verify production DB state FIRST before writing any migration code
+- `psql -h deep-main.hopto.org -p 20541 -U etaxusr -d etax-production`
+- Flag pattern in `system_config` prevents re-run — always use it
+- Comment out migration block IMMEDIATELY after first run
 
 ---
 
