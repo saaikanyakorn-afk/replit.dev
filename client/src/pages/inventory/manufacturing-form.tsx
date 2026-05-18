@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer } from "lucide-react";
+import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer, Trash2 } from "lucide-react";
 import QRCodeLib from "qrcode";
 import { useState, useEffect, useRef, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +41,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
   const LayoutComponent = props.Wrapper || Layout;
   const basePath = props.basePath || "/inventory/manufacturing";
   const { user } = useAuth();
+  const isSupervisor = user && ["super_admin", "admin", "manager"].includes((user as any).role);
   const { toast } = useToast();
   const qc = useQueryClient();
   const { dateEra, dateFmt } = useDateSettings();
@@ -328,6 +329,25 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
       qc.invalidateQueries({ queryKey: ["/api/manufacturing-orders"] });
     },
     onError: (err: any) => toast({ title: "บันทึกบัญชีไม่สำเร็จ", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteProcessLogMutation = useMutation({
+    mutationFn: async (logId: number) => {
+      const r = await fetch(`/api/manufacturing-orders/${editId}/process-logs/${logId}?companyId=${selectedCompanyId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!r.ok) {
+        const err = await r.json();
+        throw new Error(err.message || "ลบบันทึกไม่สำเร็จ");
+      }
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "ลบบันทึกขั้นตอนเรียบร้อย" });
+      qc.invalidateQueries({ queryKey: ["/api/manufacturing-orders", editId, "process-logs", selectedCompanyId] });
+    },
+    onError: (err: any) => toast({ title: "ลบไม่สำเร็จ", description: err.message, variant: "destructive" }),
   });
 
   const openCompleteDialog = () => {
@@ -886,6 +906,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                         <TableHead className="text-right text-xs py-2">จำนวน</TableHead>
                         <TableHead className="text-xs py-2">หมายเหตุ</TableHead>
                         <TableHead className="text-right text-xs py-2">เวลา</TableHead>
+                        {isSupervisor && <TableHead className="w-10 py-2" />}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -900,6 +921,24 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                           <TableCell className="py-2 text-right text-xs text-gray-400">
                             {log.logged_at ? new Date(log.logged_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}
                           </TableCell>
+                          {isSupervisor && (
+                            <TableCell className="py-2 text-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                data-testid={`button-delete-process-log-${log.id || idx}`}
+                                disabled={deleteProcessLogMutation.isPending}
+                                onClick={() => {
+                                  if (window.confirm(`ยืนยันการลบบันทึกขั้นตอน P${log.step_no}: ${log.step_name}?`)) {
+                                    deleteProcessLogMutation.mutate(log.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>

@@ -788,6 +788,27 @@ export function registerManufacturingRoutes(app: Express) {
     } catch (err: any) { res.status(400).json({ message: err.message }); }
   });
 
+  // DELETE /api/manufacturing-orders/:id/process-logs/:logId — ลบบันทึกขั้นตอน (supervisor only)
+  app.delete("/api/manufacturing-orders/:id/process-logs/:logId", requireAuth, requireModule("inventory"), async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!["super_admin", "admin", "manager"].includes(user?.role)) {
+        return res.status(403).json({ message: "เฉพาะ admin หรือ manager เท่านั้นที่สามารถลบบันทึกขั้นตอนได้" });
+      }
+      const moId = Number(req.params.id);
+      const logId = Number(req.params.logId);
+      const companyId = Number(req.query.companyId);
+      if (!companyId) return res.status(400).json({ message: "companyId required" });
+      const [mo] = await db.select().from(manufacturingOrders)
+        .where(and(eq(manufacturingOrders.id, moId), eq(manufacturingOrders.companyId, companyId)));
+      if (!mo) return res.status(404).json({ message: "ไม่พบใบสั่งผลิต" });
+      const existing = await db.execute(sql`SELECT id FROM mo_process_logs WHERE id = ${logId} AND mo_id = ${moId}`);
+      if (!((existing as any).rows || []).length) return res.status(404).json({ message: "ไม่พบบันทึกขั้นตอนนี้" });
+      await db.execute(sql`DELETE FROM mo_process_logs WHERE id = ${logId} AND mo_id = ${moId}`);
+      res.json({ message: "ลบบันทึกขั้นตอนเรียบร้อย" });
+    } catch (err: any) { res.status(400).json({ message: err.message }); }
+  });
+
   // GET /api/manufacturing-orders/by-order-no/:orderNo — ค้นหา MO จาก orderNo (สำหรับ scan station)
   app.get("/api/manufacturing-orders/by-order-no/:orderNo", requireAuth, requireModule("inventory"), async (req, res) => {
     try {
