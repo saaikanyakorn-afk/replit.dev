@@ -90,9 +90,9 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-18 — พี่ช้าง session (corrected). See WARNING below.
+**Last verified:** 2026-05-18 — พี่ช้าง session (payment-side journal fix). See WARNING below.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Pending work:** Task #35 complete on dev — awaiting พี่ทราย test + พี่ช้าง approval before push
+**Pending work:** Task #35 complete on dev — awaiting พี่ทราย test + พี่ช้าง approval before push. Payment-side journal fixes also complete on dev — same queue.
 
 ---
 
