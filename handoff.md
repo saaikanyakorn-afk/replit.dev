@@ -407,11 +407,18 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 **ฝั่งจ่าย — investigation findings:**
 - `expense-entry.tsx` — form เก่า ไม่ได้ใช้งาน ❌
 - **ไฟล์จริง:** `expense.tsx` (route `/purchases/exp/new`) + `expense-routes.ts`
-- **พบ:** ทั้ง CREATE/UPDATE ใน `expense-routes.ts` ยังใช้ `pmName === "เครดิต"` — ผิดเพราะ paymentMethod ตอนนี้เก็บ accountCode
-  - `isCreditPm` fix (PART B เดิม) ✅ แก้แล้ว แต่ agent กำลัง re-verify ทุก occurrence
-  - ตรวจ: `isCreditPm` definition ใน route-helpers, JournalPreviewPanel props ใน `expense.tsx`, UPDATE path ใน expense-routes
-- `JournalPreviewPanel` ใน `expense.tsx` — ยังไม่แน่ใจว่าส่ง `lineItemAccounts` ครบไหม
-- กำลัง fix พร้อมกัน — รอ HMR
+**พบปัญหาใน `expense-routes.ts` ที่ยังไม่ได้แก้ครบ — FIXING 🔧**
+
+| ไฟล์ | บรรทัด | ปัญหา |
+|---|---|---|
+| expense-routes.ts | 5 | ไม่ได้ import `paymentMethods` table |
+| expense-routes.ts | ~13 | ไม่มี `isCreditPm` function |
+| expense-routes.ts | 365 | `body.paymentMethod !== "เครดิต"` ← ใช้ name ไม่ใช่ accountCode |
+
+- **หมายเหตุ:** PART B เดิม (session ก่อน) fix เฉพาะ 3 จุดแรก (CREATE/UPDATE/bulk-import) แต่ยังมี occurrence line 365 ที่พลาด
+- **Fix ที่ต้องทำ:** เพิ่ม `isCreditPm` + import `paymentMethods` + แก้ line 365
+- `JournalPreviewPanel` ใน `expense.tsx` — ตรวจสอบว่าส่ง `lineItemAccounts` ครบไหม
+- กำลัง fix — รอ HMR
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
