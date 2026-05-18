@@ -368,7 +368,19 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - **Fix:** แก้ `tax-invoice-form.tsx` — เพิ่ม `lineItemAccounts` useMemo จาก `items` + `products` (line 330) แล้วส่งให้ `JournalPreviewPanel`
 - `useMemo` + `Product` type มีอยู่แล้ว (`accountCode` field ✅)
 - HMR ผ่าน ✅
-- สถานะ: แก้แล้ว — รอพี่ทรายทดสอบ RE26051800003
+- สถานะ: แก้แล้ว ✅ — preview แสดง 4111000 ถูกต้องทันที (ไม่ต้องรอบันทึก)
+
+**สรุปสิ่งที่แก้ทั้งหมด:**
+| จุด | ปัญหา | Fix |
+|---|---|---|
+| Journal preview ในฟอร์ม | ไม่ส่ง `lineItemAccounts` → แสดง 4100100 เสมอ | ✅ |
+| Journal create (บันทึกใหม่) | ไม่ส่ง `lineItemAccounts` → บันทึก 4100100 | ✅ |
+| Journal update (แก้ไข+บันทึกซ้ำ) | skip เพราะ journal มีอยู่แล้ว | ✅ ลบ+recreate |
+
+**Bug ใหม่จากพี่ทราย ⚠️:** "preview แสดง 4111000 ถูก แต่พอกดบันทึกจริง ระบบไม่ได้บันทึกตามพรีวิวเลย"
+- Preview pipeline: ✅ fixed (ส่ง lineItemAccounts ให้ panel)
+- Save pipeline: ❓ อาจยังไม่ได้รับ lineItemAccounts จาก form → routes
+- สถานะ: กำลัง investigate
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
