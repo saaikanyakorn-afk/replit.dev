@@ -136,6 +136,8 @@ export default function ProcessScanStation() {
         const err = await r.json();
         throw new Error(err.message || "บันทึกไม่สำเร็จ");
       }
+      const newLog = await r.json();
+      setMoData(prev => prev ? { ...prev, processLogs: [...prev.processLogs, newLog] } : prev);
       setStep("done");
     } catch (e: any) {
       toast({ title: "เกิดข้อผิดพลาด", description: e.message, variant: "destructive" });
@@ -289,6 +291,35 @@ export default function ProcessScanStation() {
                 })}
               </div>
             </ScanCard>
+
+            {moData.processLogs.length > 0 && (
+              <ScanCard title="ประวัติการบันทึก">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50 text-left">
+                        <th className="py-2 px-3 text-xs font-medium text-gray-500">ขั้นตอน</th>
+                        <th className="py-2 px-3 text-xs font-medium text-gray-500">ผู้บันทึก</th>
+                        <th className="py-2 px-3 text-xs font-medium text-gray-500 text-right">จำนวน</th>
+                        <th className="py-2 px-3 text-xs font-medium text-gray-500 text-right">เวลา</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {moData.processLogs.map((log, idx) => (
+                        <tr key={idx} className="border-b border-gray-50 last:border-0" data-testid={`row-scan-log-${idx}`}>
+                          <td className="py-2 px-3 font-medium text-cyan-700">P{log.step_no}: {log.step_name}</td>
+                          <td className="py-2 px-3 text-gray-600" data-testid={`text-scan-log-recorder-${idx}`}>{log.logged_by_name || "—"}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-gray-700">{log.qty_passed || 0}</td>
+                          <td className="py-2 px-3 text-right text-gray-400 whitespace-nowrap">
+                            {log.logged_at ? new Date(log.logged_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </ScanCard>
+            )}
 
             {step === "confirm" && selectedStep && (
               <ScanCard title={`ยืนยัน: ${selectedStep.name}`} subtitle={`ขั้นตอนที่ ${selectedStep.step_no} · ${moData.productName}`}>
