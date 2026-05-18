@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { QrCode, User, CheckCircle2, ArrowLeft, Camera, ChevronRight, ListChecks, Factory } from "lucide-react";
+import { QrCode, User, CheckCircle2, ArrowLeft, Camera, ChevronRight, ListChecks, Factory, RefreshCw } from "lucide-react";
 import { useLocation } from "wouter";
 import { CameraQrScanner } from "@/components/camera-qr-scanner";
 
@@ -55,6 +55,10 @@ export default function ProcessScanStation() {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [newLogIndexes, setNewLogIndexes] = useState<Set<number>>(new Set());
+
   const [empCameraOpen, setEmpCameraOpen] = useState(false);
   const [moCameraOpen, setMoCameraOpen] = useState(false);
 
@@ -69,13 +73,28 @@ export default function ProcessScanStation() {
   useEffect(() => {
     if ((step !== "process" && step !== "confirm") || !moData) return;
     const fetchLogs = async () => {
+      setIsRefreshing(true);
       try {
         const r = await fetch(`/api/manufacturing-orders/${moData.id}/process-logs?companyId=${companyId}`, { credentials: "include" });
         if (r.ok) {
           const logs = await r.json();
-          setMoData(prev => prev ? { ...prev, processLogs: logs } : prev);
+          setMoData(prev => {
+            if (!prev) return prev;
+            const prevCount = prev.processLogs.length;
+            const newCount = logs.length;
+            if (newCount > prevCount) {
+              const newIdxs = new Set<number>();
+              for (let i = prevCount; i < newCount; i++) newIdxs.add(i);
+              setNewLogIndexes(newIdxs);
+              setTimeout(() => setNewLogIndexes(new Set()), 2000);
+            }
+            return { ...prev, processLogs: logs };
+          });
+          setLastUpdated(new Date());
         }
       } catch {
+      } finally {
+        setIsRefreshing(false);
       }
     };
     fetchLogs();
@@ -128,6 +147,8 @@ export default function ProcessScanStation() {
       }
       setMoData(data);
       setQtyPassed(data.plannedQty || "1");
+      setLastUpdated(null);
+      setNewLogIndexes(new Set());
       setStep("process");
     } finally { setLoading(false); }
   };
@@ -167,6 +188,8 @@ export default function ProcessScanStation() {
     setSelectedStep(null);
     setQtyPassed("");
     setNotes("");
+    setLastUpdated(null);
+    setNewLogIndexes(new Set());
     setStep("mo");
   };
 
@@ -178,6 +201,8 @@ export default function ProcessScanStation() {
     setSelectedStep(null);
     setQtyPassed("");
     setNotes("");
+    setLastUpdated(null);
+    setNewLogIndexes(new Set());
     setStep("employee");
   };
 
@@ -310,7 +335,20 @@ export default function ProcessScanStation() {
             </ScanCard>
 
             {moData.processLogs.length > 0 && (
-              <ScanCard title="ประวัติการบันทึก">
+              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-gray-900 font-bold text-lg">ประวัติการบันทึก</h2>
+                  <div className="flex items-center gap-1.5" data-testid="log-refresh-indicator">
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 text-cyan-500 transition-transform ${isRefreshing ? "animate-spin" : ""}`}
+                    />
+                    {lastUpdated && (
+                      <span className="text-xs text-gray-400" data-testid="text-last-updated">
+                        อัปเดตล่าสุด {lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -323,7 +361,11 @@ export default function ProcessScanStation() {
                     </thead>
                     <tbody>
                       {moData.processLogs.map((log, idx) => (
-                        <tr key={idx} className="border-b border-gray-50 last:border-0" data-testid={`row-scan-log-${idx}`}>
+                        <tr
+                          key={idx}
+                          className={`border-b border-gray-50 last:border-0 transition-colors duration-700 ${newLogIndexes.has(idx) ? "bg-cyan-50" : ""}`}
+                          data-testid={`row-scan-log-${idx}`}
+                        >
                           <td className="py-2 px-3 font-medium text-cyan-700">P{log.step_no}: {log.step_name}</td>
                           <td className="py-2 px-3 text-gray-600" data-testid={`text-scan-log-recorder-${idx}`}>{log.logged_by_name || "—"}</td>
                           <td className="py-2 px-3 text-right tabular-nums text-gray-700">{log.qty_passed || 0}</td>
@@ -335,7 +377,7 @@ export default function ProcessScanStation() {
                     </tbody>
                   </table>
                 </div>
-              </ScanCard>
+              </div>
             )}
 
             {step === "confirm" && selectedStep && (
