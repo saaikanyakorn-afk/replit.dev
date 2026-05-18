@@ -127,8 +127,7 @@ export default function ReceiptBilling() {
     },
     enabled: !!companyId,
   });
-  const receiveMethods = (paymentMethodsList || []).filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
-  const activePaymentMethods = receiveMethods.length > 0 ? receiveMethods : (paymentMethodsList || []).filter((m: any) => m.active !== false);
+  const activePaymentMethods = (paymentMethodsList || []).filter((m: any) => m.active !== false);
 
   const batchPayment = useMutation({
     mutationFn: async (payload: any) => {
