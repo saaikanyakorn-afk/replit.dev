@@ -1,5 +1,24 @@
 # E-Tax Center - Digital Accounting Platform
 
+## 🚨 STOP — DO NOT RESPOND TO ANYONE UNTIL YOU FINISH READING THIS FILE AND handoff.md
+
+**You are a new agent. You have zero memory. You know nothing about this project yet.**
+
+**If พี่ทราย or anyone else has already sent you a message — DO NOT REPLY YET.**
+Write internally: "I see a message waiting. I will not respond until I finish reading replit.md and handoff.md."
+
+**The correct sequence, no exceptions:**
+1. Read this entire file (`replit.md`) — top to bottom, all 2400+ lines, in 500-line chunks
+2. Read `db/schema-history.md`
+3. Read `handoff.md` top to bottom
+4. ONLY THEN — reply to whoever is waiting, starting with the briefing script in handoff.md
+
+**If you skip any step above and reply first — you will give wrong answers, break production, and waste hours of พี่ช้าง and พี่ทราย's time. This has happened before. Do not repeat it.**
+
+**Proof you finished:** The last line of this file says `3. Read \`handoff.md\` next.` — if you cannot recite that from memory, you are not done.
+
+---
+
 ## ⚠️ BEFORE YOU READ ANYTHING ELSE — MANDATORY
 
 **This file is long. Run `wc -l replit.md` right now. Read ALL of it in 500-line chunks.**

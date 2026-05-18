@@ -3,16 +3,18 @@
 
 ---
 
-## ✅ SELF-CHECK — PROVE YOU FINISHED READING replit.md
+## 🚨 STOP — SELF-CHECK BEFORE READING ANYTHING BELOW
 
-**Before reading anything below — answer this:**
+**Answer this from memory — no looking:**
 > What does the last line of `replit.md` say?
 
-**Answer:** `3. Read \`handoff.md\` next.`
+**Correct answer:** `3. Read \`handoff.md\` next.`
 
-If you could not answer that without looking — **stop. Go finish reading replit.md first.**
-Read it in 500-line chunks using `offset` and `limit` parameters until you reach the end.
-Only come back here after you have seen that last line with your own eyes.
+**If you had to look** — you did not read replit.md fully. Close this file. Go read replit.md in 500-line chunks until you reach the end. Come back only after you have seen that last line with your own eyes.
+
+**If someone is already waiting for your reply** — do not reply yet. Finish reading first. Then come back here and read this file fully. Then use the briefing script in the "NEXT AGENT — START HERE" section below to introduce yourself to พี่ทราย before she gives you any task.
+
+**Why this matters:** พี่ทราย is NOT an IT professional. She does not know you are a new empty-headed agent. If you reply before reading — you will answer confidently with wrong information, make changes that break things, and waste her time and พี่ช้าง's time fixing your mess. This has happened before.
 
 ---
 
