@@ -527,6 +527,47 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 
 ---
 
+#### ⚠️ BUG ใหม่: Expense บันทึกไม่ได้ — timeout — SESSION 2026-05-18 NIGHT — ยังไม่เสร็จ ⚠️
+
+**อาการ:** กดบันทึก expense → error 400 "timeout exceeded when trying to connect" ทุกครั้ง
+
+**Root cause (confirmed จาก server logs):**
+```
+[EXP CREATE ERROR] Error: timeout exceeded when trying to connect
+    at resolvePaymentMethodAccountCode (server/route-helpers.ts:848)
+    at expense-routes.ts:415  ← ภายใน db.transaction()
+```
+`resolvePaymentMethodAccountCode` (route-helpers.ts:848) เรียก `db.select()` (global pool connection) **ภายใน** `db.transaction()` → transaction ถือ connection อยู่แล้ว → pool หมด → timeout 10 วินาที
+
+**Fix ที่ทำไปแล้ว (PARTIAL — อาจ incomplete):**
+แทนที่ `resolvePaymentMethodAccountCode` ด้วย `resolvedPm?.accountCode` จาก `pmRec`/`pmRecs` ที่ fetch ด้วย `tx` แล้ว — ทั้ง CREATE (~415) และ UPDATE (~655)
+
+**⚠️ WARNING — Fix อาจ break legacy case:**
+`resolvePaymentMethodAccountCode` มี 3 fallback:
+1. `pm.accountCode` มี → ใช้เลย ✅ (fix ครอบคลุม)
+2. `pm.accountCode` ไม่มี แต่มี `pm.accountId` → query `accounts` table เพิ่ม ⚠️ (fix ไม่ครอบคลุม)
+3. ไม่มีทั้งคู่ → เดาจากชื่อ (เงินสด/โอน) ❌ NO FALLBACK — พี่ช้างยืนยัน
+
+**กฎจากพี่ช้าง (สอนวันนี้):**
+> ก่อนแก้โค้ดทุกครั้ง ต้องทำ 3 ขั้น:
+> 1. หาว่าทำไมถึงเขียนแบบนั้น (อาจมีเหตุผล)
+> 2. ดู business requirement — โค้ด "โง่" บางทีมาจาก business needs
+> 3. เมื่อแน่ใจว่าไม่ใช่ business need แค่ implement ผิด — ค่อยแก้ตาม technical
+
+**❓ คำถามที่รอพี่ทรายตอบ (ยังไม่ได้คำตอบ):**
+> ถ้าเจอวิธีชำระเงินที่ยังไม่ได้ผูกรหัสบัญชีไว้ ต้องการให้ระบบทำอะไร:
+> 1. บล็อกการบันทึกและแจ้งให้ไปตั้งค่าก่อน
+> 2. พยายามหาบัญชีให้เองจากชื่อวิธีชำระ
+
+**NO FALLBACK rule (พี่ช้างยืนยัน):** ไม่ว่าพี่ทรายจะตอบอะไร เขียนโค้ดตามนั้นเท่านั้น — ทุกกรณีอื่น throw error
+
+**สิ่งที่ต้องทำต่อ:**
+1. รอคำตอบจากพี่ทราย
+2. ตรวจสอบ `pm.accountId` case ว่ายังมีใน DB หรือไม่ (`SELECT COUNT(*) FROM payment_methods WHERE account_id IS NOT NULL AND account_code IS NULL`)
+3. แก้ให้ครบตาม business requirement — NO FALLBACK
+
+---
+
 ### SESSION 2026-05-17 — TASK #34 GR LOT QR LABEL
 
 | # | Change | File | Status |
