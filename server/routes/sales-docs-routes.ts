@@ -2074,6 +2074,26 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
     });
     const savedItems = await fetchTaxInvoiceItems(result.id);
 
+    // Build lineItemAccounts จาก accountCode ที่กำหนดไว้ในสินค้า
+    let tivCreateLineItemAccounts: { accountCode: string; accountName: string; amount: number }[] | undefined;
+    const tivCreateItemsWithProduct = savedItems.filter((i: any) => i.productId);
+    if (tivCreateItemsWithProduct.length > 0) {
+      const tivCreateProductIds = [...new Set(tivCreateItemsWithProduct.map((i: any) => i.productId))] as number[];
+      const tivCreateProductRows = await db.select({ id: products.id, accountCode: products.accountCode, name: products.name })
+        .from(products).where(inArray(products.id, tivCreateProductIds));
+      const tivCreateProductMap = new Map(tivCreateProductRows.map(p => [p.id, p]));
+      const tivCreateMapped: { accountCode: string; accountName: string; amount: number }[] = [];
+      for (const item of savedItems) {
+        if (!item.productId) continue;
+        const prod = tivCreateProductMap.get(item.productId);
+        if (!prod?.accountCode) continue;
+        const amount = Math.round(parseFloat(String(item.total || "0")) * 100) / 100;
+        if (amount <= 0) continue;
+        tivCreateMapped.push({ accountCode: prod.accountCode, accountName: prod.name || "", amount });
+      }
+      if (tivCreateMapped.length > 0) tivCreateLineItemAccounts = tivCreateMapped;
+    }
+
     let journalResult = null;
     try {
       const pmAccCode = await resolvePaymentMethodAccountCode(result.companyId, result.paymentMethod);
@@ -2096,6 +2116,7 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
         paymentMethodAccountCode: pmAccCode,
         linkedInvoiceId: result.invoiceId,
         isCreditPayment: result.status !== "cash",
+        lineItemAccounts: tivCreateLineItemAccounts,
         overrideLines: body?.journalOverrideLines || req?.body?.journalOverrideLines || undefined,
       });
     } catch (e) {}
@@ -2209,6 +2230,26 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
       fetchTaxInvoiceItems(existing.id),
     ]);
 
+    // Build lineItemAccounts จาก accountCode ที่กำหนดไว้ในสินค้า
+    let tivUpdateLineItemAccounts: { accountCode: string; accountName: string; amount: number }[] | undefined;
+    const tivUpdateItemsWithProduct = savedItems.filter((i: any) => i.productId);
+    if (tivUpdateItemsWithProduct.length > 0) {
+      const tivUpdateProductIds = [...new Set(tivUpdateItemsWithProduct.map((i: any) => i.productId))] as number[];
+      const tivUpdateProductRows = await db.select({ id: products.id, accountCode: products.accountCode, name: products.name })
+        .from(products).where(inArray(products.id, tivUpdateProductIds));
+      const tivUpdateProductMap = new Map(tivUpdateProductRows.map(p => [p.id, p]));
+      const tivUpdateMapped: { accountCode: string; accountName: string; amount: number }[] = [];
+      for (const item of savedItems) {
+        if (!item.productId) continue;
+        const prod = tivUpdateProductMap.get(item.productId);
+        if (!prod?.accountCode) continue;
+        const amount = Math.round(parseFloat(String(item.total || "0")) * 100) / 100;
+        if (amount <= 0) continue;
+        tivUpdateMapped.push({ accountCode: prod.accountCode, accountName: prod.name || "", amount });
+      }
+      if (tivUpdateMapped.length > 0) tivUpdateLineItemAccounts = tivUpdateMapped;
+    }
+
     let journalResult = null;
     const statusChanged = body.status && body.status !== existing.status;
     const journalStatuses = ["approved", "issued", "debtor"];
@@ -2296,6 +2337,7 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
               paymentMethod: updated.paymentMethod || undefined,
               paymentMethodAccountCode: pmAccCode2,
               linkedInvoiceId: updated.invoiceId,
+              lineItemAccounts: tivUpdateLineItemAccounts,
               overrideLines: body?.journalOverrideLines || req?.body?.journalOverrideLines || undefined,
             });
           }
@@ -2319,6 +2361,7 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
             paymentMethod: updated.paymentMethod || undefined,
             paymentMethodAccountCode: pmAccCode3,
             linkedInvoiceId: updated.invoiceId,
+            lineItemAccounts: tivUpdateLineItemAccounts,
             overrideLines: body?.journalOverrideLines || req?.body?.journalOverrideLines || undefined,
           });
         }
