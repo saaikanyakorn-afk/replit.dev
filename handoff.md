@@ -409,15 +409,19 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - **ไฟล์จริง:** `expense.tsx` (route `/purchases/exp/new`) + `expense-routes.ts`
 **พบปัญหาใน `expense-routes.ts` ที่ยังไม่ได้แก้ครบ — FIXING 🔧**
 
+**ปัญหาครบทุกจุด — FIXING 🔧**
+
 | ไฟล์ | บรรทัด | ปัญหา |
 |---|---|---|
 | expense-routes.ts | 5 | ไม่ได้ import `paymentMethods` table |
 | expense-routes.ts | ~13 | ไม่มี `isCreditPm` function |
 | expense-routes.ts | 365 | `body.paymentMethod !== "เครดิต"` ← ใช้ name ไม่ใช่ accountCode |
+| expense-routes.ts | 405, 638, 1120 | `pmName === "เครดิต"` ← ควร lookup PM table ผ่าน `isCreditPm` |
+| expense.tsx | 646 | `form.paymentMethod ? "paid" : "unpaid"` ← override ค่าที่ถูกต้องใน `form.paymentStatus` |
 
-- **หมายเหตุ:** PART B เดิม (session ก่อน) fix เฉพาะ 3 จุดแรก (CREATE/UPDATE/bulk-import) แต่ยังมี occurrence line 365 ที่พลาด
-- **Fix ที่ต้องทำ:** เพิ่ม `isCreditPm` + import `paymentMethods` + แก้ line 365
-- `JournalPreviewPanel` ใน `expense.tsx` — ตรวจสอบว่าส่ง `lineItemAccounts` ครบไหม
+- แก้ทุกจุดพร้อมกัน: เพิ่ม `isCreditPm` + import + แก้ 4 จุด `isCredit` + แก้ line 646
+- ตรวจ `/api/expense-journal-preview` endpoint ด้วย
+- Server ยังรัน ไม่มี error
 - กำลัง fix — รอ HMR
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
