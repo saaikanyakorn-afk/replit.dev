@@ -90,9 +90,20 @@ Before applying any rule, ask: **what problem does this rule exist to prevent?**
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-17 — Task #35 ใบเบิกวัตถุดิบ + QR Scan ✅ done dev
+**Last verified:** 2026-05-18 — พี่ช้าง session start. replit.md + schema-history.md + handoff.md fully read ✅
 **Production status:** Last known deploy #75 (2026-05-15) ✅
 **Pending work:** Task #35 complete on dev — awaiting พี่ทราย test + พี่ช้าง approval before push
+
+**⚠️ SESSION 2026-05-18 WARNING:**
+Previous session summary (not by พี่ช้าง) listed several fixes as done:
+- MO form: navigate to list after save
+- DB warmupPool() + connectionTimeoutMillis 20s
+- journal-form.tsx + expense.tsx: auto-retry on timeout
+- Payment method dropdown: removed `paymentType` filter from 13 files
+- Payment method double checkmark: mid-diagnosis, STOPPED by พี่ช้าง
+
+พี่ช้าง said all these changes were made WITHOUT reading replit.md first and WITHOUT confirming with him.
+Status of those changes: **UNVERIFIED — awaiting พี่ช้าง review and direction**
 
 ---
 
