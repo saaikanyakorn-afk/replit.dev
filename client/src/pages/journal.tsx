@@ -202,7 +202,9 @@ export default function Journal() {
     const da = new Date(a.entryDate).getTime();
     const db_val = new Date(b.entryDate).getTime();
     if (db_val !== da) return db_val - da;
-    return (b.id || 0) - (a.id || 0);
+    const refA = a.reference || a.entryNo || "";
+    const refB = b.reference || b.entryNo || "";
+    return refB.localeCompare(refA, undefined, { numeric: true, sensitivity: "base" });
   });
 
   return (
