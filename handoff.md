@@ -365,9 +365,10 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
   - `JournalPreviewPanel` รับ `lineItemAccounts` prop อยู่แล้ว ✅
   - `/api/journal-preview` endpoint มี `isSalesDoc && lineItemAccounts` logic อยู่แล้ว (line 1578) ✅
   - **ปัญหาจริง:** `tax-invoice-form.tsx` ไม่ได้ส่ง `lineItemAccounts` ให้ `JournalPreviewPanel` → preview ใช้ default account
-- **Fix:** แก้ `tax-invoice-form.tsx` ให้ build `lineItemAccounts` จาก `items` + `products` query แล้วส่งให้ panel
-- **ต้อง import:** `useMemo` + `items` type
-- สถานะ: กำลัง fix
+- **Fix:** แก้ `tax-invoice-form.tsx` — เพิ่ม `lineItemAccounts` useMemo จาก `items` + `products` (line 330) แล้วส่งให้ `JournalPreviewPanel`
+- `useMemo` + `Product` type มีอยู่แล้ว (`accountCode` field ✅)
+- HMR ผ่าน ✅
+- สถานะ: แก้แล้ว — รอพี่ทรายทดสอบ RE26051800003
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
