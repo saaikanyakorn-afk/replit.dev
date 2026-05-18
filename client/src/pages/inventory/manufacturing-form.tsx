@@ -74,6 +74,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
   const [logStepQty, setLogStepQty] = useState("1");
   const [logStepNotes, setLogStepNotes] = useState("");
   const [logReporterFilter, setLogReporterFilter] = useState("");
+  const [logReporterExact, setLogReporterExact] = useState(false);
   const [completedQty, setCompletedQty] = useState("");
   const [completeLot, setCompleteLot] = useState("");
   const [completeMfgDate, setCompleteMfgDate] = useState("");
@@ -902,15 +903,48 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
               {processLogs.length > 0 && (
                 <div className="space-y-2 mt-2">
                   {isSupervisor && (
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                      <Input
-                        className="pl-8 h-8 text-sm"
-                        placeholder="กรองตามชื่อผู้บันทึก..."
-                        value={logReporterFilter}
-                        onChange={(e) => setLogReporterFilter(e.target.value)}
-                        data-testid="input-filter-log-reporter"
-                      />
+                    <div className="space-y-2">
+                      {(() => {
+                        const counts: Record<string, number> = {};
+                        processLogs.forEach((log: any) => {
+                          const name = log.logged_by_name || "—";
+                          counts[name] = (counts[name] || 0) + 1;
+                        });
+                        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                        return (
+                          <div className="flex flex-wrap gap-1.5 items-center" data-testid="summary-reporter-counts">
+                            <span className="text-xs text-gray-400 shrink-0">บันทึกโดย:</span>
+                            {entries.map(([name, count]) => (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => {
+                                  const isActive = logReporterExact && logReporterFilter === name;
+                                  setLogReporterFilter(isActive ? "" : name);
+                                  setLogReporterExact(!isActive);
+                                }}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${logReporterExact && logReporterFilter === name ? "bg-cyan-100 border-cyan-300 text-cyan-800" : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"}`}
+                                data-testid={`button-reporter-filter-${name.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9\u0E00-\u0E7F-]/g, "")}`}
+                              >
+                                {name}
+                                <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold ${logReporterExact && logReporterFilter === name ? "bg-cyan-600 text-white" : "bg-gray-300 text-gray-700"}`}>
+                                  {count}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                        <Input
+                          className="pl-8 h-8 text-sm"
+                          placeholder="กรองตามชื่อผู้บันทึก..."
+                          value={logReporterFilter}
+                          onChange={(e) => { setLogReporterFilter(e.target.value); setLogReporterExact(false); }}
+                          data-testid="input-filter-log-reporter"
+                        />
+                      </div>
                     </div>
                   )}
                   {(() => {
@@ -918,7 +952,9 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                     const filteredLogs = needle === ""
                       ? processLogs
                       : processLogs.filter((log: any) =>
-                          (log.logged_by_name || "").toLowerCase().includes(needle)
+                          logReporterExact
+                            ? (log.logged_by_name || "") === logReporterFilter
+                            : (log.logged_by_name || "").toLowerCase().includes(needle)
                         );
                     return (
                       <div className="border rounded-lg overflow-hidden">
