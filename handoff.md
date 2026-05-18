@@ -176,27 +176,13 @@ A (พี่ทราย): "แยกกัน"
 A (พี่ทราย + decision): ไม่ต้องทำ backward compatibility สำหรับ frontend dropdown. ข้อมูลเก่าที่ไม่ถูก พี่ทรายจะ re-test ใหม่เองในช่วง testing phase.
 → **Backend dual-lookup (accountCode → name) คือ safety net ที่มีอยู่แล้ว ไม่ต้องทำ frontend dual-lookup สำหรับ backward compat**
 
-**⚠️ OPEN — รอคำตอบจากพี่ทราย (ถามไปแล้ว ยังไม่ได้รับคำตอบ ณ 2026-05-18):**
+**✅ Q1-Q4 ANSWERED BY พี่ช้าง (2026-05-18) — CLOSED:**
 
-คำถามที่ส่งให้พี่ทรายพร้อม testing guide:
+A (พี่ช้าง): **"1-4ข้อ ไม่ต้องคิดให้ เพราะตัวเลือกจะมาจากการตั้งค่าการรับเงินและจ่ายเงิน"**
 
-**Q1: ใบมัดจำขาย (deposit-form)**
-ถามพี่ทราย: "มัดจำคือลูกค้าจ่ายเงินให้เราแล้ว ใช่ไหมคะ? แบบนี้ตัวเลือก 'เครดิต (ยังไม่รับเงิน)' ไม่น่าจะมีในช่องนี้ ถูกไหม?"
-→ **ยังไม่ได้คำตอบ — ห้ามแก้โค้ดก่อนได้รับคำตอบ**
-
-**Q2: ใบลดหนี้ (credit-note-form)**
-ถามพี่ทราย: "ปกติออกใบลดหนี้แล้ว เงินวิ่งยังไงคะ? คืนเงินลูกค้าเลย หรือหักกลับยอดที่ค้างอยู่?"
-→ **ยังไม่ได้คำตอบ — ต้องรู้ก่อนเพื่อให้รู้ว่าช่องวิธีชำระเงินควรมีตัวเลือกอะไรบ้าง**
-
-**Q3: ใบสั่งขาย (sales-order-form)**
-ถามพี่ทราย: "ตอนนี้มีตัวเลือก 'ไม่ระบุ' ในช่องวิธีชำระ ซึ่งแปลว่ายังไม่กำหนด เพียงพอไหมคะ? หรือต้องการให้มีตัวเลือก 'เครดิต' ด้วย?"
-→ **ยังไม่ได้คำตอบ — ห้ามแก้โค้ดก่อน**
-
-**Q4: ใบเสร็จรับเงิน (receipt-form)**
-ถามพี่ทราย: "ใบเสร็จออกหลังจากรับเงินแล้วใช่ไหมคะ? แบบนี้ไม่มีตัวเลือก 'เครดิต' เพราะถ้าออกใบเสร็จ = รับเงินแล้ว ถูกไหมคะ?"
-→ **ยังไม่ได้คำตอบ — ห้ามแก้โค้ดก่อน**
-
-**สถานะ:** พี่ทรายกำลังทดสอบอยู่บน dev และจะตอบคำถามเหล่านี้พร้อมกัน
+→ **ไม่ต้อง hardcode ว่าฟอร์มไหนควรมี "เครดิต" หรือไม่** — dropdown options มาจาก payment_methods ที่บริษัทตั้งค่าไว้ใน Settings > วิธีชำระเงิน เท่านั้น
+→ ถ้าบริษัทตั้งค่า "เครดิต" ไว้ใน receive-type → ทุกฟอร์มขายจะมีตัวเลือกนั้น
+→ ถ้าบริษัทไม่ตั้ง → ไม่มี — ถูกต้องแล้ว ไม่ใช่ bug
 
 ### Core failure this session — read this slowly
 
@@ -258,6 +244,36 @@ The test พี่ช้าง uses: *"If you really read those documents like a
 **journal sort tiebreaker:** `desc(reference)` added to prevent random order when multiple journals share same date
 
 **tax-invoice journal (CREATE + UPDATE):** now builds `lineItemAccounts` from `product.accountCode` per line item — was using single account for all lines
+
+#### ⚠️ BUG FOUND IN TAX-INVOICE-FORM — NOT YET FIXED (2026-05-18)
+
+**Symptom:** Preview แสดง PM ที่เลือก (เช่น KBANK) ถูกต้อง แต่บันทึกจริงลง AR (เครดิต) แทน bank account
+
+**Root cause (2 lines):**
+
+Line ~1000 frontend (`tax-invoice-form.tsx`):
+```typescript
+isCashMethod(form.paymentMethod) ? "cash" : "debtor"
+```
+`isCashMethod()` return true เฉพาะ PM ที่ชื่อ "เงินสด" เท่านั้น → ทุก PM อื่น (bank transfer, โอนเงิน ฯลฯ) → status = "debtor" → backend คิดว่าเป็นเครดิต → ลง AR แทน bank account
+
+Line ~2098 backend (accounting-routes.ts หรือ tax-invoice route):
+```typescript
+isCreditPayment: result.status !== "cash"
+```
+backend ใช้ `status === "cash"` เพื่อตัดสินว่า debit bank หรือ AR — ถ้า status ≠ "cash" → ลง AR เสมอ
+
+**Bug chain:**
+1. User เลือก KBANK → `form.paymentMethod` = accountCode ✅
+2. Preview: client-side คำนวณจาก paymentMethod → แสดง KBANK debit ✅ (preview logic ถูก)
+3. Submit: `isCashMethod(form.paymentMethod)` → false (ไม่ใช่ "เงินสด") → ส่ง status = "debtor"
+4. Backend: `isCreditPayment = result.status !== "cash"` → true → ลง AR แทน KBANK
+
+**Fix needed:**
+- frontend: เปลี่ยน logic จาก binary (cash/debtor) เป็น ส่ง PM accountCode จริงๆ ไปให้ backend
+- OR: เปลี่ยน `isCashMethod` ให้ครอบคลุม non-credit PMs ทั้งหมด (เงินสด + โอน + เช็ค + bank) ไม่ใช่แค่ "เงินสด"
+- backend: ใช้ PM accountCode เพื่อตัดสิน journal line ไม่ใช่ binary cash/debtor status
+- **ต้องถามพี่ช้าง confirm approach ก่อน fix**
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
