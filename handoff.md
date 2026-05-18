@@ -377,10 +377,12 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 | Journal create (บันทึกใหม่) | ไม่ส่ง `lineItemAccounts` → บันทึก 4100100 | ✅ |
 | Journal update (แก้ไข+บันทึกซ้ำ) | skip เพราะ journal มีอยู่แล้ว | ✅ ลบ+recreate |
 
-**Bug ใหม่จากพี่ทราย ⚠️:** "preview แสดง 4111000 ถูก แต่พอกดบันทึกจริง ระบบไม่ได้บันทึกตามพรีวิวเลย"
-- Preview pipeline: ✅ fixed (ส่ง lineItemAccounts ให้ panel)
-- Save pipeline: ❓ อาจยังไม่ได้รับ lineItemAccounts จาก form → routes
-- สถานะ: กำลัง investigate
+**Bug ใหม่จากพี่ทราย — ROOT CAUSE พบแล้ว 🔍**
+- พี่ทราย: "preview แสดง 4111000 ถูก แต่กดบันทึกจริง ระบบไม่บันทึกตามพรีวิว"
+- ตรวจ DB: item id เปลี่ยนแล้ว (14124→14127) แสดงว่า PATCH ถูกเรียก ✅ แต่ journal (SV) ยังเป็นเลขเดิม = ไม่มีการ recreate
+- **Root cause จริง:** สถานะเอกสาร = `"cash"` แต่ `journalStatuses = ["approved", "issued", "debtor"]` — **ไม่มี "cash"** → `shouldCreateTxJournal = false` ทุกครั้ง → journal ไม่เคยถูก delete+recreate
+- **Fix:** เพิ่ม `"cash"` เข้า `journalStatuses` array ใน `tax-invoice-routes.ts`
+- สถานะ: กำลัง fix
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
