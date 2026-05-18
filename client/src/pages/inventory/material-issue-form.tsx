@@ -275,6 +275,25 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
     enabled: !!company?.id && !isEditMode,
   });
 
+  // ── Bulk fetch lots for all trackLots products currently in items[] (new-mode) ──
+  const itemTrackLotsProductIds = useMemo(
+    () => !isEditMode ? [...new Set(items.filter(it => it.trackLots && it.productId).map(it => it.productId as number))] : [],
+    [items, isEditMode]
+  );
+  const { data: itemLotsMap = {} } = useQuery<Record<number, LotOption[]>>({
+    queryKey: ["/api/item-lots-bulk", company?.id, itemTrackLotsProductIds.join(",")],
+    queryFn: async () => {
+      if (!company?.id || itemTrackLotsProductIds.length === 0) return {};
+      const map: Record<number, LotOption[]> = {};
+      await Promise.all(itemTrackLotsProductIds.map(async (pid) => {
+        const r = await fetch(`/api/product-lots?companyId=${company.id}&productId=${pid}`, { credentials: "include" });
+        if (r.ok) map[pid] = await r.json();
+      }));
+      return map;
+    },
+    enabled: !!company?.id && !isEditMode && itemTrackLotsProductIds.length > 0,
+  });
+
   // ── View mode: fetch live lot quantities for each item that has a lot_id ──
   const viewModeLotIds = isEditMode && existingIssue
     ? [...new Set(existingIssue.items.filter(it => it.lot_id).map(it => it.lot_id as number))]
@@ -551,6 +570,12 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
 
   function updateQty(idx: number, val: number) {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: val } : it));
+  }
+
+  function updateLot(idx: number, lotId: number | null, lotNumber: string, availQty: number | undefined) {
+    setItems(prev => prev.map((it, i) =>
+      i === idx ? { ...it, lotId, lotNumber, lotAvailableQty: availQty } : it
+    ));
   }
 
   // ──────────────────────────────────────────────
@@ -1073,7 +1098,35 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
                         {isOver && <AlertTriangle className="inline h-3 w-3 text-red-500 mr-1" />}
                         {it.productName}
                       </TableCell>
-                      <TableCell data-testid={`text-new-lot-${idx}`}>{it.lotNumber || "—"}</TableCell>
+                      <TableCell data-testid={`text-new-lot-${idx}`}>
+                        {it.trackLots ? (
+                          <Select
+                            value={it.lotId ? String(it.lotId) : "none"}
+                            onValueChange={val => {
+                              if (val === "none") { updateLot(idx, null, "", undefined); return; }
+                              const lot = (itemLotsMap[it.productId!] ?? []).find(l => l.id === Number(val));
+                              if (lot) updateLot(idx, lot.id, lot.lotNumber, Number(lot.quantity));
+                            }}
+                          >
+                            <SelectTrigger className={`h-8 text-xs w-36 ${!it.lotId ? "border-amber-400 text-amber-700" : ""}`} data-testid={`select-lot-${idx}`}>
+                              <SelectValue placeholder="เลือก Lot" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— ไม่ระบุ Lot —</SelectItem>
+                              {(itemLotsMap[it.productId!] ?? []).map(lot => (
+                                <SelectItem key={lot.id} value={String(lot.id)}>
+                                  {lot.lotNumber}
+                                  {lot.expiryDate ? ` (หมด ${lot.expiryDate.slice(0,10)})` : ""}
+                                  {" "}
+                                  <span className="text-muted-foreground">คงเหลือ {Number(lot.quantity).toLocaleString()}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">ไม่ติด Lot</span>
+                        )}
+                      </TableCell>
                       <TableCell className={`text-right ${isOver ? "text-red-600 font-medium" : "text-muted-foreground"}`} data-testid={`text-new-avail-${idx}`}>
                         {it.lotAvailableQty !== undefined ? it.lotAvailableQty.toLocaleString() : "—"}
                       </TableCell>
