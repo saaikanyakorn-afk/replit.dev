@@ -277,7 +277,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
     onSuccess: (data: any) => {
       toast({ title: editId ? "บันทึกแล้ว" : "สร้างใบสั่งผลิตแล้ว" });
       qc.invalidateQueries({ queryKey: ["/api/manufacturing-orders"] });
-      if (!editId) navigate(`${basePath}/form/${data.id}`);
+      navigate(basePath);
     },
     onError: (err: any) => toast({ title: "บันทึกไม่สำเร็จ", description: err.message, variant: "destructive" }),
   });
