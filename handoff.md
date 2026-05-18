@@ -342,11 +342,20 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - **อ้างอิง:** invoice routes line 1005-1039 (`buildInvoiceLineItemAccounts`) ใช้เป็น template
 - สถานะ: แก้แล้ว ✅ — เอกสารใหม่ทุกใบลง 4111000 ถูกต้องแล้ว
 
-**Bug ต่อเนื่อง: UPDATE ไม่อัพเดท journal ที่มีอยู่แล้ว — DIAGNOSED 🔍**
-- พี่ทรายเข้าไปกดแก้ไข RE26051800003 แล้วบันทึกใหม่ → ระบบควรอัพเดท journal แต่ไม่ทำ
-- **Root cause:** `createAutoJournalEntry` บรรทัด 309-310 — **skip ทันที** ถ้ามี journal อยู่แล้ว (ไม่ delete+recreate)
-- **แนวทางแก้:** ต้อง delete journal เก่าก่อน แล้ว recreate ใหม่เมื่อ UPDATE (หรือ upsert)
-- สถานะ: กำลัง investigate — รอดูว่า invoice routes จัดการอย่างไร (เป็น reference)
+**Bug ต่อเนื่อง: UPDATE ไม่อัพเดท journal ที่มีอยู่แล้ว — FIXED ✅**
+- **Root cause:** `createAutoJournalEntry` line 309-310 skip ทันทีถ้ามี journal อยู่แล้ว
+- **Fix:** ลบ journal เก่าก่อน recreate ในทุก UPDATE path ของ tax invoice (ทำ once ก่อน try block)
+- imports ครบ ✅ ทดสอบด้วย RE26051800005 ผ่าน ✅
+
+**วิธีแก้เอกสาร RE26051800003 ของทาริกา:**
+- พี่ทรายเปิด RE26051800003 → กดแก้ไข → กดบันทึก (ไม่ต้องเปลี่ยนอะไร)
+- ระบบจะ: 1) ลบ journal เก่า (SV26051800003 ที่ลง 4100100 ผิด) → 2) สร้างใหม่ใช้ 4111000 ✅
+
+**สรุปการแก้ทั้งหมดสำหรับ bug นี้ใน `tax-invoice-routes.ts`:**
+| จุด | ปัญหา | Fix |
+|---|---|---|
+| Tax invoice สร้างใหม่ | ไม่ส่ง `lineItemAccounts` → journal ใช้ 4100100 | เพิ่ม build logic ก่อน CREATE journal |
+| Tax invoice UPDATE | ไม่ส่ง `lineItemAccounts` + skip ถ้ามี journal แล้ว | เพิ่ม delete+recreate + `lineItemAccounts` |
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
