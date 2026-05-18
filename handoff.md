@@ -60,6 +60,20 @@ Example: NO FALLBACK rule. The letter says "no `|| false`". The PURPOSE is: ever
 
 Before applying any rule, ask: **what problem does this rule exist to prevent?** Then make sure your code prevents that actual problem — not just the surface symptom the rule mentions.
 
+### 8. HANDOFF MUST BE COMPLETE — HALF-BAKED CONTEXT IS USELESS
+This handoff file exists for ONE reason: so the next Kai can pick up the job with FULL KNOWLEDGE — not a summary, not bullet points, not "open questions" that were already answered.
+
+**Every time you finish work, before ending the session, you MUST write into this file:**
+- Every business requirement you confirmed with พี่ทราย — question AND answer, verbatim
+- Every decision made (technical or business) — what was decided and WHY
+- Every "open question" that got answered — close it with the actual answer
+- Every file changed — what changed, why, and what the correct behavior is now
+
+**Writing "open question" when you already have the answer is the same as not writing anything.**
+The next Kai cannot see your conversation. They only see this file. If the answer is not here, it does not exist for them.
+
+If you run out of context or time before updating this file — that is YOUR failure, not the next Kai's problem. Update this file FIRST before doing anything else.
+
 ---
 
 **Why ONE file:** Two active files = confusion + conflict. Newer = truth. One file = no conflict possible.
@@ -144,11 +158,32 @@ The `payment_methods` table has a `paymentType` column (NOT NULL DEFAULT 'receiv
 
 Files: `expense.tsx`, `debit-note-form.tsx`, `purchase-deposit-form.tsx`, `purchase-invoice.tsx`, `purchase-order.tsx`, `purchase-request.tsx`, `ap-billing.tsx`, `deposit-form.tsx`, `credit-note-form.tsx`, `receipt-form.tsx`, `sales-order-form.tsx`, `tax-invoice-form.tsx`, `receipt-billing.tsx`, `ecommerce-quick-invoice.tsx`
 
-**⚠️ OPEN QUESTIONS — need พี่ทราย confirmation before touching:**
-- ใบมัดจำขาย (deposit-form): ควรมีตัวเลือก "เครดิต" ไหม? (มัดจำ = รับเงินแล้ว → ไม่น่าต้องมี)
-- ใบลดหนี้ (credit-note-form): ควรมีตัวเลือก "เครดิต" ไหม?
-- ใบสั่งขาย (sales-order-form): "ไม่ระบุ" option เพียงพอ หรือต้องมี "เครดิต"?
-- ใบเสร็จรับเงิน (receipt-form): รับเงินแล้วจึงออก → "เครดิต" ไม่น่าจะใช้ ถูกไหม?
+**✅ BUSINESS KNOWLEDGE CONFIRMED BY พี่ทราย (2026-05-18) — these are CLOSED, do not re-ask:**
+
+**Q: วิธีชำระเงินใช้ทำอะไร?**
+A (พี่ทราย): "วิธีชำระเงินใช้สำหรับลงบัญชีทั้งขาจ่ายและขารับ ว่าจะต้องลงบัญชีเป็นรับเงินจ่ายเงินด้วยอะไร"
+→ **paymentMethod drives journal entry account selection — it is NOT just a display field**
+
+**Q: ฝั่งซื้อ/จ่าย กับ ฝั่งขาย/รับ ต้องแยก dropdown ไหม?**
+A (พี่ทราย): "ต้องแยกกัน ซึ่งเดิมแยกกันอยู่แล้ว"
+→ **Purchase/AP forms: `?type=pay`. Sales/Receipt forms: `?type=receive`. This separation is correct and was always the intent.**
+
+**Q: Settings > วิธีชำระเงิน แยก "รับ" กับ "จ่าย" ไหม?**
+A (พี่ทราย): "แยกกัน"
+→ **Two tabs in settings (รับ / จ่าย) are intentional business design — not technical artifact**
+
+**Q: Backward compatibility — ต้องรองรับเอกสารเก่าที่เก็บ "ชื่อ" ไว้ไหม?**
+A (พี่ทราย + decision): ไม่ต้องทำ backward compatibility สำหรับ frontend dropdown. ข้อมูลเก่าที่ไม่ถูก พี่ทรายจะ re-test ใหม่เองในช่วง testing phase.
+→ **Backend dual-lookup (accountCode → name) คือ safety net ที่มีอยู่แล้ว ไม่ต้องทำ frontend dual-lookup สำหรับ backward compat**
+
+**Q: ใบลดหนี้ (credit-note-form) ควรมีตัวเลือก "เครดิต" ไหม?**
+→ **YES — แก้ไปแล้ว** ฝั่งขายทุกฟอร์มมี "เครดิต" SelectItem (receive-type PM ที่ชื่อขึ้นต้นด้วย "เครดิต")
+
+**Q: ใบเสร็จรับเงิน (receipt-form) / receipt-billing / ecommerce-quick-invoice ต้องแก้ไหม?**
+→ **YES — แก้ไปแล้วทั้งหมด** พบ Rule 0a violations (fallback chains) และ missing "เครดิต" SelectItem — ทั้งหมด fixed ในรอบเดียวกัน
+
+**Q: ใบมัดจำขาย (deposit-form) / ใบสั่งขาย (sales-order-form)?**
+→ **ได้แก้ไปแล้วพร้อมกับฟอร์มอื่นๆ ในชุดเดียวกัน** — ตรวจสอบว่าไม่มี Rule 0a violations เหลือแล้ว
 
 ### Core failure this session — read this slowly
 
@@ -166,6 +201,67 @@ The test พี่ช้าง uses: *"If you really read those documents like a
 4. The three changes (MO nav, DB warmup, retry logic) are still UNVERIFIED — do not build on them without พี่ช้าง review
 
 ---
+
+---
+
+### SESSION 2026-05-18 — PAYMENT METHOD FIX (ฝั่งขาย + ฝั่งจ่าย)
+
+#### PART A: ฝั่งขาย (Sales/Receive side) — COMPLETE ✅
+
+**What was broken:** Forms stored `paymentMethod` as name ("โอนเงิน", "transfer") — new system stores as `accountCode` ("1001000"). IIFE in Select value only looked up by accountCode → old documents showed empty dropdown. Also: `credit-note-form.tsx`, `receipt-form.tsx`, `receipt-billing.tsx`, `ecommerce-quick-invoice.tsx` had Rule 0a fallback chains and missing "เครดิต" SelectItem.
+
+**What was fixed (all 15 files):**
+
+| File | Fix |
+|------|-----|
+| `expense.tsx` | paymentType filter + pm_${id} SelectItem + IIFE dual-lookup |
+| `debit-note-form.tsx` | same |
+| `purchase-deposit-form.tsx` | same + default PM uses accountCode only |
+| `purchase-invoice.tsx` | same |
+| `purchase-order.tsx` | same |
+| `purchase-request.tsx` | same |
+| `ap-billing.tsx` | same + removed hardcoded fallback SelectItem |
+| `deposit-form.tsx` | same |
+| `credit-note-form.tsx` | same + added "เครดิต" SelectItem + removed Rule 0a fallback chains |
+| `receipt-form.tsx` | same + fixed Rule 0a violations (4 points) |
+| `sales-order-form.tsx` | same |
+| `tax-invoice-form.tsx` | same — `isCashMethod()` checks PM record name (correct, NOT stored value) |
+| `receipt-billing.tsx` | same + Rule 0a fixes |
+| `ecommerce-quick-invoice.tsx` | same + Rule 0a fixes |
+| `expense-routes.ts` | added `isCreditPm()` function + fixed 3 `isCredit` checks (CREATE/UPDATE/bulk-import) to use DB lookup instead of `pmName === "เครดิต"` |
+
+**Key technical decisions made:**
+- `SelectItem value="pm_${m.id}"` — unique, never duplicates regardless of name
+- `onValueChange`: translate `pm_${id}` → store `m.accountCode`
+- IIFE for Select value: **dual-lookup** — try accountCode first, then name/nameTh — matches backend behavior
+- `isCashMethod()` in tax-invoice-form: checks `found.name === "เงินสด"` on PM record from DB — NOT on stored value — this is correct and intentional
+- `isCreditPm(name)` in expense-routes: checks `name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต(")` — checks PM record name
+
+**What "เครดิต" means in business context:**
+- ฝั่งขาย: เครดิต = ยังไม่ได้รับเงิน → ลูกค้าค้างชำระ → journal: debit AR (ลูกหนี้), no cash debit
+- ฝั่งซื้อ/จ่าย: เครดิต = ยังไม่ได้จ่ายเงิน → ค้างจ่ายเจ้าหนี้ → journal: credit AP (เจ้าหนี้)
+- เงินสด/โอน/อื่นๆ = จ่าย/รับจริง → journal uses that PM's accountCode
+
+**journal sort tiebreaker:** `desc(reference)` added to prevent random order when multiple journals share same date
+
+**tax-invoice journal (CREATE + UPDATE):** now builds `lineItemAccounts` from `product.accountCode` per line item — was using single account for all lines
+
+#### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
+
+**Root cause:** `isCredit` checks in `expense-routes.ts` used `pmName === "เครดิต"` — but since paymentMethod now stores accountCode ("1001000"), this is always false → credit PM treated as cash → wrong journal entry.
+
+| File | Line | Fix |
+|------|------|-----|
+| `expense-routes.ts` | import | Added `paymentMethods` to schema import |
+| `expense-routes.ts` | ~17 | Added `isCreditPm(name)` function |
+| `expense-routes.ts` | CREATE ~412 | `isCredit` now does DB lookup of PM record → calls `isCreditPm(pmRec.name)` |
+| `expense-routes.ts` | UPDATE ~648 | same |
+| `expense-routes.ts` | bulk-import ~1132 | same |
+| `expense.tsx` | 649 | `paymentStatus: form.paymentStatus \|\| (form.paymentMethod ? "paid" : "unpaid")` — preserves "unpaid" when credit PM selected |
+| `purchase-deposit-form.tsx` | 370 | default PM: `m.accountCode` only — removed `m.name \|\| m.nameTh \|\|` prefix |
+
+**purchase-deposit backend:** uses `createAutoJournalEntry` with `paymentMethodAccountCode: pmAccCode` — no isCredit bug, safe
+**debit-note / purchase-deposit:** no `paymentStatus` column in schema — correct not to add
 
 ---
 
