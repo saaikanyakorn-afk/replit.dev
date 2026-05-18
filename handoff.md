@@ -316,11 +316,16 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
   2. **แก้ journal entry ตรงๆ** — เร็วกว่า แต่ต้องพี่ช้างอนุมัติก่อน (sensitive)
 - รอพี่ช้างตัดสินใจว่าใช้แนวทางไหน
 
-**Bug ใหม่: Related Docs Navigation ไม่ filter — DIAGNOSED ✅**
-- พี่ทรายกด "เอกสารอ้างอิง" → ควร filter ไปที่เอกสารใบนั้น แต่กลับไปหน้ารายการทั้งหมด
-- **Root cause:** Dialog navigate ไปที่ list page พร้อม `?invoiceNo=IV26051800001` แต่ list page อ่านแค่ `?search=` — ไม่รู้จัก param `invoiceNo`
-- **Fix:** แก้ `related-docs` component ให้ navigate ด้วย `?search=<invoiceNo>` แทน (หรือแก้ list page ให้อ่าน `invoiceNo` param)
-- **ไฟล์ที่ต้องแก้:** `related-docs` component (navigate logic) — ยังไม่ได้แก้ รอพี่ช้างยืนยันก่อน
+**Bug ใหม่: Related Docs Navigation — FIXED แต่มี bug ต่อเนื่อง ⚠️**
+
+**Fix รอบแรก (แก้แล้ว แต่ผิดทิศ):**
+- แก้ `related-docs-dialog.tsx` ให้ navigate ตรงไปที่ `editPath + doc.id` (เปิดหน้าแก้ไข)
+- doc types ที่ครอบคลุม: ใบเสนอราคา, ใบสั่งขาย, ใบแจ้งหนี้, ใบกำกับภาษี, ใบเร็จ, ใบลดหนี้, ใบเพิ่มหนี้, ใบขอซื้อ, ใบสั่งซื้อ, เปรียบเทียบราคา
+
+**พี่ทรายแจ้ง:** "มันวิ่งไปหน้าแก้ไขแทน — ควรเป็นหน้า**อ่าน** (view) ไม่ใช่ edit"
+- ความต้องการจริง: กดเอกสารอ้างอิง → เปิดหน้า view-only (อ่านอย่างเดียว) ไม่ใช่ edit form
+- **ต้องแก้:** เปลี่ยน `editPath` → `viewPath` หรือ navigate ไปที่ path สำหรับอ่าน
+- **รอ:** ข้อความพี่ทรายให้ครบก่อน (ข้อความค้างอยู่ "การอ่า...")
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
