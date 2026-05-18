@@ -290,7 +290,12 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - เลือก KBANK → status = "cash" → backend ลงบัญชีธนาคาร → paymentStatus = "paid" → ค้างชำระ = 0 ✅
 - เลือก "เครดิต" → status = "debtor" → backend ลง AR → paymentStatus = "unpaid" ✅
 
-**Pending:** พี่ทรายกำลังทดสอบสร้างใบกำกับภาษีใหม่โดยเลือก "โอนเงิน" เพื่อยืนยันว่า journal และสถานะถูกต้อง
+**พี่ทรายทดสอบแล้ว:** "ส่วนของการลงบัญชีถูกแล้ว แต่หน้ารายการยังแสดงไม่ถูก — ทรรศนีย์จ่ายเงินแล้วด้วยธนาคารกรุงศรี"
+
+**Bug ต่อเนื่องใน `tax-invoice-list.tsx` — FIXED ✅:**
+- Line 467 (badge): `isCashMethod(pm)` = true แค่ "เงินสด" → bank transfer แสดง "Credit[TIV]" แทนชื่อ PM ❌ → แก้แล้ว
+- Line 557 (status): `isCashMethod(pm)` → bank transfer → ใช้ `inv.status` จาก DB ซึ่งยังเป็น "debtor" → แสดง "ยังไม่ชำระ" ❌ → แก้แล้ว
+- Line 519 (`isCreditUnpaid`): ตรวจสอบแล้ว — ใช้ logic เดียวกัน แก้พร้อมกัน
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
