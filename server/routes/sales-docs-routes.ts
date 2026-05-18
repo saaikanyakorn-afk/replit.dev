@@ -2252,7 +2252,7 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
 
     let journalResult = null;
     const statusChanged = body.status && body.status !== existing.status;
-    const journalStatuses = ["approved", "issued", "debtor"];
+    const journalStatuses = ["approved", "issued", "debtor", "cash"];
     const shouldCreateTxJournal = (statusChanged && journalStatuses.includes(body.status)) || journalStatuses.includes(updated.status || "");
     if (shouldCreateTxJournal) {
       // ลบ journal เก่าก่อน recreate เพื่อให้ account code / formula อัพเดทถูกต้องเมื่อแก้ไขและบันทึกใหม่
