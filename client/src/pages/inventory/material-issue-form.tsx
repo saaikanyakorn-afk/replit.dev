@@ -110,7 +110,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Props & { urlBase?: string }) {
   const [, navigate] = useLocation();
   const search = useSearch();
-  const { company } = useCompany();
+  const { selectedCompany: company } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
