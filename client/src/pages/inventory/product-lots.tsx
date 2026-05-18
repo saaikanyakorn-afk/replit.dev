@@ -472,6 +472,38 @@ export default function ProductLotsPage() {
                     />
                   </div>
                   <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">{filteredLowStockLots.length} ล็อต</Badge>
+                  <Button
+                    data-testid="button-export-low-stock-excel"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 border-green-300 text-green-700 hover:bg-green-50"
+                    disabled={lowStockLots.length === 0}
+                    title="ส่งออกล็อตใกล้หมดสต็อกทั้งหมด (ไม่รวมตัวกรองการค้นหา)"
+                    onClick={() => {
+                      const dateStr = new Date().toISOString().slice(0, 10);
+                      const headers = ["เลขล็อต", "ชื่อสินค้า", "รหัสสินค้า", "คงเหลือ", "หน่วย", "เกณฑ์ขั้นต่ำ", "วันหมดอายุ"];
+                      const rows = lowStockLots.map((lot: any) => {
+                        const productThreshold = lot.productLowStockThreshold ?? 0;
+                        const threshold = productThreshold > 0 ? productThreshold : companyThresholdGlobal;
+                        return [
+                          lot.lotNumber,
+                          lot.productName ?? "",
+                          lot.productCode ?? "",
+                          Number(lot.quantity),
+                          lot.productUnit ?? "",
+                          threshold,
+                          lot.expiryDate ? new Date(lot.expiryDate).toLocaleDateString("th-TH") : "-",
+                        ];
+                      });
+                      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, "ใกล้หมดสต็อก");
+                      XLSX.writeFile(wb, `ล็อตใกล้หมดสต็อก_${dateStr}.xlsx`);
+                    }}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    ดาวน์โหลด Excel ({lowStockLots.length})
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
