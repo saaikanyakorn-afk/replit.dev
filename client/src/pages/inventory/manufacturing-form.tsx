@@ -1241,6 +1241,7 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                       stepName: ps?.name || `ขั้นตอน ${logStepNo}`,
                       qtyPassed: Number(logStepQty) || 0,
                       notes: logStepNotes || undefined,
+                      loggedByName: user?.fullName || user?.username || undefined,
                     }),
                   });
                   if (r.ok) {
