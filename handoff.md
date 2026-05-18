@@ -404,12 +404,14 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 **พี่ทรายแจ้ง: "ฝั่งขายเสร็จแล้ว ไปฝั่งจ่าย"**
 - Agent กำลังตรวจฝั่งจ่ายทั้งหมด — INVESTIGATING 🔍
 
-**ฝั่งจ่าย — investigation in progress:**
-- `expense-entry.tsx` — เป็น form เก่า/ไม่ได้ใช้งาน ❌
-- **ไฟล์จริง:** `expense.tsx` — มี trigger double checkmark + lineItemAccounts + handleSubmit ✅
-- route `/purchases/exp/new` → `expense.tsx`
-- กำลังตรวจ: `expense.tsx` save block + `itemAccounts` build logic ใน purchase-routes (expense journal)
-- error 400 timeout ระหว่าง boot — ชั่วคราว ไม่ใช่ bug
+**ฝั่งจ่าย — investigation findings:**
+- `expense-entry.tsx` — form เก่า ไม่ได้ใช้งาน ❌
+- **ไฟล์จริง:** `expense.tsx` (route `/purchases/exp/new`) + `expense-routes.ts`
+- **พบ:** ทั้ง CREATE/UPDATE ใน `expense-routes.ts` ยังใช้ `pmName === "เครดิต"` — ผิดเพราะ paymentMethod ตอนนี้เก็บ accountCode
+  - `isCreditPm` fix (PART B เดิม) ✅ แก้แล้ว แต่ agent กำลัง re-verify ทุก occurrence
+  - ตรวจ: `isCreditPm` definition ใน route-helpers, JournalPreviewPanel props ใน `expense.tsx`, UPDATE path ใน expense-routes
+- `JournalPreviewPanel` ใน `expense.tsx` — ยังไม่แน่ใจว่าส่ง `lineItemAccounts` ครบไหม
+- กำลัง fix พร้อมกัน — รอ HMR
 
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
