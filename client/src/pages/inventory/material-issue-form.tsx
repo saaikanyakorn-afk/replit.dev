@@ -165,14 +165,14 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
   });
 
   const { data: mos = [] } = useQuery<MoOption[]>({
-    queryKey: ["/api/manufacturing-orders", company?.id, "in_progress"],
+    queryKey: ["/api/manufacturing-orders", company?.id, "active"],
     queryFn: async () => {
       if (!company?.id) return [];
-      const r = await fetch(`/api/manufacturing-orders?companyId=${company.id}&status=in_progress`, { credentials: "include" });
+      const r = await fetch(`/api/manufacturing-orders?companyId=${company.id}`, { credentials: "include" });
       if (!r.ok) return [];
       const data = await r.json();
       const all = (data.data ?? data) as MoOption[];
-      return all.filter(m => m.status === "in_progress");
+      return all.filter(m => m.status === "draft" || m.status === "in_progress");
     },
     enabled: !!company?.id && !isEditMode,
   });
@@ -195,6 +195,40 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
     const found = mos.find(m => m.id === urlMoId);
     if (found) setMoId(found.id);
   }, [urlMoId, mos, isEditMode]);
+
+  // ── Select MO and auto-fill BOM lines as material items ──
+  const handleMoSelect = async (val: string) => {
+    const newMoId = val === "none" ? null : Number(val);
+    setMoId(newMoId);
+    if (!newMoId || !company?.id) return;
+    try {
+      const moRes = await fetch(`/api/manufacturing-orders/${newMoId}?companyId=${company.id}`, { credentials: "include" });
+      if (!moRes.ok) return;
+      const mo = await moRes.json();
+      if (!mo.lines || mo.lines.length === 0) return;
+      let yieldQty = 1;
+      if (mo.bomId) {
+        const bomRes = await fetch(`/api/bom/${mo.bomId}?companyId=${company.id}`, { credentials: "include" });
+        if (bomRes.ok) { const bom = await bomRes.json(); yieldQty = Number(bom.yieldQty) || 1; }
+      }
+      const multiplier = Number(mo.plannedQty) / yieldQty;
+      const newItems: ItemForm[] = mo.lines.map((line: any) => {
+        const prod = allProducts.find((p: any) => p.id === line.componentProductId);
+        return {
+          productId: line.componentProductId,
+          productName: line.componentName || prod?.name || "",
+          lotId: null, lotNumber: "",
+          quantity: Math.round(Number(line.requiredQty) * multiplier * 10000) / 10000,
+          unit: line.unit || prod?.unit || "ชิ้น",
+          trackLots: prod?.trackLots ?? false,
+        };
+      });
+      if (newItems.length > 0) {
+        setItems(newItems);
+        toast({ title: `ดึงรายการวัตถุดิบจาก ${mo.orderNo} แล้ว`, description: `${newItems.length} รายการ สำหรับผลิต ${mo.plannedQty} ${mo.unit || "ชิ้น"}` });
+      }
+    } catch { /* silent — user can add manually */ }
+  };
 
   const { data: employees = [] } = useQuery<EmployeeOption[]>({
     queryKey: ["/api/users/employee-qr-data", company?.id],
@@ -773,23 +807,26 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
 
           {/* MO dropdown */}
           <div className="space-y-1">
-            <Label>ใบสั่งผลิต (MO) — ไม่บังคับ</Label>
-            <Select
-              value={moId ? String(moId) : "none"}
-              onValueChange={val => setMoId(val === "none" ? null : Number(val))}
-            >
+            <Label>ใบสั่งผลิต (MO) — เลือกเพื่อดึงรายการวัตถุดิบอัตโนมัติ</Label>
+            <Select value={moId ? String(moId) : "none"} onValueChange={handleMoSelect}>
               <SelectTrigger data-testid="select-mo">
-                <SelectValue placeholder="เลือก MO (ไม่บังคับ)" />
+                <SelectValue placeholder="เลือก MO เพื่อดึงรายการวัตถุดิบ" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— ไม่เลือก MO —</SelectItem>
-                {mos.map(mo => (
-                  <SelectItem key={mo.id} value={String(mo.id)} data-testid={`option-mo-${mo.id}`}>
-                    {mo.orderNo} ({mo.status})
-                  </SelectItem>
-                ))}
+                {mos.map(mo => {
+                  const stLabel = mo.status === "draft" ? "ร่าง" : mo.status === "in_progress" ? "กำลังผลิต" : mo.status;
+                  return (
+                    <SelectItem key={mo.id} value={String(mo.id)} data-testid={`option-mo-${mo.id}`}>
+                      {mo.orderNo} <span className="text-muted-foreground text-xs">({stLabel})</span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
+            {moId && items.length > 0 && (
+              <p className="text-xs text-green-600">✓ ดึงรายการวัตถุดิบจาก MO แล้ว {items.length} รายการ</p>
+            )}
           </div>
 
           {/* Warehouse selector */}
