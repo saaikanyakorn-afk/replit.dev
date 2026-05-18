@@ -282,6 +282,43 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [location]);
 
+  const hasInventoryAccess = !!myPermissions?.modules.includes("inventory");
+
+  const { data: productLotsData } = useQuery<any[]>({
+    queryKey: ["/api/product-lots", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return [];
+      const r = await fetch(`/api/product-lots?companyId=${selectedCompanyId}`, { credentials: "include" });
+      return r.ok ? r.json() : [];
+    },
+    enabled: !!user && !!selectedCompanyId && hasInventoryAccess,
+    refetchInterval: 300000,
+    staleTime: 120000,
+  });
+
+  const { data: generalSettings } = useQuery<{ lotLowStockThreshold?: number }>({
+    queryKey: ["/api/settings/general", selectedCompanyId],
+    queryFn: async () => {
+      if (!selectedCompanyId) return {};
+      const r = await fetch(`/api/settings/general?companyId=${selectedCompanyId}`, { credentials: "include" });
+      return r.ok ? r.json() : {};
+    },
+    enabled: !!user && !!selectedCompanyId && hasInventoryAccess,
+    staleTime: 300000,
+  });
+
+  const lowStockLotCount = useMemo(() => {
+    if (!productLotsData) return 0;
+    const threshold = generalSettings?.lotLowStockThreshold ?? 10;
+    return productLotsData.filter((l: any) => {
+      const qty = Number(l.quantity);
+      if (qty <= 0) return false;
+      const productThreshold = l.productLowStockThreshold ?? 0;
+      const effectiveThreshold = productThreshold > 0 ? productThreshold : threshold;
+      return qty < effectiveThreshold;
+    }).length;
+  }, [productLotsData, generalSettings]);
+
   const { data: approvalData } = useQuery<{ totalPending: number }>({
     queryKey: ["/api/approval-center", selectedCompanyId],
     queryFn: async () => {
@@ -633,6 +670,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       if (!hasGroups) {
                         return item.children?.map((child: any) => {
                           const isChildLink = location === child.href || (child.href !== "/" && location.startsWith(child.href + "/"));
+                          const showLowStockBadge = child.href === "/inventory/lots" && lowStockLotCount > 0;
                           return (
                             <div key={child.label}>
                               <Link href={child.href}>
@@ -644,6 +682,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                 style={isChildLink ? { color: "var(--theme-primary)", background: "color-mix(in srgb, var(--theme-primary) 15%, transparent)" } : undefined}>
                                   {child.icon && <child.icon className="h-3 w-3" />}
                                   {translateLabel(child.label, t)}
+                                  {showLowStockBadge && (
+                                    <span data-testid="badge-low-stock-lots" className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white leading-none">{lowStockLotCount}</span>
+                                  )}
                                 </span>
                               </Link>
                             </div>
@@ -661,6 +702,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         if (!g.name) {
                           return g.items.map((child: any) => {
                             const isChildLink = location === child.href || (child.href !== "/" && location.startsWith(child.href + "/"));
+                            const showLowStockBadge = child.href === "/inventory/lots" && lowStockLotCount > 0;
                             return (
                               <div key={child.label}>
                                 <Link href={child.href}>
@@ -669,6 +711,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                   style={isChildLink ? { color: "var(--theme-primary)", background: "color-mix(in srgb, var(--theme-primary) 15%, transparent)" } : undefined}>
                                     {child.icon && <child.icon className="h-3 w-3" />}
                                     {translateLabel(child.label, t)}
+                                    {showLowStockBadge && (
+                                      <span data-testid="badge-low-stock-lots" className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white leading-none">{lowStockLotCount}</span>
+                                    )}
                                   </span>
                                 </Link>
                               </div>
@@ -695,6 +740,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               <div className="space-y-0.5 pl-3 mt-0.5">
                                 {g.items.map((child: any) => {
                                   const isChildLink = location === child.href || (child.href !== "/" && location.startsWith(child.href + "/"));
+                                  const showLowStockBadge = child.href === "/inventory/lots" && lowStockLotCount > 0;
                                   return (
                                     <div key={child.label}>
                                       <Link href={child.href}>
@@ -703,6 +749,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                         style={isChildLink ? { color: "var(--theme-primary)", background: "color-mix(in srgb, var(--theme-primary) 15%, transparent)" } : undefined}>
                                           {child.icon && <child.icon className="h-3 w-3" />}
                                           {translateLabel(child.label, t)}
+                                          {showLowStockBadge && (
+                                            <span data-testid="badge-low-stock-lots" className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white leading-none">{lowStockLotCount}</span>
+                                          )}
                                         </span>
                                       </Link>
                                     </div>
