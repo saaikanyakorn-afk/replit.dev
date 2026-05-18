@@ -56,7 +56,8 @@ export default function EcommerceQuickInvoice() {
     },
     enabled: !!selectedCompanyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+  const receiveMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
+  const activePaymentMethods = receiveMethods.length > 0 ? receiveMethods : paymentMethodsList.filter((m: any) => m.active !== false);
 
   const recentQuery = useQuery({
     queryKey: ["/api/ecommerce/quick-invoice/recent", selectedCompanyId],

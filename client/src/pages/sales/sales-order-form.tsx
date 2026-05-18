@@ -170,7 +170,8 @@ export default function SalesOrderForm() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+  const receiveMethods = paymentMethodsList.filter((m: any) => m.active !== false && (m.paymentType || "receive") === "receive");
+  const activePaymentMethods = receiveMethods.length > 0 ? receiveMethods : paymentMethodsList.filter((m: any) => m.active !== false);
 
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", companyId],
