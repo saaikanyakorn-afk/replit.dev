@@ -116,7 +116,7 @@ If you run out of context or time before updating this file — that is YOUR fai
 
 | # | Item | Status | Who must act |
 |---|------|--------|-------------|
-| N1 | **Related-docs navigation** — `related-docs-dialog.tsx` still navigates to `editPath + doc.id`. Must navigate to `listPath + ?search=<docNo>` instead | ❌ NOT YET DONE | Kai implements |
+| N1 | **Related-docs navigation** — `related-docs-dialog.tsx` must navigate to `listPath + ?companyId=X&<searchParam>=<docNo>`. พี่ทราย confirmed: "ต้องวิ่งไปหน้ารายการก่อนเสมอ ไม่ให้วิ่งไปหน้าแก้ไข". `docTypeConfig` already has `listPath` + `searchParam` per type (e.g. tax_invoice → `/sales/tax-invoice` + `taxInvoiceNo`). Check current navigate logic at line ~131 — confirm it uses listPath not editPath for all types | ❌ NOT YET DONE | Kai implements |
 | N2 | **เอกสารที่ออกผิดก่อนแก้โค้ด** — RE26051800001 จิรา etc. สองแนวทาง: (1) ยกเลิก+ออกใหม่ หรือ (2) แก้ journal ตรงๆ | ⏳ Waiting | พี่ช้าง decides |
 | N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes** — complete on dev (all 15 files + expense routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
@@ -133,9 +133,9 @@ If you run out of context or time before updating this file — that is YOUR fai
 - `SelectItem value="pm_${m.id}"` — unique ID ไม่ซ้ำ, `onValueChange` translate → store accountCode
 
 **isCashMethod() vs isCreditPm():**
-- `isCashMethod()` ใน `tax-invoice-form.tsx`: checks `found.name === "เงินสด"` — TYPE CHECK on PM record name — correct
-- `isCreditPm()` ใน `expense-routes.ts`: checks PM record name from DB lookup — correct
-- ❌ NEVER compare `paymentMethod === "เครดิต"` — stores accountCode not name — always false
+- `isCashMethod()` ใน `tax-invoice-form.tsx` — **FIXED 2026-05-18**: logic เดิม `found.name === "เงินสด"` (ผิด — ทุก PM อื่นถูกมองเป็น debtor) → แก้เป็น `pm && !isCredit(pm)` — ทุก PM ที่ไม่ใช่เครดิต = cash/paid
+- `isCreditPm(name)` ใน `expense-routes.ts`: `name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต(")` — checks PM record name from DB lookup (NOT stored accountCode)
+- ❌ NEVER compare `form.paymentMethod === "เครดิต"` directly — field stores accountCode, not name — always false
 
 **Tax Invoice journal flow (after fixes 2026-05-18):**
 - journalStatuses includes `"cash"` now — was missing, causing delete+recreate to never fire on cash-paid invoices
