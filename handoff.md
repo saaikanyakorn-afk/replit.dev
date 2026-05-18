@@ -124,21 +124,31 @@ The `payment_methods` table has a `paymentType` column (NOT NULL DEFAULT 'receiv
 2. Agent removed fallback → empty dropdown for all companies (no 'pay' type data)
 3. Agent removed filter entirely → all methods shown → company 3684 has two methods named "โอนเงิน" → double checkmark (both select items have same `value = name`)
 
-**CURRENT CORRECT STATE (all 14 files) — FIXED:**
+**CURRENT CORRECT STATE (all 15 files) — FIXED:**
 - Purchase/AP forms: `?type=pay` API filter + queryKey `"pay"` — shows only pay-type methods
 - Sales/Receipt forms: `?type=receive` API filter + queryKey `"receive"` — shows only receive-type methods
 - `SelectItem value=pm_${m.id}` (unique ID, never duplicates regardless of name)
 - Select value: IIFE translating `form.paymentMethod` (accountCode) → `pm_${found.id}`
 - onValueChange: translate `pm_${id}` → store `m.accountCode`
-- Default effects: use `defaultPm.accountCode` — no `||` chains
-- State inits: "" not hardcoded names — useEffect sets default from data
+- Default effects: use `defaultPm.accountCode` — no `||` chains, no `"transfer"` hardcode
+- State inits: `""` — useEffect sets default from real data
 - Badge display: no `|| "โอนเงิน"` fallback
-- Removed 2nd broken effect in deposit-form.tsx
-- Removed hardcoded fallback SelectItem in ap-billing.tsx
+- Removed duplicate/broken 2nd useEffects (deposit-form, credit-note-form)
+- Removed hardcoded fallback SelectItem in ap-billing.tsx single dialog
+- resetCreateForm/resetForm: use `(find isDefault ?? [0])?.accountCode ?? ""` pattern
+- `isCashMethod()` in tax-invoice-form.tsx: checks `found.name === "เงินสด"` — TYPE CHECK on PM record, NOT stored value — correct as-is
 
-**If a company has NO 'pay' methods → expense dropdown is empty.** This is CORRECT — they need to configure 'pay' type methods in Settings > Payment Methods (Pay tab). No fallback — Rule 0a.
+**Backend `resolvePaymentMethodAccountCode` does dual-lookup:** accountCode first → name second. Old test records stored names → still resolves. New records store accountCode → resolves correctly. Backend is safe for both.
+
+**If a company has NO 'pay' methods → expense/purchase dropdown is empty.** CORRECT — configure in Settings > Payment Methods (Pay tab). No fallback — Rule 0a.
 
 Files: `expense.tsx`, `debit-note-form.tsx`, `purchase-deposit-form.tsx`, `purchase-invoice.tsx`, `purchase-order.tsx`, `purchase-request.tsx`, `ap-billing.tsx`, `deposit-form.tsx`, `credit-note-form.tsx`, `receipt-form.tsx`, `sales-order-form.tsx`, `tax-invoice-form.tsx`, `receipt-billing.tsx`, `ecommerce-quick-invoice.tsx`
+
+**⚠️ OPEN QUESTIONS — need พี่ทราย confirmation before touching:**
+- ใบมัดจำขาย (deposit-form): ควรมีตัวเลือก "เครดิต" ไหม? (มัดจำ = รับเงินแล้ว → ไม่น่าต้องมี)
+- ใบลดหนี้ (credit-note-form): ควรมีตัวเลือก "เครดิต" ไหม?
+- ใบสั่งขาย (sales-order-form): "ไม่ระบุ" option เพียงพอ หรือต้องมี "เครดิต"?
+- ใบเสร็จรับเงิน (receipt-form): รับเงินแล้วจึงออก → "เครดิต" ไม่น่าจะใช้ ถูกไหม?
 
 ### Core failure this session — read this slowly
 

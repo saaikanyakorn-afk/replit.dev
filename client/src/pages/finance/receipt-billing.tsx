@@ -157,7 +157,7 @@ export default function ReceiptBilling() {
     setCustomerSearch("");
     setSelectedContact(null);
     setSelectedDocs(new Set());
-    setPayMethod("โอนเงิน");
+    setPayMethod((activePaymentMethods.find((m: any) => m.isDefault) ?? activePaymentMethods[0])?.accountCode ?? "");
     setPayDate(toLocalDateStr(new Date()));
     setPayNotes("");
     setCustomAmounts({});

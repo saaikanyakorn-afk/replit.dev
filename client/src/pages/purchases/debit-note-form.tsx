@@ -111,7 +111,7 @@ export default function DebitNoteForm() {
     taxInvoiceRef: "",
     reason: "return",
     reasonDetail: "",
-    paymentMethod: "transfer" as string,
+    paymentMethod: "" as string,
     currencyCode: "THB",
     notes: "",
     status: "approved",
@@ -160,7 +160,7 @@ export default function DebitNoteForm() {
   });
 
   useEffect(() => {
-    if (isNew && !loaded && activePaymentMethods.length > 0 && (form.paymentMethod === "transfer" || form.paymentMethod === "")) {
+    if (isNew && !loaded && activePaymentMethods.length > 0 && !form.paymentMethod) {
       const defaultMethod = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0];
       if (defaultMethod) {
         setForm(p => ({ ...p, paymentMethod: defaultMethod.accountCode }));
@@ -196,7 +196,7 @@ export default function DebitNoteForm() {
               taxInvoiceRef: data.taxInvoiceRef || "",
               reason: data.reason || "return",
               reasonDetail: data.reasonDetail || "",
-              paymentMethod: data.paymentMethod || "transfer",
+              paymentMethod: data.paymentMethod || "",
               currencyCode: data.currencyCode || "THB",
               notes: data.notes || "",
               status: data.status || "draft",
@@ -346,7 +346,7 @@ export default function DebitNoteForm() {
       taxInvoiceRef: "",
       reason: "return",
       reasonDetail: "",
-      paymentMethod: activePaymentMethods.find((m: any) => m.isDefault)?.accountCode || activePaymentMethods[0]?.accountCode || "transfer",
+      paymentMethod: (activePaymentMethods.find((m: any) => m.isDefault) ?? activePaymentMethods[0])?.accountCode ?? "",
       currencyCode: "THB",
       notes: "",
       status: "approved",

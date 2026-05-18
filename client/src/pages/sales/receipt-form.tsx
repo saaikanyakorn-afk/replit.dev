@@ -102,7 +102,7 @@ export default function ReceiptForm() {
     receiptNo: "",
     receiptDate: toLocalDateStr(new Date()),
     paymentDate: "",
-    paymentMethod: "transfer" as string,
+    paymentMethod: "" as string,
     customerId: undefined as number | undefined,
     customerCode: "",
     customerName: "",
@@ -222,7 +222,7 @@ export default function ReceiptForm() {
   }, [defaultPrefix, isNew]);
 
   useEffect(() => {
-    if (isNew && activePaymentMethods.length > 0 && (form.paymentMethod === "transfer" || form.paymentMethod === "")) {
+    if (isNew && activePaymentMethods.length > 0 && !form.paymentMethod) {
       const defaultMethod = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0];
       if (defaultMethod) {
         setForm(p => ({ ...p, paymentMethod: defaultMethod.accountCode }));
@@ -455,7 +455,7 @@ export default function ReceiptForm() {
               receiptNo: data.receiptNo || "",
               receiptDate: data.receiptDate || "",
               paymentDate: data.paymentDate || "",
-              paymentMethod: data.paymentMethod || "transfer",
+              paymentMethod: data.paymentMethod || "",
               customerId: data.customerId || undefined,
               customerCode: data.customerCode || "",
               customerName: data.customerName || "",
@@ -657,7 +657,7 @@ export default function ReceiptForm() {
       receiptNo: form.receiptNo,
       receiptDate: toLocalDateStr(new Date()),
       paymentDate: toLocalDateStr(new Date()),
-      paymentMethod: activePaymentMethods.find((m: any) => m.isDefault)?.accountCode || activePaymentMethods[0]?.accountCode || "transfer",
+      paymentMethod: (activePaymentMethods.find((m: any) => m.isDefault) ?? activePaymentMethods[0])?.accountCode ?? "",
       customerId: undefined,
       customerCode: "",
       customerName: "",

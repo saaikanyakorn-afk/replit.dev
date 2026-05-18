@@ -91,7 +91,7 @@ export default function EcommerceQuickInvoice() {
     setCustomerTaxId("");
     setCustomerAddress("");
     setCustomerPhone("");
-    setPaymentMethod("เงินสด");
+    setPaymentMethod((activePaymentMethods.find((m: any) => m.isDefault) ?? activePaymentMethods[0])?.accountCode ?? "");
     setNotes("");
     setDocDate(new Date().toISOString().split("T")[0]);
     setItems([emptyItem()]);

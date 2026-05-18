@@ -217,7 +217,7 @@ export default function CreditNoteForm() {
     refTaxInvoiceId: null as number | null,
     reason: "return",
     reasonDetail: "",
-    paymentMethod: "transfer" as string,
+    paymentMethod: "" as string,
     currencyCode: "THB",
     exchangeRate: "1",
     notes: "",
@@ -289,14 +289,6 @@ export default function CreditNoteForm() {
     enabled: !!companyId,
   });
 
-  useEffect(() => {
-    if (isNew && activePaymentMethods.length > 0 && (form.paymentMethod === "transfer" || form.paymentMethod === "")) {
-      const defaultMethod = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0];
-      if (defaultMethod) {
-        setForm(p => ({ ...p, paymentMethod: defaultMethod.accountCode || defaultMethod.name || defaultMethod.nameTh || "transfer" }));
-      }
-    }
-  }, [activePaymentMethods, isNew, form.paymentMethod]);
 
   useEffect(() => {
     if (loaded) return;
@@ -364,7 +356,7 @@ export default function CreditNoteForm() {
               refTaxInvoiceId: data.refTaxInvoiceId || null,
               reason: data.reason || "return",
               reasonDetail: data.reasonDetail || "",
-              paymentMethod: data.paymentMethod || "transfer",
+              paymentMethod: data.paymentMethod || "",
               currencyCode: data.currencyCode || "THB",
               exchangeRate: String(data.exchangeRate || "1"),
               notes: data.notes || "",
@@ -529,7 +521,7 @@ export default function CreditNoteForm() {
       refTaxInvoiceId: null,
       reason: "return",
       reasonDetail: "",
-      paymentMethod: (() => { const dm = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0]; return dm ? (dm.accountCode || dm.name || dm.nameTh || "transfer") : "transfer"; })(),
+      paymentMethod: (() => { const dm = activePaymentMethods.find((m: any) => m.isDefault) || activePaymentMethods[0]; return dm ? dm.accountCode : ""; })(),
       currencyCode: "THB",
       notes: "",
       status: "approved",
