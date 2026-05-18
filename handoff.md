@@ -303,6 +303,17 @@ backend ใช้ `status === "cash"` เพื่อตัดสินว่า
 - HMR x3 ผ่านแล้ว ✅
 - ผลที่เห็นหลังแก้: badge เป็น "Cash[TIV]" สีเขียว + ยอดค้างชำระ = 0 ✅
 
+**พี่ทรายยืนยัน fix สมบูรณ์ ✅**
+
+**"ดูแผนที่" หาย — ไม่ใช่ bug ✅**
+- สาเหตุ: ตอนสร้างใบกำกับ ไม่ได้กรอกที่อยู่ลูกค้า → เอกสารไม่มีข้อมูล `inv.customerAddress` → link ไม่แสดง
+- ไม่เกี่ยวกับการแก้โค้ด — ยืนยันโดยดูเอกสาร RE26051800002 ช่อง "ที่อยู่" ว่างอยู่
+
+**เอกสารที่ออกผิดก่อนแก้โค้ด:**
+- Agent แก้เฉพาะ **โค้ด** (logic การแสดงผลและ journal entry)
+- เอกสาร/รายการที่ออกไปก่อนหน้านี้ (ผิด) → **ต้องแก้ที่ตัวเอกสาร** ไม่ใช่โค้ด
+- พี่ทรายต้องเปิดเอกสารแต่ละใบแล้วแก้ไข/บันทึกใหม่เองเพื่อให้ journal entry ถูกต้อง
+
 #### PART B: ฝั่งจ่าย (Payment/Expense side) — COMPLETE ✅
 
 **Root cause:** `isCredit` checks in `expense-routes.ts` used `pmName === "เครดิต"` — but since paymentMethod now stores accountCode ("1001000"), this is always false → credit PM treated as cash → wrong journal entry.
