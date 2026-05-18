@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer, Trash2, Search } from "lucide-react";
+import { ArrowLeft, Factory, Play, CheckCircle, Save, Package, BookOpen, Calculator, QrCode, ClipboardList, Plus, ExternalLink, ListChecks, Printer, Trash2, Search, FileDown } from "lucide-react";
 import QRCodeLib from "qrcode";
 import { useState, useEffect, useRef, useMemo, type ComponentType, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -935,15 +935,61 @@ export default function ManufacturingForm(props: { Wrapper?: ComponentType<{ chi
                           </div>
                         );
                       })()}
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                        <Input
-                          className="pl-8 h-8 text-sm"
-                          placeholder="กรองตามชื่อผู้บันทึก..."
-                          value={logReporterFilter}
-                          onChange={(e) => { setLogReporterFilter(e.target.value); setLogReporterExact(false); }}
-                          data-testid="input-filter-log-reporter"
-                        />
+                      <div className="flex gap-2 items-center">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                          <Input
+                            className="pl-8 h-8 text-sm"
+                            placeholder="กรองตามชื่อผู้บันทึก..."
+                            value={logReporterFilter}
+                            onChange={(e) => { setLogReporterFilter(e.target.value); setLogReporterExact(false); }}
+                            data-testid="input-filter-log-reporter"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs shrink-0"
+                          data-testid="button-export-process-logs"
+                          onClick={() => {
+                            const needle = logReporterFilter.trim().toLowerCase();
+                            const rows = needle === ""
+                              ? processLogs
+                              : processLogs.filter((log: any) =>
+                                  logReporterExact
+                                    ? (log.logged_by_name || "") === logReporterFilter
+                                    : (log.logged_by_name || "").toLowerCase().includes(needle)
+                                );
+                            const escape = (v: any) => {
+                              const s = v == null ? "" : String(v);
+                              return s.includes(",") || s.includes('"') || s.includes("\n")
+                                ? `"${s.replace(/"/g, '""')}"` : s;
+                            };
+                            const header = ["ขั้นตอน", "ผู้บันทึก", "จำนวน", "หมายเหตุ", "เวลา"];
+                            const csvLines = [
+                              header.join(","),
+                              ...rows.map((log: any) => [
+                                escape(`P${log.step_no}: ${log.step_name}`),
+                                escape(log.logged_by_name || ""),
+                                escape(log.qty_passed ?? 0),
+                                escape(log.notes || ""),
+                                escape(log.logged_at ? new Date(log.logged_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : ""),
+                              ].join(","))
+                            ];
+                            const bom = "\uFEFF";
+                            const blob = new Blob([bom + csvLines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `process-logs-${order?.doc_no || "export"}.csv`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          <FileDown className="h-3.5 w-3.5" />
+                          ส่งออก CSV
+                        </Button>
                       </div>
                     </div>
                   )}
