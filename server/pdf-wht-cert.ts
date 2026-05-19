@@ -598,7 +598,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
                       {
                         stack: [
-                          ...(stampImageB64 ? [{ image: stampImageB64, width: 85, alignment: "left" }] : []),
+                          ...(stampImageB64 ? [{ image: stampImageB64, fit: [80, 58], alignment: "left" }] : []),
                         ],
                         border: noBorder,
                         rowSpan: 3,
@@ -628,15 +628,15 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                     [
                       { text: "", border: noBorder },
                       {
-                        text: `${dateParts.day || "   "} / ${dateParts.month || "           "} / ${dateParts.year || "      "}`,
-                        alignment: "center", fontSize: 8, border: noBorder, margin: [0, 2, 0, 0],
+                        stack: [
+                          {
+                            text: `${dateParts.day || "   "} / ${dateParts.month || "           "} / ${dateParts.year || "      "}`,
+                            alignment: "center", fontSize: 8,
+                          },
+                          { text: "(วัน เดือน ปี ที่ออกหนังสือรับรองฯ)", alignment: "center", fontSize: 7, color: "#666" },
+                        ],
+                        border: noBorder, margin: [0, 2, 0, 0],
                       },
-                      { text: "", border: noBorder },
-                      { text: "", border: noBorder },
-                    ],
-                    [
-                      { text: "", border: noBorder },
-                      { text: "(วัน เดือน ปี ที่ออกหนังสือรับรองฯ)", alignment: "center", fontSize: 7, color: "#666", border: noBorder },
                       { text: "", border: noBorder },
                       { text: "", border: noBorder },
                     ],
