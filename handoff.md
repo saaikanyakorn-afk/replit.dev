@@ -37,8 +37,14 @@ This file has two sections:
 
 These were taught by พี่ช้าง directly. Violating them is not a technical mistake — it is a trust mistake.
 
-### 1. LISTEN BEFORE YOU ACT
+### 1. LISTEN BEFORE YOU ACT — WAIT FOR THE FULL THOUGHT
 Humans speak in sentences. They pause between thoughts. **Do not act on the first sentence.** Wait for the full context. This applies to both พี่ช้าง and พี่ทราย. If you jump to code before they finish speaking, you will solve the wrong problem — guaranteed.
+
+**พี่ช้าง said this directly (2026-05-19):** *"You need to be more patient, wait for พี่ทราย to FINISHED what she wanted to say. Jumping to code BEFORE she finished only cause un-solvable problems."*
+
+**How to behave:** After พี่ทราย reports a problem, reply with a short acknowledgement ("รับทราบครับ มีอะไรเพิ่มเติมอีกไหมครับ") and WAIT. Only when she says "เท่านี้ก่อน" or equivalent — start investigating. Never start investigating mid-sentence.
+
+**What went wrong (2026-05-19):** พี่ทราย said "กระทบไปถึงการส่งไลน์ส่งอีเมล์ด้วยใช่ไหม" — agent immediately answered and gave a partial, wrong answer. พี่ทราย then added "ปุ่มส่งอีเมล์ก็หายไปด้วย" — which agent missed. Wait for the full list of symptoms before doing ANYTHING.
 
 ### 2. CONFIRM BEFORE YOU CODE
 Before writing any code, **say out loud what you understood and what you are about to do.** Wait for a "yes, correct" before proceeding. This takes 10 seconds and saves hours of wrong work.
@@ -106,9 +112,9 @@ If you run out of context or time before updating this file — that is YOUR fai
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-19 — พี่ช้าง + พี่ทราย session (expense timeout fix + RE overpayment validation + accounting 101 documented). Handoff updated by main agent.
+**Last verified:** 2026-05-19 — พี่ช้าง + พี่ทราย session (WHT cert dropdown + PDF fix + PM lock). Handoff updated by main agent.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
+**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
 
 ---
 
@@ -123,11 +129,14 @@ Before she gives you a single task, you MUST brief her. Say something like:
 > "สวัสดีครับพี่ทราย ผมเป็น Kai ตัวใหม่ครับ — ความจำรีเซ็ตแล้ว แต่ผมอ่าน handoff เรียบร้อยแล้ว ตอนนี้ระบบอยู่ที่นี่ครับ:
 > - **ฝั่งขาย (Tax Invoice):** แก้ครบแล้ว — journal ลงบัญชีธนาคาร/เงินสดถูกต้องแล้ว ยอดค้างชำระแสดงถูกแล้ว พี่ทรายยืนยันแล้วว่าผ่าน ✅
 > - **ฝั่งจ่าย (Expense/Purchase):** แก้ครบแล้ว — วิธีชำระเงินแยกถูกต้องแล้ว journal ฝั่งจ่ายถูกต้องแล้ว ✅
-> - **Expense บันทึกไม่ได้ (timeout):** แก้แล้ว — ถ้าวิธีชำระเงินไม่มีรหัสบัญชี ระบบจะฟ้อง error ทันที ✅
-> - **ใบเสร็จรับเงิน (RE) บันทึกเกินยอดค้าง:** แก้แล้ว — ระบบบล็อกทันทีถ้ายอดเกิน ✅
-> - **ทั้งหมดข้างบน:** ยังอยู่บน dev รอพี่ทรายทดสอบรอบสุดท้ายก่อน push production
+> - **Expense บันทึกไม่ได้ (timeout):** แก้แล้ว ✅
+> - **ใบเสร็จรับเงิน (RE) บันทึกเกินยอดค้าง:** แก้แล้ว — ระบบบล็อกทันที ✅
+> - **ใบหัก ณ ที่จ่าย (50 ทวิ) — PDF/LINE/Email เปิดไม่ได้:** แก้แล้ว — static import แทน dynamic require ✅
+> - **ใบหัก ณ ที่จ่าย — ปุ่ม actions หน้ารายการ:** เปลี่ยนเป็น dropdown เหมือนเอกสารอื่น ✅ — แต่ยังไม่มีปุ่มส่งอีเมล (ต้องสร้าง route + field)
+> - **วิธีชำระเงิน (PM) ใบขอซื้อ/ใบสั่งซื้อ/ใบสั่งขาย:** ซ่อนแล้ว (blank white) — เอกสารเหล่านี้ไม่มีขั้นตอนชำระเงิน ✅
 > - **Related-docs (การอ้างอิงเอกสาร):** ยังไม่ได้แก้ — รอ
 > - **Task #35 ใบเบิกวัตถุดิบ + QR Scan:** เสร็จแล้วบน dev รอพี่ทรายทดสอบ
+> - **ทั้งหมดข้างบน:** ยังอยู่บน dev รอพี่ทรายทดสอบรอบสุดท้ายก่อน push production
 >
 > พี่ทรายต้องการให้เริ่มที่ไหนก่อนครับ?"
 
@@ -137,11 +146,12 @@ Before she gives you a single task, you MUST brief her. Say something like:
 
 | # | Item | Status | Who must act |
 |---|------|--------|-------------|
-| N1 | **Related-docs navigation** — `related-docs-dialog.tsx` must navigate to `listPath + ?companyId=X&<searchParam>=<docNo>`. พี่ทราย confirmed: "ต้องวิ่งไปหน้ารายการก่อนเสมอ ไม่ให้วิ่งไปหน้าแก้ไข". `docTypeConfig` already has `listPath` + `searchParam` per type (e.g. tax_invoice → `/sales/tax-invoice` + `taxInvoiceNo`). Check current navigate logic at line ~131 — confirm it uses listPath not editPath for all types | ❌ NOT YET DONE | Kai implements |
+| N1 | **Related-docs navigation** — `related-docs-dialog.tsx` must navigate to `listPath + ?companyId=X&<searchParam>=<docNo>`. พี่ทราย confirmed: "ต้องวิ่งไปหน้ารายการก่อนเสมอ ไม่ให้วิ่งไปหน้าแก้ไข". `docTypeConfig` already has `listPath` + `searchParam` per type. Check current navigate logic at line ~131 — confirm it uses listPath not editPath for all types | ❌ NOT YET DONE | Kai implements |
 | N2 | **เอกสารที่ออกผิดก่อนแก้โค้ด** — RE26051800001 จิรา etc. สองแนวทาง: (1) ยกเลิก+ออกใหม่ หรือ (2) แก้ journal ตรงๆ | ⏳ Waiting | พี่ช้าง decides |
 | N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
+| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่เคยมีตั้งแต่ต้น ต้องสร้างใหม่ทั้งหมด: (1) เพิ่ม `payeeEmail` field ใน `withholding_tax_certs` table → schema-extra one-time-migration, (2) สร้าง `/api/wht-certs/:id/send-email` route ใน expense-routes.ts, (3) เพิ่ม "ส่งอีเมล" ใน dropdown ใน wht-cert-list.tsx | ❌ NOT YET DONE | Kai implements — ต้องขอ approval พี่ช้าง ก่อน เพราะต้องแก้ schema |
 
 ### Business knowledge you MUST know before touching any code:
 
@@ -173,6 +183,26 @@ Before she gives you a single task, you MUST brief her. Say something like:
 - pdfmake (Node.js server) = ONLY source for preview + print + download
 - Fix in `server/pdf-pdfmake-generator.ts` ONLY — applies to all three actions simultaneously
 - Exception: ใบกำกับภาษีอย่างย่อ (80mm thermal) = HTML only
+
+**WHT cert (50 ทวิ / ใบหัก ณ ที่จ่าย) — knowledge confirmed 2026-05-19:**
+- PDF generator: `server/pdf-wht-cert.ts` — standalone file, NOT in pdf-pdfmake-generator.ts
+- Root cause of PDF fail: `expense-routes.ts` used `try { require("../pdf-wht-cert") } catch {}` — Node.js `require()` cannot resolve `.ts` extension at runtime → catch swallowed error silently → every PDF call threw "pdf-wht-cert not available"
+- Fix: replaced 3 lines (dynamic require) with `import { generateWhtCertPdf } from "../pdf-wht-cert"` at top of file
+- **All channels (share link, LINE, Email PDF) route through `/api/share/wht-cert/:token/pdf`** — one fix fixes all channels simultaneously
+- Actions dropdown pattern: WHT cert list was the ONLY document list using individual icon buttons instead of DropdownMenu — fixed to match other docs (แก้ไข, ดูตัวอย่าง/สั่งพิมพ์, ลิงก์สำหรับแชร์, ส่งผ่าน LINE, อนุมัติ, ลบ)
+- **ส่งอีเมล: NOT YET DONE** — `withholdingTaxCerts` table has no `payeeEmail` column, no send-email route exists — see N6 in pending work above
+
+**PM dropdown lock (confirmed by พี่ทราย + พี่ช้าง 2026-05-19):**
+- Documents WITH payment step → PM dropdown active: Tax Invoice, Receipt, Expense, Purchase Invoice, Debit Note (both sides)
+- Documents WITHOUT payment step → PM dropdown hidden (blank white cell): **ใบขอซื้อ (PR)**, **ใบสั่งซื้อ (PO)**, **ใบสั่งขาย (SO)**
+- Quotation (QO) — has NO paymentMethod field at all, no change needed
+- Implementation: replace `<td bg-amber-50/70>` + entire Select block with `<td bg-white><div className="h-7"/></td>`
+- Files changed: `purchase-request.tsx`, `purchase-order.tsx`, `sales-order-form.tsx`
+
+**Document action pattern (ALL documents must follow this):**
+- พี่ทราย confirmed: เมนู actions ต้องเป็น DropdownMenu เสมอ — ไม่ใช่ปุ่มไอคอนเรียงกัน
+- Standard pattern: `<DropdownMenu>` with `MoreHorizontal` trigger, `w-52` content, items with icon + label
+- Reference implementation: `expense-list.tsx` lines 776-858
 
 **DB Migration rule:**
 - Verify production DB state FIRST before writing any migration code
@@ -1070,6 +1100,9 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 
 | Date | What | Result |
 |------|------|--------|
+| 2026-05-19 | WHT cert PDF fix — `expense-routes.ts` dynamic require → static import `generateWhtCertPdf` — แก้ทุก channel (share link/LINE/Email PDF) | ✅ dev |
+| 2026-05-19 | WHT cert list actions — เปลี่ยนจากปุ่ม icon เรียงกันเป็น DropdownMenu เหมือนเอกสารอื่น | ✅ dev |
+| 2026-05-19 | PM dropdown lock — ซ่อน วิธีชำระเงิน ใน PR/PO/SO (blank white cell) — ใบเหล่านี้ไม่มีขั้นตอนชำระเงิน | ✅ dev |
 | 2026-05-16 | GR POST 201 confirmed — body shows companyId:3721, items×3, lot tracking ✅ — POST /api/goods-receivings ทำงานแล้ว | ✅ dev |
 | 2026-05-16 | goods-receiving-list.tsx crash fix — `dateFormat` → `dateFmt` (typo — useDateSettings returns dateFmt, not dateFormat) | ✅ dev |
 | 2026-05-16 | GR imports fix — goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems ใน products-routes.ts (S6) | ✅ dev |
