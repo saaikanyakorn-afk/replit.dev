@@ -577,72 +577,77 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           },
           {
             width: "*",
-            alignment: "center",
-            stack: [
-              { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 78, 8] },
+            columns: [
               {
-                table: {
-                  widths: [28, 120, 38, "*"],
-                  body: [
-                    [
-                      { text: "ลงชื่อ", border: noBorder, fontSize: 8 },
-                      signatureImageB64
-                        ? {
+                width: "*",
+                stack: [
+                  { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 0, 8] },
+                  {
+                    table: {
+                      widths: [28, 120, 38],
+                      body: [
+                        [
+                          { text: "ลงชื่อ", border: noBorder, fontSize: 8 },
+                          signatureImageB64
+                            ? {
+                                stack: [
+                                  { image: signatureImageB64, fit: [80, 26], alignment: "center" },
+                                  { canvas: [{ type: "line", x1: 0, y1: 0, x2: 80, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                                ],
+                                border: [false, false, false, false] as any,
+                              }
+                            : { text: "", border: [false, false, false, true] as any, fontSize: 8 },
+                          { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
+                        ],
+                        [
+                          { text: "", border: noBorder },
+                          {
                             stack: [
-                              { image: signatureImageB64, fit: [80, 26], alignment: "center", margin: [0, 0, 0, 0] },
+                              {
+                                text: [
+                                  { text: "( " },
+                                  { text: data.createdBySignatureName || data.createdByName || data.payerName || "" },
+                                  { text: " )" },
+                                ],
+                                fontSize: 8,
+                                alignment: "center",
+                              },
                               { canvas: [{ type: "line", x1: 0, y1: 0, x2: 80, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
                             ],
-                            border: [false, false, false, false] as any,
-                          }
-                        : { text: "", border: [false, false, false, true] as any, fontSize: 8 },
-                      { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
-                      {
-                        stack: [
-                          ...(stampImageB64 ? [{ image: stampImageB64, fit: [120, 74] }] : []),
+                            border: noBorder,
+                            margin: [0, 2, 0, 0],
+                          },
+                          { text: "", border: noBorder },
                         ],
-                        border: noBorder,
-                        rowSpan: 3,
-                      },
-                    ],
-                    [
-                      { text: "", border: noBorder },
-                      {
-                        stack: [
+                        [
+                          { text: "", border: noBorder },
                           {
-                            text: [
-                              { text: "( " },
-                              { text: data.createdBySignatureName || data.createdByName || data.payerName || "" },
-                              { text: " )" },
+                            stack: [
+                              {
+                                text: `${dateParts.day || "   "} / ${dateParts.month || "           "} / ${dateParts.year || "      "}`,
+                                alignment: "center", fontSize: 8,
+                              },
+                              { text: "(วัน เดือน ปี ที่ออกหนังสือรับรองฯ)", alignment: "center", fontSize: 7, color: "#666" },
                             ],
-                            fontSize: 8,
-                            alignment: "center",
+                            border: noBorder, margin: [0, 2, 0, 0],
                           },
-                          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 80, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                          { text: "", border: noBorder },
                         ],
-                        border: noBorder,
-                        margin: [0, 2, 0, 0],
-                      },
-                      { text: "", border: noBorder },
-                    ],
-                    [
-                      { text: "", border: noBorder },
-                      {
-                        stack: [
-                          {
-                            text: `${dateParts.day || "   "} / ${dateParts.month || "           "} / ${dateParts.year || "      "}`,
-                            alignment: "center", fontSize: 8,
-                          },
-                          { text: "(วัน เดือน ปี ที่ออกหนังสือรับรองฯ)", alignment: "center", fontSize: 7, color: "#666" },
-                        ],
-                        border: noBorder, margin: [0, 2, 0, 0],
-                      },
-                      { text: "", border: noBorder },
-                    ],
-                  ],
-                },
-                layout: "noBorders",
+                      ],
+                    },
+                    layout: "noBorders",
+                  },
+                ],
+              },
+              {
+                width: 105,
+                stack: [
+                  ...(stampImageB64 ? [{ image: stampImageB64, width: 100, margin: [0, 12, 0, 0] }] : []),
+                ],
+                alignment: "center",
               },
             ],
+            columnGap: 0,
             margin: [8, 0, 0, 0],
           },
         ],
