@@ -597,7 +597,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         : { text: "", border: [false, false, false, true] as any, fontSize: 8 },
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
                       stampImageB64
-                        ? { image: stampImageB64, fit: [65, 65], alignment: "center", rowSpan: 3, border: noBorder, margin: [4, 0, 0, 0] }
+                        ? { stack: [{ image: stampImageB64, fit: [55, 55], alignment: "center" }, { text: "ประทับตรา", fontSize: 7.5, color: "#666", alignment: "center" }], border: noBorder, margin: [4, 0, 0, 0] }
                         : { text: "ประทับตรา", border: noBorder, fontSize: 7.5, color: "#666" },
                     ],
                     [
@@ -611,9 +611,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         margin: [0, 2, 0, 0],
                       },
                       { text: ")", border: noBorder, fontSize: 8, margin: [0, 2, 0, 0] },
-                      stampImageB64
-                        ? { text: "", border: noBorder }
-                        : { text: "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
+                      { text: "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
                     ],
                     [
                       { text: "", border: noBorder },
@@ -622,9 +620,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         alignment: "center", fontSize: 8, border: noBorder, margin: [0, 2, 0, 0],
                       },
                       { text: "", border: noBorder },
-                      stampImageB64
-                        ? { text: "", border: noBorder }
-                        : { text: "(ถ้ามี)", border: noBorder, fontSize: 7, color: "#666", margin: [0, 2, 0, 0] },
+                      { text: "(ถ้ามี)", border: noBorder, fontSize: 7, color: "#666", margin: [0, 2, 0, 0] },
                     ],
                     [
                       { text: "", border: noBorder },
