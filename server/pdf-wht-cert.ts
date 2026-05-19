@@ -578,14 +578,15 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           {
             width: "*",
             alignment: "center",
+            margin: [0, 0, 5, 0],
             stack: [
               { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 0, 8] },
               ...(stampImageB64 ? [{
                 columns: [
                   { width: "*", text: "" },
-                  { image: stampImageB64, fit: [90, 90], width: 90, alignment: "right" },
+                  { image: stampImageB64, fit: [80, 80], width: 80, alignment: "center" },
                 ],
-                margin: [0, 0, 0, -90],
+                margin: [0, 0, 0, -80],
               }] : []),
               {
                 table: {
