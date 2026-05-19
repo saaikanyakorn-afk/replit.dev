@@ -13,8 +13,15 @@ import { useCompany } from "@/lib/company-context";
 import {
   Search, Plus, FileText, Edit2, Trash2, Eye,
   CheckCircle2, Clock, XCircle,
-  Printer, Link2, Download, BarChart3, Layers, Loader2, MessageSquare
+  Printer, Link2, Download, BarChart3, Layers, Loader2, MessageSquare, MoreHorizontal
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import LineSendDialog from "@/components/line-send-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest, getShareBaseUrl } from "@/lib/queryClient";
@@ -406,72 +413,38 @@ export default function WhtCertList() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center justify-center gap-1">
-                                  <Button
-                                    data-testid={`button-edit-${doc.id}`}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    title="แก้ไข"
-                                    onClick={() => navigate(`/purchases/wht/edit/${doc.id}`)}
-                                  >
-                                    <Edit2 className="h-4 w-4 text-blue-500" />
-                                  </Button>
-                                  <Button
-                                    data-testid={`button-print-${doc.id}`}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    title="ดูตัวอย่าง / พิมพ์"
-                                    onClick={() => navigate(`/purchases/wht/print/${doc.id}`)}
-                                  >
-                                    <Printer className="h-4 w-4 text-purple-500" />
-                                  </Button>
-                                  <Button
-                                    data-testid={`button-share-${doc.id}`}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    title="แชร์ลิงก์"
-                                    onClick={() => handleShare(doc)}
-                                  >
-                                    <Link2 className="h-4 w-4 text-gray-500" />
-                                  </Button>
-                                  <Button
-                                    data-testid={`button-line-${doc.id}`}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    title="ส่งผ่าน LINE"
-                                    onClick={() => handleSendLine(doc)}
-                                  >
-                                    <MessageSquare className="h-4 w-4 text-green-500" />
-                                  </Button>
-                                  {doc.status === "draft" && (
-                                    <Button
-                                      data-testid={`button-approve-${doc.id}`}
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      title="อนุมัติ"
-                                      onClick={() => statusMutation.mutate({ id: doc.id, status: "approved" })}
-                                    >
-                                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button data-testid={`button-actions-${doc.id}`} variant="ghost" size="icon" className="h-7 w-7">
+                                      <MoreHorizontal className="h-4 w-4" />
                                     </Button>
-                                  )}
-                                  {doc.status !== "cancelled" && (
-                                    <Button
-                                      data-testid={`button-delete-${doc.id}`}
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      title="ลบ"
-                                      onClick={() => { if (confirm("ต้องการลบหนังสือรับรองนี้?")) deleteMutation.mutate(doc.id); }}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-400" />
-                                    </Button>
-                                  )}
-                                </div>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-52 text-sm">
+                                    <DropdownMenuItem onClick={() => navigate(`/purchases/wht/edit/${doc.id}`)} className="flex gap-2">
+                                      <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => navigate(`/purchases/wht/print/${doc.id}`)} className="flex gap-2">
+                                      <Printer className="h-3.5 w-3.5 text-purple-500" /> ดูตัวอย่าง / สั่งพิมพ์
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleShare(doc)} className="flex gap-2">
+                                      <Link2 className="h-3.5 w-3.5" /> ลิงก์สำหรับแชร์
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleSendLine(doc)} className="flex gap-2 text-green-600">
+                                      <MessageSquare className="h-3.5 w-3.5" /> ส่งผ่าน LINE
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {doc.status === "draft" && (
+                                      <DropdownMenuItem onClick={() => statusMutation.mutate({ id: doc.id, status: "approved" })} className="flex gap-2 text-emerald-600">
+                                        <CheckCircle2 className="h-3.5 w-3.5" /> อนุมัติ
+                                      </DropdownMenuItem>
+                                    )}
+                                    {doc.status !== "cancelled" && (
+                                      <DropdownMenuItem onClick={() => { if (confirm("ต้องการลบหนังสือรับรองนี้?")) deleteMutation.mutate(doc.id); }} className="flex gap-2 text-red-500">
+                                        <Trash2 className="h-3.5 w-3.5" /> ลบ
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </TableCell>
                             </TableRow>
                           );

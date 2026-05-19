@@ -946,34 +946,8 @@ export default function SalesOrderForm() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 pt-1.5 pb-1 align-top bg-amber-50/70" colSpan={2}>
-                      <div className="text-[10px] text-amber-600 font-semibold mb-0.5">วิธีชำระเงิน</div>
-                      <Select
-                        value={(() => {
-                          const pm = form.paymentMethod;
-                          if (!pm) return "none";
-                          const found = activePaymentMethods.find((m: any) => m.accountCode === pm);
-                          return found ? `pm_${found.id}` : pm;
-                        })()}
-                        onValueChange={v => {
-                          if (v === "none") { setForm(p => ({ ...p, paymentMethod: "" })); return; }
-                          const pm = activePaymentMethods.find((m: any) => `pm_${m.id}` === v);
-                          if (!pm) return;
-                          setForm(p => ({ ...p, paymentMethod: pm.accountCode }));
-                        }}
-                      >
-                        <SelectTrigger data-testid="select-payment-method" className="h-7 text-xs border-dashed">
-                          <SelectValue placeholder="เลือก" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">ไม่ระบุ</SelectItem>
-                          {activePaymentMethods.map((m: any) => (
-                            <SelectItem key={m.id} value={`pm_${m.id}`}>
-                              {m.nameTh || m.name}{m.bankName ? ` · ${m.bankName}` : ""}{m.bankAccountNo ? ` ${m.bankAccountNo}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <td className="px-3 pt-1.5 pb-1 align-top bg-white" colSpan={2}>
+                      <div className="h-7" />
                     </td>
                   </tr>
 

@@ -14,9 +14,7 @@ import * as path from "path";
 const isCreditPm = (name?: string | null) =>
   !!name && (name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต("));
 
-// pdf-wht-cert is a production-only file — use dynamic require to avoid build-time resolution failure
-let generateWhtCertPdf: (data: any) => Promise<Buffer> = async () => { throw new Error("pdf-wht-cert not available"); };
-try { generateWhtCertPdf = require("../pdf-wht-cert").generateWhtCertPdf; } catch {}
+import { generateWhtCertPdf } from "../pdf-wht-cert";
 
 function isAllowedRedirectUrl(url: string): boolean {
   if (!url) return false;
