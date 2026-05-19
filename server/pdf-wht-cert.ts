@@ -151,7 +151,7 @@ function taxIdBoxes(taxId: string): any {
       cx += dashW;
     }
     for (const d of groups[gi]) {
-      rects.push({ type: "rect", x: cx, y: 0, w: boxW, h: boxH, lineWidth: 0.5, lineColor: "black", fillColor: "white" });
+      rects.push({ type: "rect", x: cx, y: 0, w: boxW, h: boxH, lineWidth: 0.5, lineColor: "black" });
       textItems.push({ text: d.trim() || " ", width: boxW, fontSize: 8, alignment: "center", margin: [0, 2, 0, 0] });
       cx += boxW;
     }
@@ -159,7 +159,7 @@ function taxIdBoxes(taxId: string): any {
   return {
     stack: [
       { canvas: rects, width: cx, height: boxH },
-      { columns: textItems, columnGap: 0, relativePosition: { x: 0, y: -boxH }, width: cx },
+      { columns: textItems, columnGap: 0, width: cx, margin: [0, -boxH, 0, 0] },
     ],
   };
 }
