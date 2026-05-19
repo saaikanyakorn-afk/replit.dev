@@ -229,9 +229,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
     const entry = agg[type];
     return [[
       { stack: Array.isArray(labelItems) ? labelItems : [{ text: labelItems, fontSize: small ? 7 : 8 }], border },
-      { text: entry?.paidDate || "", fontSize: small ? 7 : 8, alignment: "center", border },
-      { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: small ? 7 : 8, alignment: "right", border },
-      { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: small ? 7 : 8, alignment: "right", border },
+      { text: entry?.paidDate || "", fontSize: small ? 7 : 8, alignment: "center", border, verticalAlignment: "middle" },
+      { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: small ? 7 : 8, alignment: "right", border, verticalAlignment: "middle" },
+      { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: small ? 7 : 8, alignment: "right", border, verticalAlignment: "middle" },
     ]];
   }
 
@@ -250,14 +250,14 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
     return [[
       { stack: labelStack, border },
       hasMultiple
-        ? { stack: entry!.lines.map(l => ({ text: l.paidDate, fontSize: 7, alignment: "center" })), border }
-        : { text: entry?.paidDate || "", fontSize: 8, alignment: "center", border },
+        ? { stack: entry!.lines.map(l => ({ text: l.paidDate, fontSize: 7, alignment: "center" })), border, verticalAlignment: "middle" }
+        : { text: entry?.paidDate || "", fontSize: 8, alignment: "center", border, verticalAlignment: "middle" },
       hasMultiple
-        ? { stack: entry!.lines.map(l => ({ text: fmtNum(l.amountPaid), fontSize: 7, alignment: "right" })), border }
-        : { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: 8, alignment: "right", border },
+        ? { stack: entry!.lines.map(l => ({ text: fmtNum(l.amountPaid), fontSize: 7, alignment: "right" })), border, verticalAlignment: "middle" }
+        : { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: 8, alignment: "right", border, verticalAlignment: "middle" },
       hasMultiple
-        ? { stack: entry!.lines.map(l => ({ text: fmtNum(l.taxWithheld), fontSize: 7, alignment: "right" })), border }
-        : { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: 8, alignment: "right", border },
+        ? { stack: entry!.lines.map(l => ({ text: fmtNum(l.taxWithheld), fontSize: 7, alignment: "right" })), border, verticalAlignment: "middle" }
+        : { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: 8, alignment: "right", border, verticalAlignment: "middle" },
     ]];
   }
 
