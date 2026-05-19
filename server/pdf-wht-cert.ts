@@ -156,10 +156,6 @@ function taxIdBoxes(taxId: string): any {
   return {
     table: { widths, body: [cells] },
     layout: {
-      hLineWidth: () => 0.5,
-      vLineWidth: () => 0.5,
-      hLineColor: () => "black",
-      vLineColor: () => "black",
       paddingLeft: () => 0,
       paddingRight: () => 0,
       paddingTop: () => 1,
