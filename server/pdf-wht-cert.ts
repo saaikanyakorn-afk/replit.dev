@@ -582,7 +582,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
               { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 0, 8] },
               {
                 table: {
-                  widths: ["auto", "*", "auto", 78],
+                  widths: [28, "*", 38, 78],
                   body: [
                     [
                       { text: "ลงชื่อ", border: noBorder, fontSize: 8 },
