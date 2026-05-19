@@ -642,7 +642,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
               {
                 width: 105,
                 stack: [
-                  ...(stampImageB64 ? [{ image: stampImageB64, width: 100, margin: [0, 12, 0, 0] }] : []),
+                  ...(stampImageB64 ? [{ image: stampImageB64, fit: [100, 80], alignment: "center" }] : []),
                 ],
                 alignment: "center",
               },
