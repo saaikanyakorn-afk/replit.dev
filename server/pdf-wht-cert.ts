@@ -582,15 +582,15 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
               { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 0, 8] },
               {
                 table: {
-                  widths: ["auto", "*", "auto", 68],
+                  widths: ["auto", "*", "auto", 78],
                   body: [
                     [
                       { text: "ลงชื่อ", border: noBorder, fontSize: 8 },
                       signatureImageB64
                         ? {
                             stack: [
-                              { image: signatureImageB64, fit: [100, 28], alignment: "center", margin: [0, 0, 0, 0] },
-                              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 100, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                              { image: signatureImageB64, fit: [80, 26], alignment: "center", margin: [0, 0, 0, 0] },
+                              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 80, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
                             ],
                             border: [false, false, false, false] as any,
                           }
@@ -598,7 +598,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
                       {
                         stack: [
-                          ...(stampImageB64 ? [{ image: stampImageB64, fit: [65, 65], alignment: "center" }] : []),
+                          ...(stampImageB64 ? [{ image: stampImageB64, width: 76, alignment: "center" }] : []),
                         ],
                         border: noBorder,
                         rowSpan: 3,
@@ -609,7 +609,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                       {
                         stack: [
                           { text: data.createdBySignatureName || data.createdByName || data.payerName || "", fontSize: 8, alignment: "center" },
-                          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 100, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 80, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
                         ],
                         border: noBorder,
                         margin: [0, 2, 0, 0],
