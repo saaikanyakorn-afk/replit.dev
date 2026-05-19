@@ -328,7 +328,22 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
             {
               width: "auto",
               stack: [
-                { text: [`ลำดับที่  `, { text: data.seqNo || "    ", bold: true }, `  ในแบบ`], fontSize: 8, margin: [0, 0, 0, 2] },
+                {
+                  columns: [
+                    { text: "ลำดับที่", width: "auto", fontSize: 8 },
+                    {
+                      stack: [
+                        { text: data.seqNo || "", fontSize: 8, bold: true, alignment: "center" },
+                        { canvas: [{ type: "line", x1: 0, y1: 0, x2: 55, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                      ],
+                      width: 55,
+                      margin: [3, 0, 3, 0],
+                    },
+                    { text: "ในแบบ", width: "auto", fontSize: 8 },
+                  ],
+                  columnGap: 0,
+                  margin: [0, 0, 0, 2],
+                },
                 { text: "(ให้สามารถอ้างอิงหรือสอบยันกันได้ระหว่าง\nลำดับที่ตามหนังสือรับรองฯ กับแบบยื่น\nรายการภาษีหัก ณ ที่จ่าย)", fontSize: 6.5, color: "#666" },
               ],
               margin: [0, 0, 12, 0],
