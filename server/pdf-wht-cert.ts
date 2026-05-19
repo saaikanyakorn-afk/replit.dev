@@ -143,23 +143,28 @@ function taxIdBoxes(taxId: string): any {
   ];
   const boxW = 11, boxH = 12, dashW = 7;
   let cx = 0;
-  const parts: string[] = [];
+  const rects: any[] = [];
+  const textItems: any[] = [];
   for (let gi = 0; gi < groups.length; gi++) {
     if (gi > 0) {
-      parts.push(`<text x="${cx + dashW / 2}" y="${boxH - 2}" font-size="8" font-family="Arial" text-anchor="middle">-</text>`);
+      textItems.push({ text: "-", width: dashW, fontSize: 8, bold: true, alignment: "center" });
       cx += dashW;
     }
     for (const d of groups[gi]) {
-      parts.push(`<rect x="${cx + 0.25}" y="0.25" width="${boxW - 0.5}" height="${boxH - 0.5}" fill="white" stroke="black" stroke-width="0.5"/>`);
-      const digit = d.trim();
-      if (digit) {
-        parts.push(`<text x="${cx + boxW / 2}" y="${boxH - 2}" font-size="8" font-family="Arial" text-anchor="middle">${digit}</text>`);
-      }
+      rects.push({ type: "rect", x: cx, y: 0, w: boxW, h: boxH, lineWidth: 0.5, lineColor: "black", fillColor: "white" });
+      textItems.push({ text: d.trim() || " ", width: boxW, fontSize: 7, alignment: "center" });
       cx += boxW;
     }
   }
-  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${cx}" height="${boxH}">${parts.join("")}</svg>`;
-  return { svg: svgStr, width: cx, height: boxH };
+  // canvas draws the visible boxes; text uses relativePosition to overlay on canvas;
+  // negative bottom margin cancels the extra layout height so the row stays compact
+  return {
+    stack: [
+      { canvas: rects, width: cx, height: boxH },
+      { columns: textItems, columnGap: 0, relativePosition: { x: 0, y: -boxH }, width: cx, margin: [0, 0, 0, -(boxH - 2)] },
+    ],
+    width: cx,
+  };
 }
 
 function cb(checked: boolean): any {
@@ -280,19 +285,12 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       // ผู้มีหน้าที่หักภาษี
       sectionBox([
         {
-          table: {
-            widths: ["*", 130, 171],
-            body: [[
-              { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8 },
-              { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right" },
-              { stack: [taxIdBoxes(data.payerTaxId || "")] },
-            ]],
-          },
-          layout: {
-            hLineWidth: () => 0, vLineWidth: () => 0,
-            paddingLeft: () => 0, paddingRight: () => 0,
-            paddingTop: () => 0, paddingBottom: () => 0,
-          },
+          columns: [
+            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 250 },
+            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 115 },
+            taxIdBoxes(data.payerTaxId || ""),
+          ],
+          columnGap: 4,
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payerName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
@@ -303,19 +301,12 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       // ผู้ถูกหักภาษี
       sectionBox([
         {
-          table: {
-            widths: ["*", 130, 171],
-            body: [[
-              { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8 },
-              { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right" },
-              { stack: [taxIdBoxes(data.payeeTaxId || "")] },
-            ]],
-          },
-          layout: {
-            hLineWidth: () => 0, vLineWidth: () => 0,
-            paddingLeft: () => 0, paddingRight: () => 0,
-            paddingTop: () => 0, paddingBottom: () => 0,
-          },
+          columns: [
+            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 250 },
+            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 115 },
+            taxIdBoxes(data.payeeTaxId || ""),
+          ],
+          columnGap: 4,
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payeeName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
