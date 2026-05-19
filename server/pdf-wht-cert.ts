@@ -545,7 +545,8 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       sectionBox([
         {
           columns: [
-            { text: "ผู้จ่ายเงิน  ", bold: true, fontSize: 8, width: "auto" },
+            { text: "ผู้จ่ายเงิน", bold: true, fontSize: 8, width: "auto" },
+            { text: "", width: 10 },
             { columns: [cb(data.whtCondition === "1"), { text: " (1) หัก ณ ที่จ่าย", fontSize: 8, noWrap: true }], columnGap: 2, width: "auto" },
             { text: "  ", width: 8 },
             { columns: [cb(data.whtCondition === "2"), { text: " (2) ออกให้ตลอดไป", fontSize: 8, noWrap: true }], columnGap: 2, width: "auto" },
