@@ -151,7 +151,7 @@ Before she gives you a single task, you MUST brief her. Say something like:
 | N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
-| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่เคยมีตั้งแต่ต้น ต้องสร้างใหม่ทั้งหมด: (1) เพิ่ม `payeeEmail` field ใน `withholding_tax_certs` table → schema-extra one-time-migration, (2) สร้าง `/api/wht-certs/:id/send-email` route ใน expense-routes.ts, (3) เพิ่ม "ส่งอีเมล" ใน dropdown ใน wht-cert-list.tsx | ❌ NOT YET DONE | Kai implements — ต้องขอ approval พี่ช้าง ก่อน เพราะต้องแก้ schema |
+| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่เคยมีตั้งแต่ต้น ต้องสร้างใหม่ทั้งหมด: (1) เพิ่ม `payeeEmail` column ใน `withholding_tax_certs` table, (2) สร้าง `/api/wht-certs/:id/send-email` route ใน expense-routes.ts, (3) เพิ่ม "ส่งอีเมล" ใน dropdown wht-cert-list.tsx — **MUST follow full 10-step migration checklist (replit.md Rule 2) — ดูขั้นตอนในหัวข้อ Production Schema Change Procedure ด้านล่าง** | ❌ NOT YET DONE | **Kai MUST study rule first** → VERIFY production DB → พี่ช้าง approves every production step |
 
 ### Business knowledge you MUST know before touching any code:
 
@@ -204,11 +204,35 @@ Before she gives you a single task, you MUST brief her. Say something like:
 - Standard pattern: `<DropdownMenu>` with `MoreHorizontal` trigger, `w-52` content, items with icon + label
 - Reference implementation: `expense-list.tsx` lines 776-858
 
-**DB Migration rule:**
-- Verify production DB state FIRST before writing any migration code
-- `psql -h deep-main.hopto.org -p 20541 -U etaxusr -d etax-production`
-- Flag pattern in `system_config` prevents re-run — always use it
-- Comment out migration block IMMEDIATELY after first run
+**DB Migration rule — Production Schema Change Procedure (READ replit.md fully before starting):**
+
+> ⚠️ Rule 6: NO procedure self-authorizes any production action. พี่ช้าง approval required for EVERY step on production. No exceptions.
+
+**Before writing a single line of code:**
+1. Read replit.md Rule 0–6 in full (DB Migration section)
+2. VERIFY production DB state first — query real columns, do not assume dev = production:
+   ```
+   PGPASSWORD=nJKsyhE4583Hz psql -h deep-main.hopto.org -p 20541 -U etaxusr -d etax-production \
+     -c "SELECT column_name FROM information_schema.columns WHERE table_name='<table>';"
+   ```
+
+**The 10-step checklist (Rule 2 — no shortcuts):**
+1. VERIFY FIRST — query prod DB before writing any code
+2. BACKUP (if touching existing data) — `CREATE TABLE backup_{table}_{yyyymmdd} AS SELECT * FROM {table}` inside migration
+3. WRITE MIGRATION — one-time function in `shared/schema-extra.ts`, guarded by `system_config` flag
+4. WRITE HISTORY — entry in `db/schema-history.md` (what / backup / when / why)
+5. IDENTIFY ALL DEPLOY FILES — `schema-extra.ts` + every route file that owns the table (grep to find it)
+6. CHERRY-PICK DEPLOY — push ALL files in one SSH command → confirm `xxx..yyy  main -> main` → notify พี่ช้าง with exact server command
+7. VERIFY RESULT — query prod DB again, look at real rows (not just COUNT)
+8. COMMENT OUT BLOCK IMMEDIATELY — with date/time/reason
+9. PUSH CLEAN — comment-out must land on server before anything else
+10. CONTINUE — both DB loop AND code loop must fully close before starting anything else
+
+**Key points:**
+- `shared/schema.ts` → NEVER MODIFY. All new columns/tables → `shared/schema-extra.ts` ONLY
+- Schema-extra loop has its OWN isolated cherry-pick — do NOT bundle with other file changes (Rule 3)
+- ADD COLUMN nullable = no backup needed. DELETE or UPDATE existing rows = backup required (Rule 4)
+- If migration does not fire → STOP, do not touch production DB directly → diagnose → report to พี่ช้าง (Rule 5)
 
 ---
 
