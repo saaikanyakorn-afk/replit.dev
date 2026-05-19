@@ -131,7 +131,7 @@ export default function LineSendDialog({ open, onOpenChange, shareUrl, docType, 
         res = await apiRequest("POST", "/api/line/send-doc", {
           to: to.trim(),
           companyId,
-          docType: docType === "ใบแจ้งหนี้" ? "invoice" : docType === "ใบกำกับภาษี" ? "tax-invoice" : docType === "ใบเสร็จรับเงิน" ? "receipt" : docType === "ใบเสนอราคา" ? "quotation" : docType === "ใบสั่งขาย" ? "sales-order" : docType,
+          docType: docType === "ใบแจ้งหนี้" ? "invoice" : docType === "ใบกำกับภาษี" ? "tax-invoice" : docType === "ใบเสร็จรับเงิน" ? "receipt" : docType === "ใบเสนอราคา" ? "quotation" : docType === "ใบสั่งขาย" ? "sales-order" : docType === "ใบ 50 ทวิ" ? "wht-cert" : docType,
           shareUrl: resolvedUrl,
         });
       } else {

@@ -2077,7 +2077,13 @@ export function registerExpenseRoutes(app: Express) {
         const u = await storage.getUser(Number(doc.createdBy));
         if (u) { createdByName = u.fullName; createdBySignatureName = (u as any).signatureName || u.fullName; createdBySignatureUrlEmail = (u as any).signatureUrl || ""; }
       }
-      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company, createdByName, createdBySignatureName, createdBySignatureUrl: createdBySignatureUrlEmail });
+      let stampUrlEmail: string | null = null;
+      try {
+        const dsRows = await db.execute(sql.raw(`SELECT stamp_url FROM document_settings WHERE company_id = ${doc.companyId} LIMIT 1`));
+        stampUrlEmail = ((dsRows as any).rows?.[0]?.stamp_url) || null;
+      } catch {}
+      const resolvedSeqNoEmail = doc.seqNo || await computeWhtSeqNo(doc.id, doc.companyId, doc.formType, doc.paidDate);
+      const pdfBuffer = await generateWhtCertPdf({ ...doc, seqNo: resolvedSeqNoEmail, items, company, createdByName, createdBySignatureName, createdBySignatureUrl: createdBySignatureUrlEmail, stampUrl: stampUrlEmail });
 
       const companyName = company?.name || "บริษัท";
       const nodemailer = await import("nodemailer");

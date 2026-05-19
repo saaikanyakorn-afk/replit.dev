@@ -161,10 +161,12 @@ app.post("/api/line/send-doc", requireAuth, async (req, res) => {
       invoice: "ใบแจ้งหนี้", "tax-invoice": "ใบกำกับภาษี", receipt: "ใบเสร็จรับเงิน",
       quotation: "ใบเสนอราคา", "sales-order": "ใบสั่งขาย",
       "tax_invoice": "ใบกำกับภาษี", "sales_order": "ใบสั่งขาย",
+      "wht-cert": "ใบ 50 ทวิ",
     };
     const DOC_COLORS: Record<string, string> = {
       invoice: "#fb9678", quotation: "#fb9678", "sales-order": "#fb9678", "sales_order": "#fb9678",
       "tax-invoice": "#03c9d7", "tax_invoice": "#03c9d7", receipt: "#03c9d7",
+      "wht-cert": "#9333ea",
     };
     const labelTh = DOC_LABELS[docType] || "เอกสาร";
     const cardColor = DOC_COLORS[docType] || "#fb9678";
@@ -204,6 +206,15 @@ app.post("/api/line/send-doc", requireAuth, async (req, res) => {
           cid = r?.companyId || 0;
           const net = calcNet(r); amountStr = net ? net.toLocaleString("th-TH", { minimumFractionDigits: 2 }) : "";
           docNo = r?.quotationNo || ""; customerName = r?.customerName || "";
+        } else if (docType === "wht-cert") {
+          const rows = await db.execute(sql`SELECT id, cert_no, payee_name, tax_withheld, company_id FROM withholding_tax_certs WHERE share_token = ${shareToken} LIMIT 1`);
+          const r = (rows as any).rows?.[0];
+          if (r) {
+            cid = Number(r.company_id) || 0;
+            docNo = r.cert_no || "";
+            customerName = r.payee_name || "";
+            amountStr = r.tax_withheld ? Number(r.tax_withheld).toLocaleString("th-TH", { minimumFractionDigits: 2 }) : "";
+          }
         }
         if (cid) {
           const [co] = await db.select().from(companies).where(eq(companies.id, cid));
