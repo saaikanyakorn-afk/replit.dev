@@ -582,7 +582,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
               { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 0, 8] },
               {
                 table: {
-                  widths: [28, 120, 38, "*"],
+                  widths: [28, 120, 38],
                   body: [
                     [
                       { text: "ลงชื่อ", border: noBorder, fontSize: 8 },
@@ -596,13 +596,6 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                           }
                         : { text: "", border: [false, false, false, true] as any, fontSize: 8 },
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
-                      {
-                        stack: stampImageB64
-                          ? [{ image: stampImageB64, width: 110, alignment: "center", margin: [0, 4, 0, 0] }]
-                          : [],
-                        border: noBorder,
-                        rowSpan: 3,
-                      },
                     ],
                     [
                       { text: "", border: noBorder },
@@ -623,7 +616,6 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         margin: [0, 2, 0, 0],
                       },
                       { text: "", border: noBorder },
-                      { text: "", border: noBorder },
                     ],
                     [
                       { text: "", border: noBorder },
@@ -638,12 +630,14 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         border: noBorder, margin: [0, 2, 0, 0],
                       },
                       { text: "", border: noBorder },
-                      { text: "", border: noBorder },
                     ],
                   ],
                 },
                 layout: "noBorders",
               },
+              ...(stampImageB64
+                ? [{ image: stampImageB64, fit: [120, 72] as [number, number], alignment: "right" as const, margin: [0, -72, 0, -72] as [number, number, number, number] }]
+                : []),
             ],
             margin: [8, 0, 0, 0],
           },
