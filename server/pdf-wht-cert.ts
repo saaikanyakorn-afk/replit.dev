@@ -582,7 +582,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
               { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 78, 8] },
               {
                 table: {
-                  widths: [28, 95, 38, "*"],
+                  widths: [28, 120, 38, "*"],
                   body: [
                     [
                       { text: "ลงชื่อ", border: noBorder, fontSize: 8 },
@@ -598,10 +598,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
                       {
                         stack: [
-                          ...(stampImageB64 ? [{ image: stampImageB64, fit: [80, 58], alignment: "left" }] : []),
+                          ...(stampImageB64 ? [{ image: stampImageB64, fit: [80, 58], alignment: "left", margin: [0, 0, 0, -58] }] : []),
                         ],
                         border: noBorder,
-                        rowSpan: 3,
                       },
                     ],
                     [
