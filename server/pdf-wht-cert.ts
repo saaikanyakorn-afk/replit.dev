@@ -300,7 +300,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
   const docDefinition: any = {
     pageSize: "A4",
     pageOrientation: "portrait",
-    pageMargins: [10, 42, 10, 10],
+    pageMargins: [10, 36, 10, 8],
     defaultStyle: { font: "Sarabun", fontSize: 8, lineHeight: 1.1 },
     content: [
       // Title
@@ -427,50 +427,50 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
             // row 4a
             ...incomeTableRows("4a", "4. (ก) ดอกเบี้ย ฯลฯ ตามมาตรา 40 (4) (ก)"),
             // row 4b
-            ...incomeTableRows("4b", [{ columns: [{ text: "", width: 13 }, { text: "(ข) เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ ตามมาตรา 40 (4) (ข)", fontSize: 8 }] }]),
-            // sub-rows dividend – indent levels: (1)/(2)=26pt, (1.x)/(2.x)=39pt
+            ...incomeTableRows("4b", [{ columns: [{ text: "", width: 9 }, { text: "(ข) เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ ตามมาตรา 40 (4) (ข)", fontSize: 8 }] }]),
+            // sub-rows dividend – indent levels: (1)/(2)=19pt, (1.x)/(2.x)=32pt
             [[
-              { columns: [{ text: "", width: 26 }, { text: "(1) กรณีผู้ได้รับเงินปันผลได้รับเครดิตภาษี โดยจ่ายจากกำไรสุทธิของกิจการที่ต้องเสียภาษีเงินได้นิติบุคคลในอัตราดังนี้", fontSize: 7 }], colSpan: 4, border },
+              { columns: [{ text: "", width: 19 }, { text: "(1) กรณีผู้ได้รับเงินปันผลได้รับเครดิตภาษี โดยจ่ายจากกำไรสุทธิของกิจการที่ต้องเสียภาษีเงินได้นิติบุคคลในอัตราดังนี้", fontSize: 7 }], colSpan: 4, border },
               {}, {}, {},
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(1.1) อัตราร้อยละ 30 ของกำไรสุทธิ", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(1.1) อัตราร้อยละ 30 ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(1.2) อัตราร้อยละ 25 ของกำไรสุทธิ", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(1.2) อัตราร้อยละ 25 ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(1.3) อัตราร้อยละ 20 ของกำไรสุทธิ", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(1.3) อัตราร้อยละ 20 ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(1.4) อัตราอื่นๆ (ระบุ) .................. ของกำไรสุทธิ", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(1.4) อัตราอื่นๆ (ระบุ) .................. ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 26 }, { text: "(2) กรณีผู้ได้รับเงินปันผลไม่ได้รับเครดิตภาษี เนื่องจากจ่ายจาก", fontSize: 7 }], colSpan: 4, border },
+              { columns: [{ text: "", width: 19 }, { text: "(2) กรณีผู้ได้รับเงินปันผลไม่ได้รับเครดิตภาษี เนื่องจากจ่ายจาก", fontSize: 7 }], colSpan: 4, border },
               {}, {}, {},
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(2.1) กำไรสุทธิของกิจการที่ได้รับยกเว้นภาษีเงินได้นิติบุคคล", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(2.1) กำไรสุทธิของกิจการที่ได้รับยกเว้นภาษีเงินได้นิติบุคคล", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(2.2) เงินปันผลหรือเงินส่วนแบ่งของกำไรที่ได้รับยกเว้นไม่ต้องนำมารวมคำนวณ", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(2.2) เงินปันผลหรือเงินส่วนแบ่งของกำไรที่ได้รับยกเว้นไม่ต้องนำมารวมคำนวณ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(2.3) กำไรสุทธิส่วนที่ได้หักผลขาดทุนสุทธิยกมาไม่เกิน 5 ปี ก่อนรอบระยะเวลาบัญชีปีปัจจุบัน", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(2.3) กำไรสุทธิส่วนที่ได้หักผลขาดทุนสุทธิยกมาไม่เกิน 5 ปี ก่อนรอบระยะเวลาบัญชีปีปัจจุบัน", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(2.4) กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย (equity method)", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(2.4) กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย (equity method)", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { columns: [{ text: "", width: 39 }, { text: "(2.5) อื่นๆ (ระบุ) ......................................................", fontSize: 7 }], border },
+              { columns: [{ text: "", width: 32 }, { text: "(2.5) อื่นๆ (ระบุ) ......................................................", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             // row 5
@@ -749,10 +749,10 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           const stampImage = await pdfDoc.embedPng(stampBytes);
 
           // Place stamp right of signature section
-          // Measured from rendered PDF: signature section center ≈ 108pt from page bottom
-          // (was 146pt with top margin=4; now top margin=42 → content shifts down 38pt → y -= 38)
+          // Measured from rendered PDF: signature section center ≈ 114pt from page bottom
+          // (was 146pt with top margin=4; now top margin=36 → content shifts down 32pt → y -= 32)
           const x = width - 10 - stampW - 8;  // right-aligned with margin
-          const y = 108 - stampH / 2;          // vertically centered in sig section
+          const y = 114 - stampH / 2;          // vertically centered in sig section
 
           page.drawImage(stampImage, { x, y, width: stampW, height: stampH });
           return Buffer.from(await pdfDoc.save());
