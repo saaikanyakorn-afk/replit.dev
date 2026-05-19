@@ -142,7 +142,7 @@ function taxIdBoxes(taxId: string): any {
     [digits[10], digits[11]],
     [digits[12]],
   ];
-  const boxW = 11, boxH = 12, dashW = 7;
+  const boxW = 11, boxH = 12, dashW = 6.5;
   let cx = 0;
   const rects: any[] = [];
   const textItems: any[] = [];
@@ -316,7 +316,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           columns: [
             { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
             { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 120 },
-            { ...taxIdBoxes(data.payerTaxId || ""), width: 171 },
+            { ...taxIdBoxes(data.payerTaxId || ""), width: 169 },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
@@ -335,7 +335,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           columns: [
             { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
             { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 120 },
-            { ...taxIdBoxes(data.payeeTaxId || ""), width: 171 },
+            { ...taxIdBoxes(data.payeeTaxId || ""), width: 169 },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
