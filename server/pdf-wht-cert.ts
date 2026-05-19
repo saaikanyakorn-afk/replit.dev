@@ -185,9 +185,10 @@ function dotRow(label: string, value: string, labelWidth: number = 30): any {
       {
         stack: [
           { text: value || "", fontSize: 8 },
-          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 999, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 530, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
         ],
         fontSize: 8,
+        width: "*",
       },
     ],
     columnGap: 2,
@@ -286,9 +287,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       sectionBox([
         {
           columns: [
-            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 250 },
-            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 115 },
-            taxIdBoxes(data.payerTaxId || ""),
+            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
+            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 120 },
+            { ...taxIdBoxes(data.payerTaxId || ""), width: 171 },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
@@ -302,9 +303,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       sectionBox([
         {
           columns: [
-            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 250 },
-            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 115 },
-            taxIdBoxes(data.payeeTaxId || ""),
+            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
+            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 120 },
+            { ...taxIdBoxes(data.payeeTaxId || ""), width: 171 },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
