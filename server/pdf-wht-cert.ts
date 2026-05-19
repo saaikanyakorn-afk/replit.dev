@@ -749,10 +749,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           const stampImage = await pdfDoc.embedPng(stampBytes);
 
           // Place stamp right of signature section
-          // Measured from rendered PDF: signature section center ≈ 138pt from page bottom
-          // (was 146pt with top margin=4; now top margin=12 → content shifts down 8pt → y -= 8)
+          // Measured from rendered PDF: signature section center ≈ 120pt from page bottom
           const x = width - 10 - stampW - 8;  // right-aligned with margin
-          const y = 138 - stampH / 2;          // vertically centered in sig section
+          const y = 120 - stampH / 2;          // vertically centered in sig section
 
           page.drawImage(stampImage, { x, y, width: stampW, height: stampH });
           return Buffer.from(await pdfDoc.save());
