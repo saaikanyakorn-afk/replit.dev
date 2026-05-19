@@ -1617,10 +1617,9 @@ export function registerPurchaseRoutes(app: Express) {
         v("vProvince"), v("vPostCode"),
       ].filter(Boolean);
       const branchNo = extractXmlVal(xml, "vBranchNumber");
-      const branchName = extractXmlVal(xml, "vBranchName");
-      const branchLabel = branchNo === "0" ? "สำนักงานใหญ่"
-        : (branchName && branchName !== "-" ? branchName : `สาขาที่ ${branchNo}`);
-      return { name: fullName, address: addrParts.join(" "), branch: branchLabel, branchNumber: Number(branchNo) || branchNumber, source: "rd" };
+      const branchNum = Number(branchNo) || branchNumber;
+      const branchLabel = branchNum === 0 ? "สำนักงานใหญ่" : String(branchNum).padStart(5, "0");
+      return { name: fullName, address: addrParts.join(" "), branch: branchLabel, branchNumber: branchNum, source: "rd" };
     } catch { return null; }
   }
 
