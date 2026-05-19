@@ -9,6 +9,12 @@
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
 @import "@fontsource/inter/700.css";
+@import "@fontsource/niramit/thai-300.css";
+@import "@fontsource/niramit/thai-400.css";
+@import "@fontsource/niramit/thai-500.css";
+@import "@fontsource/niramit/thai-600.css";
+@import "@fontsource/niramit/thai-700.css";
+@import "@fontsource/niramit/thai-400-italic.css";
 
 @import "tailwindcss";
 @import "tw-animate-css";

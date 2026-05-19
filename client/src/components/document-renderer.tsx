@@ -663,7 +663,6 @@ export default function DocumentRenderer({
           )}
         </div>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Niramit:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
           @media print {
             @page {
               @bottom-right {
