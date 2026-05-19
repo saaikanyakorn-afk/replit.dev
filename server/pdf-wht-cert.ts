@@ -495,28 +495,50 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       // ตัวอักษร
       {
         columns: [
-          { text: "รวมเงินภาษีที่หักนำส่ง (ตัวอักษร) ", bold: true, fontSize: 8, width: "auto", noWrap: true },
+          { text: "รวมเงินภาษีที่หักนำส่ง (ตัวอักษร)", bold: true, fontSize: 8, width: "auto", noWrap: true },
           {
             stack: [
               { text: numberToThaiWords(totalTax), fontSize: 8, bold: true },
-              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 360, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 355, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
             ],
             width: "*",
+            margin: [6, 0, 0, 0],
           },
         ],
         margin: [0, 0, 0, 2],
       },
       // กองทุน
       {
-        text: [
-          "เงินที่จ่ายเข้า กบข./กสจ./กองทุนสงเคราะห์ครูโรงเรียนเอกชน  ",
-          { text: data.gpfAmount || "         ", decoration: "underline" }, " บาท",
-          "   กองทุนประกันสังคม  ",
-          { text: data.ssoAmount || "         ", decoration: "underline" }, " บาท",
-          "   กองทุนสำรองเลี้ยงชีพ  ",
-          { text: data.pvdAmount || "         ", decoration: "underline" }, " บาท",
+        columns: [
+          { text: "เงินที่จ่ายเข้า กบข./กสจ./กองทุนสงเคราะห์ครูโรงเรียนเอกชน", fontSize: 7.5, width: "auto", noWrap: true },
+          {
+            stack: [
+              { text: data.gpfAmount || "", fontSize: 7.5, alignment: "center" },
+              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 38, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+            ],
+            width: 38, margin: [2, 0, 2, 0],
+          },
+          { text: "บาท", fontSize: 7.5, width: "auto" },
+          { text: "  กองทุนประกันสังคม", fontSize: 7.5, width: "auto", noWrap: true },
+          {
+            stack: [
+              { text: data.ssoAmount || "", fontSize: 7.5, alignment: "center" },
+              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 38, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+            ],
+            width: 38, margin: [2, 0, 2, 0],
+          },
+          { text: "บาท", fontSize: 7.5, width: "auto" },
+          { text: "  กองทุนสำรองเลี้ยงชีพ", fontSize: 7.5, width: "auto", noWrap: true },
+          {
+            stack: [
+              { text: data.pvdAmount || "", fontSize: 7.5, alignment: "center" },
+              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 38, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+            ],
+            width: 38, margin: [2, 0, 2, 0],
+          },
+          { text: "บาท", fontSize: 7.5, width: "auto" },
         ],
-        fontSize: 7.5,
+        columnGap: 0,
         margin: [0, 0, 0, 2],
       },
       // ผู้จ่ายเงิน condition
