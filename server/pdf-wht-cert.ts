@@ -132,8 +132,6 @@ function aggregateByIncomeType(items: any[], fallbackData: any): Record<string, 
 }
 
 function taxIdBoxes(taxId: string): any {
-  // Canvas for box outlines + relativePosition columns for digit text
-  // NOTE: always use explicit numeric widths in parent columns (avoid width:"*")
   const raw = (taxId || "").replace(/\D/g, "").padEnd(13, " ").slice(0, 13);
   const digits = raw.split("");
   const groups = [
@@ -143,27 +141,30 @@ function taxIdBoxes(taxId: string): any {
     [digits[10], digits[11]],
     [digits[12]],
   ];
-  const boxW = 11, boxH = 12, dashW = 7;
-  let x = 0;
-  const rects: any[] = [];
-  const textItems: any[] = [];
+  const cells: any[] = [];
+  const widths: any[] = [];
   for (let gi = 0; gi < groups.length; gi++) {
     if (gi > 0) {
-      textItems.push({ text: "-", width: dashW, fontSize: 8, bold: true, alignment: "center", margin: [0, 2, 0, 0] });
-      x += dashW;
+      cells.push({ text: "-", fontSize: 7, bold: true, border: [false, false, false, false], alignment: "center" });
+      widths.push(7);
     }
     for (const d of groups[gi]) {
-      rects.push({ type: "rect", x, y: 0, w: boxW, h: boxH, lineWidth: 0.5, lineColor: "black", fillColor: "white" });
-      textItems.push({ text: d.trim() || " ", width: boxW, fontSize: 8, alignment: "center", margin: [0, 2, 0, 0] });
-      x += boxW;
+      cells.push({ text: d.trim() || " ", fontSize: 7, border: [true, true, true, true], alignment: "center" });
+      widths.push(11);
     }
   }
   return {
-    stack: [
-      { canvas: rects, width: x, height: boxH },
-      { columns: textItems, columnGap: 0, relativePosition: { x: 0, y: -boxH }, width: x },
-    ],
-    width: x,
+    table: { widths, body: [cells] },
+    layout: {
+      hLineWidth: () => 0.5,
+      vLineWidth: () => 0.5,
+      hLineColor: () => "black",
+      vLineColor: () => "black",
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 1,
+      paddingBottom: () => 1,
+    },
   };
 }
 
