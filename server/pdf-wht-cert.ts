@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
+import { PDFDocument } from "pdf-lib";
 import { createRequire } from "module";
 const _require = createRequire(
   typeof __filename !== "undefined"
@@ -635,9 +636,6 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                 },
                 layout: "noBorders",
               },
-              ...(stampImageB64
-                ? [{ image: stampImageB64, fit: [120, 72] as [number, number], alignment: "right" as const, margin: [0, -72, 0, -72] as [number, number, number, number] }]
-                : []),
             ],
             margin: [8, 0, 0, 0],
           },
@@ -667,7 +665,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
     },
   };
 
-  return new Promise<Buffer>((resolve, reject) => {
+  const pdfmakeBuffer = await new Promise<Buffer>((resolve, reject) => {
     try {
       const pdfDoc = printer.createPdfKitDocument(docDefinition);
       const chunks: Buffer[] = [];
@@ -679,4 +677,56 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       reject(err);
     }
   });
+
+  // Overlay stamp using pdf-lib (avoids pdfmake layout issues entirely)
+  if (data.stampUrl) {
+    try {
+      const match = data.stampUrl.match(/\/api\/local-file\/(.+)$/);
+      if (match) {
+        const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+        const stampFilePath = path.join(uploadDir, match[1]);
+        if (fs.existsSync(stampFilePath)) {
+          const rawBytes = fs.readFileSync(stampFilePath);
+
+          // Resize stamp to small working size before embedding (avoid huge PDF)
+          const sharp = (await import("sharp")).default;
+          const meta = await sharp(rawBytes).metadata();
+          const imgW = meta.width || 400;
+          const imgH = meta.height || 400;
+          const aspect = imgW / imgH;
+
+          // Fit within 110×80pt bounding box (maintain aspect ratio)
+          let stampW = 110;
+          let stampH = stampW / aspect;
+          if (stampH > 80) { stampH = 80; stampW = stampH * aspect; }
+
+          // Resize to 3× render size for quality
+          const resW = Math.round(stampW * 3);
+          const resH = Math.round(stampH * 3);
+          const stampBytes = await sharp(rawBytes)
+            .resize(resW, resH, { fit: "fill" })
+            .png({ compressionLevel: 9 })
+            .toBuffer();
+
+          const pdfDoc = await PDFDocument.load(pdfmakeBuffer);
+          const page = pdfDoc.getPages()[0];
+          const { width } = page.getSize(); // A4: ~595 x 842
+
+          const stampImage = await pdfDoc.embedPng(stampBytes);
+
+          // Place stamp right of signature section
+          // Measured from rendered PDF: signature section center ≈ 146pt from page bottom
+          const x = width - 10 - stampW - 8;  // right-aligned with margin
+          const y = 146 - stampH / 2;          // vertically centered in sig section
+
+          page.drawImage(stampImage, { x, y, width: stampW, height: stampH });
+          return Buffer.from(await pdfDoc.save());
+        }
+      }
+    } catch (e) {
+      // stamp overlay failed — return pdfmake buffer as-is
+    }
+  }
+
+  return pdfmakeBuffer;
 }

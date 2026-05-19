@@ -1803,7 +1803,12 @@ export function registerExpenseRoutes(app: Express) {
         whtCertId: it.wht_cert_id, incomeType: it.income_type, incomeDescription: it.income_description,
         paidDate: it.paid_date, amountPaid: it.amount_paid, taxWithheld: it.tax_withheld, taxRate: it.tax_rate,
       }));
-      const pdfData = { ...docCamel, company, items: camelItems, createdByName, createdBySignatureName, createdBySignatureUrl };
+      let stampUrl: string | null = null;
+      try {
+        const dsRows = await db.execute(sql.raw(`SELECT stamp_url FROM document_settings WHERE company_id = ${Number(doc.company_id)} LIMIT 1`));
+        stampUrl = ((dsRows as any).rows?.[0]?.stamp_url) || null;
+      } catch (_) {}
+      const pdfData = { ...docCamel, company, items: camelItems, createdByName, createdBySignatureName, createdBySignatureUrl, stampUrl };
       const pdfBuffer = await generateWhtCertPdf(pdfData);
       const filename = `wht-cert-${doc.cert_no || doc.id}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
