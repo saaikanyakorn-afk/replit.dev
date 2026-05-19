@@ -695,15 +695,30 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           const imgH = meta.height || 400;
           const aspect = imgW / imgH;
 
-          // Fit within 110×80pt bounding box (maintain aspect ratio)
-          let stampW = 110;
+          // Fit within 120×120pt bounding box (maintain aspect ratio)
+          // pdf-lib overlay doesn't affect layout so stamp can be larger freely
+          let stampW = 120;
           let stampH = stampW / aspect;
-          if (stampH > 80) { stampH = 80; stampW = stampH * aspect; }
+          if (stampH > 120) { stampH = 120; stampW = stampH * aspect; }
+
+          // Trim transparent padding (threshold:10 removes near-transparent edges)
+          const trimmed = await sharp(rawBytes)
+            .trim({ threshold: 10 })
+            .toBuffer();
+          const trimMeta = await sharp(trimmed).metadata();
+          const trimW = trimMeta.width || imgW;
+          const trimH = trimMeta.height || imgH;
+          const trimAspect = trimW / trimH;
+
+          // Fit trimmed image within 120×120pt bounding box
+          stampW = 120;
+          stampH = stampW / trimAspect;
+          if (stampH > 120) { stampH = 120; stampW = stampH * trimAspect; }
 
           // Resize to 3× render size for quality
           const resW = Math.round(stampW * 3);
           const resH = Math.round(stampH * 3);
-          const stampBytes = await sharp(rawBytes)
+          const stampBytes = await sharp(trimmed)
             .resize(resW, resH, { fit: "fill" })
             .png({ compressionLevel: 9 })
             .toBuffer();
