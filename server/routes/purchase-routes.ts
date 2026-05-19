@@ -1613,8 +1613,15 @@ export function registerPurchaseRoutes(app: Express) {
       const province = v("vProvince");
       const isBkk = province.includes("กรุงเทพ");
       const addrParts = [
-        v("vHouseNumber"), v("vMooNumber") ? `หมู่ ${v("vMooNumber")}` : "",
-        v("vSoiName") ? `ซอย${v("vSoiName")}` : "", v("vStreetName") ? `ถนน${v("vStreetName")}` : "",
+        v("vBuildingName") ? `อาคาร${v("vBuildingName")}` : "",
+        v("vFloorNumber") ? `ชั้น${v("vFloorNumber")}` : "",
+        v("vRoomNumber") ? `ห้อง${v("vRoomNumber")}` : "",
+        v("vHouseNumber"),
+        v("vVillageName") ? `หมู่บ้าน${v("vVillageName")}` : "",
+        v("vMooNumber") ? `หมู่ ${v("vMooNumber")}` : "",
+        v("vYaek") ? `แยก${v("vYaek")}` : "",
+        v("vSoiName") ? `ซอย${v("vSoiName")}` : "",
+        v("vStreetName") ? `ถนน${v("vStreetName")}` : "",
         v("vThambol") ? `${isBkk ? "แขวง" : "ตำบล"}${v("vThambol")}` : "",
         v("vAmphur") ? `${isBkk ? "เขต" : "อำเภอ"}${v("vAmphur")}` : "",
         province ? (isBkk ? province : `จังหวัด${province}`) : "",
