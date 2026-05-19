@@ -221,7 +221,8 @@ export default function WhtCertList() {
 
   const handleShare = async (doc: any) => {
     try {
-      const res = await apiRequest("POST", `/api/wht-certs/${doc.id}/share`);
+      const res = await fetch(`/api/wht-certs/${doc.id}/share`, { method: "POST" });
+      if (!res.ok) throw new Error("share failed");
       const data = await res.json();
       const base = await getShareBaseUrl();
       const url = `${base}/share/wht-cert/${data.shareToken}`;
@@ -234,7 +235,8 @@ export default function WhtCertList() {
 
   const handleSendLine = async (doc: any) => {
     try {
-      const res = await apiRequest("POST", `/api/wht-certs/${doc.id}/share`);
+      const res = await fetch(`/api/wht-certs/${doc.id}/share`, { method: "POST" });
+      if (!res.ok) throw new Error("share failed");
       const data = await res.json();
       const base = await getShareBaseUrl();
       const url = `${base}/share/wht-cert/${data.shareToken}`;
