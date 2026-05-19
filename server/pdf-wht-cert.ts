@@ -178,13 +178,13 @@ function cb(checked: boolean): any {
   return { canvas: vecs, width: 11, height: 11 };
 }
 
-function dotRow(label: string, value: string, labelWidth: number = 30): any {
+function dotRow(label: string, value: string | any[], labelWidth: number = 30): any {
   return {
     columns: [
       { text: label, width: labelWidth, fontSize: 8 },
       {
         stack: [
-          { text: value || "", fontSize: 8 },
+          { text: typeof value === "string" ? (value || "") : value, fontSize: 8 },
           { canvas: [{ type: "line", x1: 0, y1: 0, x2: 530, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
         ],
         fontSize: 8,
@@ -294,7 +294,10 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           columnGap: 4,
           margin: [0, 0, 0, 2],
         },
-        dotRow("ชื่อ", `${data.payerName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
+        dotRow("ชื่อ", [
+          { text: data.payerName || "" },
+          { text: "  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)", color: "#999", fontSize: 7 },
+        ]),
         dotRow("สาขา", data.payerBranch || "สำนักงานใหญ่"),
         dotRow("ที่อยู่", data.payerAddress || ""),
         { text: "(ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)", fontSize: 6.5, color: "#666", margin: [22, 0, 0, 0] },
@@ -310,7 +313,10 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           columnGap: 4,
           margin: [0, 0, 0, 2],
         },
-        dotRow("ชื่อ", `${data.payeeName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
+        dotRow("ชื่อ", [
+          { text: data.payeeName || "" },
+          { text: "  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)", color: "#999", fontSize: 7 },
+        ]),
         dotRow("สาขา", data.payeeBranch || "สำนักงานใหญ่"),
         dotRow("ที่อยู่", data.payeeAddress || ""),
         { text: "(ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)", fontSize: 6.5, color: "#666", margin: [22, 0, 0, 0] },
