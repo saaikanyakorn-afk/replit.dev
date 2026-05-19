@@ -597,9 +597,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         : { text: "", border: [false, false, false, true] as any, fontSize: 8 },
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
                       {
-                        stack: [
-                          ...(stampImageB64 ? [{ image: stampImageB64, width: 76, alignment: "center" }] : []),
-                        ],
+                        stack: [],
                         border: noBorder,
                         rowSpan: 3,
                       },
