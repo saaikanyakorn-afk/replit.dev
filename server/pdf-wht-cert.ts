@@ -562,7 +562,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       {
         columns: [
           {
-            width: "44%",
+            width: "52%",
             table: {
               widths: ["*"],
               body: [[{
