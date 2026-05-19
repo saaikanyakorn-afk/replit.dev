@@ -286,18 +286,19 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       // ผู้มีหน้าที่หักภาษี
       sectionBox([
         {
-          columns: [
-            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
-            {
-              width: 310,
-              columns: [
-                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
-                { stack: [taxIdBoxes(data.payerTaxId || "")], width: 180 },
-              ],
-              columnGap: 2,
-            },
-          ],
-          columnGap: 4,
+          table: {
+            widths: ["*", 135, 180],
+            body: [[
+              { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8 },
+              { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right" },
+              { stack: [taxIdBoxes(data.payerTaxId || "")] },
+            ]],
+          },
+          layout: {
+            hLineWidth: () => 0, vLineWidth: () => 0,
+            paddingLeft: () => 0, paddingRight: () => 0,
+            paddingTop: () => 0, paddingBottom: () => 0,
+          },
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payerName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
@@ -308,18 +309,19 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       // ผู้ถูกหักภาษี
       sectionBox([
         {
-          columns: [
-            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
-            {
-              width: 310,
-              columns: [
-                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
-                { stack: [taxIdBoxes(data.payeeTaxId || "")], width: 180 },
-              ],
-              columnGap: 2,
-            },
-          ],
-          columnGap: 4,
+          table: {
+            widths: ["*", 135, 180],
+            body: [[
+              { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8 },
+              { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right" },
+              { stack: [taxIdBoxes(data.payeeTaxId || "")] },
+            ]],
+          },
+          layout: {
+            hLineWidth: () => 0, vLineWidth: () => 0,
+            paddingLeft: () => 0, paddingRight: () => 0,
+            paddingTop: () => 0, paddingBottom: () => 0,
+          },
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payeeName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
