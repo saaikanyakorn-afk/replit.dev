@@ -1610,11 +1610,15 @@ export function registerPurchaseRoutes(app: Express) {
       if (!vName || vName === "-") return null;
       const fullName = (titleName && titleName !== "-" ? titleName + " " : "") + vName;
       const v = (f: string) => { const s = extractXmlVal(xml, f); return s && s !== "-" ? s : ""; };
+      const province = v("vProvince");
+      const isBkk = province.includes("กรุงเทพ");
       const addrParts = [
         v("vHouseNumber"), v("vMooNumber") ? `หมู่ ${v("vMooNumber")}` : "",
         v("vSoiName") ? `ซอย${v("vSoiName")}` : "", v("vStreetName") ? `ถนน${v("vStreetName")}` : "",
-        v("vThambol") ? `แขวง${v("vThambol")}` : "", v("vAmphur") ? `เขต${v("vAmphur")}` : "",
-        v("vProvince"), v("vPostCode"),
+        v("vThambol") ? `${isBkk ? "แขวง" : "ตำบล"}${v("vThambol")}` : "",
+        v("vAmphur") ? `${isBkk ? "เขต" : "อำเภอ"}${v("vAmphur")}` : "",
+        province ? (isBkk ? province : `จังหวัด${province}`) : "",
+        v("vPostCode"),
       ].filter(Boolean);
       const branchNo = extractXmlVal(xml, "vBranchNumber");
       const branchNum = Number(branchNo) || branchNumber;
