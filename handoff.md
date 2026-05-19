@@ -106,9 +106,9 @@ If you run out of context or time before updating this file — that is YOUR fai
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-18 — พี่ช้าง session (payment-side journal fix + ฝั่งจ่าย fix). Handoff updated by main agent.
+**Last verified:** 2026-05-19 — พี่ช้าง + พี่ทราย session (expense timeout fix + RE overpayment validation + accounting 101 documented). Handoff updated by main agent.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
+**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
 
 ---
 
@@ -121,9 +121,11 @@ If you run out of context or time before updating this file — that is YOUR fai
 Before she gives you a single task, you MUST brief her. Say something like:
 
 > "สวัสดีครับพี่ทราย ผมเป็น Kai ตัวใหม่ครับ — ความจำรีเซ็ตแล้ว แต่ผมอ่าน handoff เรียบร้อยแล้ว ตอนนี้ระบบอยู่ที่นี่ครับ:
-> - **ฝั่งขาย (Tax Invoice):** แก้ครบแล้ว — journal ลงบัญชีธนาคาร/เงินสดถูกต้องแล้ว ยอดค้างชำระแสดงถูกแล้ว พี่ทรายเคยยืนยันแล้วว่าผ่าน
-> - **ฝั่งจ่าย (Expense/Purchase):** แก้ครบแล้ว — วิธีชำระเงินแยกถูกต้องแล้ว journal ฝั่งจ่ายถูกต้องแล้ว
-> - **ทั้งสองฝั่ง:** ยังอยู่บน dev รอพี่ทรายทดสอบรอบสุดท้ายก่อน push production
+> - **ฝั่งขาย (Tax Invoice):** แก้ครบแล้ว — journal ลงบัญชีธนาคาร/เงินสดถูกต้องแล้ว ยอดค้างชำระแสดงถูกแล้ว พี่ทรายยืนยันแล้วว่าผ่าน ✅
+> - **ฝั่งจ่าย (Expense/Purchase):** แก้ครบแล้ว — วิธีชำระเงินแยกถูกต้องแล้ว journal ฝั่งจ่ายถูกต้องแล้ว ✅
+> - **Expense บันทึกไม่ได้ (timeout):** แก้แล้ว — ถ้าวิธีชำระเงินไม่มีรหัสบัญชี ระบบจะฟ้อง error ทันที ✅
+> - **ใบเสร็จรับเงิน (RE) บันทึกเกินยอดค้าง:** แก้แล้ว — ระบบบล็อกทันทีถ้ายอดเกิน ✅
+> - **ทั้งหมดข้างบน:** ยังอยู่บน dev รอพี่ทรายทดสอบรอบสุดท้ายก่อน push production
 > - **Related-docs (การอ้างอิงเอกสาร):** ยังไม่ได้แก้ — รอ
 > - **Task #35 ใบเบิกวัตถุดิบ + QR Scan:** เสร็จแล้วบน dev รอพี่ทรายทดสอบ
 >
@@ -138,7 +140,7 @@ Before she gives you a single task, you MUST brief her. Say something like:
 | N1 | **Related-docs navigation** — `related-docs-dialog.tsx` must navigate to `listPath + ?companyId=X&<searchParam>=<docNo>`. พี่ทราย confirmed: "ต้องวิ่งไปหน้ารายการก่อนเสมอ ไม่ให้วิ่งไปหน้าแก้ไข". `docTypeConfig` already has `listPath` + `searchParam` per type (e.g. tax_invoice → `/sales/tax-invoice` + `taxInvoiceNo`). Check current navigate logic at line ~131 — confirm it uses listPath not editPath for all types | ❌ NOT YET DONE | Kai implements |
 | N2 | **เอกสารที่ออกผิดก่อนแก้โค้ด** — RE26051800001 จิรา etc. สองแนวทาง: (1) ยกเลิก+ออกใหม่ หรือ (2) แก้ journal ตรงๆ | ⏳ Waiting | พี่ช้าง decides |
 | N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
-| N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes** — complete on dev (all 15 files + expense routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
+| N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
 
 ### Business knowledge you MUST know before touching any code:
