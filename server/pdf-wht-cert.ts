@@ -222,54 +222,41 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
   const border: [boolean, boolean, boolean, boolean] = [true, true, true, true];
   const noBorder: [boolean, boolean, boolean, boolean] = [false, false, false, false];
 
+  // Single aggregated row — matches HTML rows 1-4b (no MultiLineCell, just aggregate totals)
   function incomeTableRows(type: string, labelItems: any[], small = false): any[] {
     const entry = agg[type];
-    if (!entry || entry.lines.length <= 1) {
-      return [[
-        { stack: Array.isArray(labelItems) ? labelItems : [{ text: labelItems, fontSize: small ? 7 : 8 }], border },
-        { text: entry?.paidDate || "", fontSize: small ? 7 : 8, alignment: "center", border },
-        { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: small ? 7 : 8, alignment: "right", border },
-        { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: small ? 7 : 8, alignment: "right", border },
-      ]];
-    }
-    return entry.lines.map((line, idx) => [
-      {
-        stack: idx === 0 ? (Array.isArray(labelItems) ? labelItems : [{ text: labelItems, fontSize: small ? 7 : 8 }]) : [{ text: `  (${line.description || "-"})`, fontSize: 7 }],
-        border,
-      },
-      { text: line.paidDate, fontSize: 7, alignment: "center", border },
-      { text: fmtNum(line.amountPaid), fontSize: 7, alignment: "right", border },
-      { text: fmtNum(line.taxWithheld), fontSize: 7, alignment: "right", border },
-    ]);
+    return [[
+      { stack: Array.isArray(labelItems) ? labelItems : [{ text: labelItems, fontSize: small ? 7 : 8 }], border },
+      { text: entry?.paidDate || "", fontSize: small ? 7 : 8, alignment: "center", border },
+      { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: small ? 7 : 8, alignment: "right", border },
+      { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: small ? 7 : 8, alignment: "right", border },
+    ]];
   }
 
+  // Single row with stacked content — matches HTML rows 5-6 (MultiLineCell: one date/amount/tax per line, stacked)
   function multiLineRows(type: string, labelItems: any[]): any[] {
     const entry = agg[type];
     const descLines: any[] = [];
     if (entry?.lines && entry.lines.length > 0) {
-      entry.lines.forEach((l) => { if (l.description) descLines.push({ text: `  (${l.description})`, fontSize: 7 }); });
+      entry.lines.forEach((l) => { if (l.description) descLines.push({ text: `  (${l.description})`, fontSize: 7, bold: true }); });
     }
     const labelStack = [
       ...(Array.isArray(labelItems) ? labelItems : [{ text: labelItems, fontSize: 8 }]),
       ...descLines,
     ];
-    if (!entry || entry.lines.length <= 1) {
-      return [[
-        { stack: labelStack, border },
-        { text: entry?.paidDate || "", fontSize: 8, alignment: "center", border },
-        { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: 8, alignment: "right", border },
-        { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: 8, alignment: "right", border },
-      ]];
-    }
-    return entry.lines.map((line, idx) => [
-      {
-        stack: idx === 0 ? labelStack : [{ text: `  (${line.description || "-"})`, fontSize: 7 }],
-        border,
-      },
-      { text: line.paidDate, fontSize: 7, alignment: "center", border },
-      { text: fmtNum(line.amountPaid), fontSize: 7, alignment: "right", border },
-      { text: fmtNum(line.taxWithheld), fontSize: 7, alignment: "right", border },
-    ]);
+    const hasMultiple = entry && entry.lines.length > 1;
+    return [[
+      { stack: labelStack, border },
+      hasMultiple
+        ? { stack: entry!.lines.map(l => ({ text: l.paidDate, fontSize: 7, alignment: "center" })), border }
+        : { text: entry?.paidDate || "", fontSize: 8, alignment: "center", border },
+      hasMultiple
+        ? { stack: entry!.lines.map(l => ({ text: fmtNum(l.amountPaid), fontSize: 7, alignment: "right" })), border }
+        : { text: entry ? fmtNum(entry.amountPaid) : "", fontSize: 8, alignment: "right", border },
+      hasMultiple
+        ? { stack: entry!.lines.map(l => ({ text: fmtNum(l.taxWithheld), fontSize: 7, alignment: "right" })), border }
+        : { text: entry ? fmtNum(entry.taxWithheld) : "", fontSize: 8, alignment: "right", border },
+    ]];
   }
 
   const formTypes: Record<string, string> = {
@@ -443,7 +430,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
             // row 5
             ...multiLineRows("5", [
               { text: "5. การจ่ายเงินได้ที่ต้องหักภาษี ณ ที่จ่าย ตามคำสั่งกรมสรรพากรที่ออกตามมาตรา", fontSize: 8 },
-              { text: "   3 เตรส เช่น รางวัล ส่วนลดหรือประโยชน์ใดๆ เนื่องจากการส่งเสริมการขาย ค่าจ้างทำของ ค่าเช่า ค่าบริการ ฯลฯ", fontSize: 7 },
+              { text: "   3 เตรส เช่น รางวัล ส่วนลดหรือประโยชน์ใดๆ เนื่องจากการส่งเสริมการขาย รางวัลในการประกวด การแข่งขัน การชิงโชค ค่าแสดงของนักแสดงสาธารณะ ค่าจ้างทำของ ค่าโฆษณา ค่าเช่า ค่าขนส่ง ค่าบริการ ค่าเบี้ยประกันวินาศภัย ฯลฯ", fontSize: 7 },
             ]),
             // row 6
             ...multiLineRows("6", [
@@ -560,7 +547,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         margin: [0, 2, 0, 0],
                       },
                       { text: ")", border: noBorder, fontSize: 8, margin: [0, 2, 0, 0] },
-                      { text: stampImageB64 ? "(ถ้ามี)" : "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
+                      { text: stampImageB64 ? "" : "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
                     ],
                     [
                       { text: "", border: noBorder },
@@ -569,7 +556,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         alignment: "center", fontSize: 8, border: noBorder, margin: [0, 2, 0, 0],
                       },
                       { text: "", border: noBorder },
-                      { text: "(ถ้ามี)", border: noBorder, fontSize: 7, color: "#666", margin: [0, 2, 0, 0] },
+                      { text: stampImageB64 ? "" : "(ถ้ามี)", border: noBorder, fontSize: 7, color: "#666", margin: [0, 2, 0, 0] },
                     ],
                     [
                       { text: "", border: noBorder },
