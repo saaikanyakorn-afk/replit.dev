@@ -1220,6 +1220,38 @@ export async function deleteStockMovementsForDoc(tx: any, referenceType: string,
   }
 }
 
+export async function computeRemainingBalance(docType: "taxInvoice" | "invoice", docId: number): Promise<{ docTotal: number; totalPaid: number; remaining: number }> {
+  const table = docType === "taxInvoice" ? taxInvoices : invoices;
+  const linkCol = docType === "taxInvoice" ? receipts.taxInvoiceId : receipts.invoiceId;
+  const rldDocType = docType === "taxInvoice" ? "TIV" : "IV";
+  const [doc] = await db.select().from(table).where(eq(table.id, docId));
+  if (!doc) throw new Error(`ไม่พบเอกสาร ${docType} id=${docId}`);
+  const docTotal = parseFloat((doc as any).totalAmount || "0");
+  const linkedReceipts = await db.select().from(receipts).where(eq(linkCol, docId));
+  let ivLinkedReceipts: any[] = [];
+  if (docType === "taxInvoice") {
+    const tivInvoiceId = (doc as any).invoiceId;
+    if (tivInvoiceId) {
+      ivLinkedReceipts = await db.select().from(receipts).where(eq(receipts.invoiceId, tivInvoiceId));
+    }
+  }
+  const allDirectReceipts = [...linkedReceipts, ...ivLinkedReceipts.filter((iv: any) => !linkedReceipts.some((r: any) => r.id === iv.id))];
+  const directSum = allDirectReceipts.reduce((sum: number, r: any) => sum + parseFloat(r.totalAmount || "0"), 0);
+  const linkedDocs = await db.select().from(receiptLinkedDocs).where(and(eq(receiptLinkedDocs.docType, rldDocType), eq(receiptLinkedDocs.docId, docId)));
+  const batchSum = linkedDocs.reduce((sum: number, ld: any) => sum + parseFloat(ld.amount || "0"), 0);
+  let tivSum = 0;
+  if (docType === "invoice") {
+    const nonCreditTIVs = await db.select({ subtotal: taxInvoices.subtotal, vatAmount: taxInvoices.vatAmount })
+      .from(taxInvoices).where(sql`invoice_id = ${docId} AND status = 'paid'`);
+    tivSum = nonCreditTIVs.reduce((sum: number, tiv: any) => sum + parseFloat(String(tiv.subtotal || "0")) + parseFloat(String(tiv.vatAmount || "0")), 0);
+  }
+  const rawPaid = directSum + batchSum + tivSum;
+  const whtAmount = rawPaid > 0 ? parseFloat((doc as any).withholdingTax || "0") : 0;
+  const totalPaid = rawPaid + whtAmount;
+  const remaining = Math.max(0, docTotal - totalPaid);
+  return { docTotal, totalPaid, remaining };
+}
+
 export async function recomputePaymentStatus(docType: "taxInvoice" | "invoice", docId: number) {
   const table = docType === "taxInvoice" ? taxInvoices : invoices;
   const linkCol = docType === "taxInvoice" ? receipts.taxInvoiceId : receipts.invoiceId;

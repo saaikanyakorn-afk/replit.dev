@@ -5,7 +5,7 @@ import { eq, desc, and, inArray, count, sql, isNull } from "drizzle-orm";
 import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements, warehouses, warehouseStockLevels, paymentVouchers, paymentVoucherLinkedDocs } from "@shared/schema";
 import { gte, lte, or } from "drizzle-orm";
 import { requireAuth, requireRole, requireAnyModule, getCompanyTenantId, checkDocOwnership } from "../route-middleware";
-import { getNextDocNo, validateDocNo, getNextJournalEntryNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, logActivity, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, recomputePaymentStatus, deductStockBundleAware, upsertWarehouseStockLevel, upsertWarehouseReservedQty, reverseWarehouseStockBundleAware, getInventoryTriggers } from "../route-helpers";
+import { getNextDocNo, validateDocNo, getNextJournalEntryNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, logActivity, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, recomputePaymentStatus, deductStockBundleAware, upsertWarehouseStockLevel, upsertWarehouseReservedQty, reverseWarehouseStockBundleAware, getInventoryTriggers, computeRemainingBalance } from "../route-helpers";
 import { parsePagination, paginatedResponse } from "./pagination";
 import multer from "multer";
 import * as XLSX from "xlsx";
@@ -2763,6 +2763,17 @@ app.post("/api/receipts", requireAuth, requireAnyModule("sales", "ecommerce"), a
     const companyId = Number(body.companyId);
     if (!companyId || !body.customerName || !body.receiptDate) {
       return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน (companyId, customerName, receiptDate)" });
+    }
+    const invoiceIdRef = body.invoiceId ? Number(body.invoiceId) : null;
+    const taxInvoiceIdRef = body.taxInvoiceId ? Number(body.taxInvoiceId) : null;
+    const reAmount = parseFloat(body.totalAmount || "0");
+    if (invoiceIdRef) {
+      const { remaining } = await computeRemainingBalance("invoice", invoiceIdRef);
+      if (reAmount > remaining + 0.01) throw new Error(`ยอดรับชำระ ${reAmount.toFixed(2)} บาท เกินยอดค้างชำระ ${remaining.toFixed(2)} บาท ในใบแจ้งหนี้ กรุณาตรวจสอบยอดก่อนบันทึก`);
+    }
+    if (taxInvoiceIdRef) {
+      const { remaining } = await computeRemainingBalance("taxInvoice", taxInvoiceIdRef);
+      if (reAmount > remaining + 0.01) throw new Error(`ยอดรับชำระ ${reAmount.toFixed(2)} บาท เกินยอดค้างชำระ ${remaining.toFixed(2)} บาท ในใบกำกับภาษี กรุณาตรวจสอบยอดก่อนบันทึก`);
     }
     const prefix = body.docPrefix || "RE";
     let receiptNo = body.receiptNo;

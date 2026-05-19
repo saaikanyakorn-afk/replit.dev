@@ -3,7 +3,7 @@ import { db } from "../db";
 import { eq, desc, and, asc, gte, lte, sql, inArray } from "drizzle-orm";
 import { billingNotes, billingNoteLinkedDocs, receipts, receiptLinkedDocs, purchaseInvoices, expenses, paymentVouchers, paymentVoucherLinkedDocs, invoices, firmClients, contacts, invoiceItems, journalEntries, companies, journalLines, accounts, bankStatements, lineGroupMappings, taxInvoices, taxInvoiceItems } from "@shared/schema";
 import { requireAuth, requireModule } from "../route-middleware";
-import { getNextDocNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, recomputePaymentStatus, recomputeAPPaymentStatus } from "../route-helpers";
+import { getNextDocNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, recomputePaymentStatus, recomputeAPPaymentStatus, computeRemainingBalance } from "../route-helpers";
 import { verifyCompanyAccess } from "../route-factory";
 import { runBillingNotesWhtMigration, runBillingNoteShareTokenMigration } from "@shared/schema-extra";
 import multer from "multer";
@@ -177,6 +177,13 @@ app.post("/api/finance/billing-notes/:id/create-receipt", requireAuth, async (re
       .where(eq(billingNoteLinkedDocs.billingNoteId, bnId));
 
     if (linkedDocs.length === 0) return res.status(400).json({ message: "ใบวางบิลไม่มีรายการเอกสาร" });
+
+    for (const doc of linkedDocs) {
+      const docType = doc.docType === "TIV" ? "taxInvoice" : "invoice";
+      const { remaining, docTotal } = await computeRemainingBalance(docType, doc.docId);
+      const payAmount = parseFloat(doc.amount || "0");
+      if (payAmount > remaining + 0.01) throw new Error(`เอกสาร ${doc.docNo || doc.docId} ยอดชำระ ${payAmount.toFixed(2)} บาท เกินยอดค้างชำระ ${remaining.toFixed(2)} บาท กรุณาตรวจสอบใบวางบิลก่อนรับชำระ`);
+    }
 
     const grossAmount = parseFloat(bn.totalAmount || "0");
     const whtAmt = parseFloat(withholdingTax) || 0;

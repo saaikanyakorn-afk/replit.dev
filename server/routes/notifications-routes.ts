@@ -5,7 +5,7 @@ import { eq, desc, and, or, gte, count , sql } from "drizzle-orm";
 import { activeProducts } from "@shared/schema-extra";
 import { notifications, products, productStock, ecommerceReturns, ecommerceOrders, invoices, taxInvoices, purchaseInvoices, expenses, budgets, accounts, receipts, receiptLinkedDocs, contacts, paymentVouchers, paymentVoucherLinkedDocs } from "@shared/schema";
 import { requireAuth, checkDocOwnership } from "../route-middleware";
-import { getNextDocNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, recomputePaymentStatus } from "../route-helpers";
+import { getNextDocNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, recomputePaymentStatus, computeRemainingBalance } from "../route-helpers";
 import { verifyCompanyAccess } from "../route-factory";
 import { getUpcomingTaxDeadlines } from "./tax-calendar";
 
@@ -581,6 +581,9 @@ app.post("/api/finance/batch-receipt", requireAuth, async (req, res) => {
       if (!["TIV", "IV"].includes(doc.docType) || !doc.docId) return res.status(400).json({ message: "docType ต้องเป็น TIV หรือ IV" });
       const amt = parseFloat(doc.amount);
       if (!amt || amt <= 0) return res.status(400).json({ message: "จำนวนเงินต้องมากกว่า 0" });
+      const docType = doc.docType === "TIV" ? "taxInvoice" : "invoice";
+      const { remaining } = await computeRemainingBalance(docType, doc.docId);
+      if (amt > remaining + 0.01) throw new Error(`เอกสาร ${doc.docNo || doc.docId} ยอดชำระ ${amt.toFixed(2)} บาท เกินยอดค้างชำระ ${remaining.toFixed(2)} บาท กรุณาตรวจสอบยอดก่อนบันทึก`);
     }
     const grossAmount = documents.reduce((s: number, d: any) => s + (parseFloat(d.amount) || 0), 0);
     if (grossAmount <= 0) return res.status(400).json({ message: "ยอดรวมต้องมากกว่า 0" });

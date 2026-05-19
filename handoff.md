@@ -564,6 +564,71 @@ pmAccName = a.nameTh || a.name!;
 
 ---
 
+#### BUG: RE บันทึกเกินยอดค้างชำระได้ — FIXED ✅ SESSION 2026-05-19
+
+**อาการ:** ระบบไม่บล็อก RE ที่มียอดเกินยอดค้างชำระใน IV — backend บันทึกผ่านทุกครั้ง
+
+**Business requirement (พี่ทรายยืนยัน):**
+> ระบบบัญชีมาตรฐาน ต้องบล็อกการบันทึก RE ทันทีถ้ายอดเกินยอดค้าง — ไม่มีข้อยกเว้น
+
+**3 paths ที่มีช่องโหว่และแก้แล้ว:**
+| Path | ไฟล์ | จุดที่แก้ |
+|---|---|---|
+| RE ตรง (invoiceId/taxInvoiceId) | `sales-docs-routes.ts` ~line 2770 | เพิ่ม validation ก่อน insert |
+| RE จากใบวางบิล (BN) | `billing-notes-routes.ts` ~line 184 | ตรวจแต่ละ linkedDoc |
+| RE แบบ Batch (หลาย IV) | `notifications-routes.ts` ~line 587 | ตรวจแต่ละ doc ใน array |
+
+**Helper function เพิ่มใหม่:**
+`computeRemainingBalance(docType, docId)` ใน `route-helpers.ts` ~line 1226
+- คำนวณ remaining balance ด้วย logic เดียวกับ `recomputePaymentStatus`
+- รวม direct receipts + batch linked docs + TIV sum + WHT
+- Return `{ docTotal, totalPaid, remaining }`
+
+**Error message format:**
+```
+ยอดรับชำระ X.XX บาท เกินยอดค้างชำระ Y.YY บาท ในใบแจ้งหนี้ กรุณาตรวจสอบยอดก่อนบันทึก
+```
+
+**Standalone RE (ไม่มี invoiceId):** ไม่กระทบ — validation ทำงานเฉพาะเมื่อมี invoiceId/taxInvoiceId เท่านั้น
+
+---
+
+#### 📚 Accounting Flow Knowledge — สอนโดยพี่ทราย SESSION 2026-05-19
+
+**กฎสำคัญ:** ใบแจ้งหนี้ = ขารับ (ออกให้ลูกค้า) ไม่ใช่ขาจ่าย
+
+**กรณีที่ 1: ขายเชื่อ (Credit Sale)**
+```
+QT → SO → IV → (BN) → RE
+```
+| เอกสาร | บันทึกบัญชี | สต็อก |
+|---|---|---|
+| QT ใบเสนอราคา | ❌ ไม่บันทึก | ไม่กระทบ |
+| SO ใบสั่งขาย | ❌ ไม่บันทึก | Hold Stock เท่านั้น |
+| **IV ใบแจ้งหนี้/ใบกำกับภาษี** | DR ลูกหนี้ / CR รายได้ + CR ภาษีขาย | **ตัดสต็อกจริง (Stock Out)** |
+| BN ใบวางบิล | ❌ ไม่บันทึกเพิ่ม | ไม่กระทบ |
+| **RE ใบเสร็จรับเงิน** | DR เงินสด/ธนาคาร (+ DR ภาษีถูกหัก ถ้ามี WHT) / CR ลูกหนี้ | ไม่กระทบ |
+
+**กรณีที่ 2: ขายสด (Cash Sale)**
+```
+RE/IV รวมใบเดียวจบ
+```
+| เอกสาร | บันทึกบัญชี | สต็อก |
+|---|---|---|
+| **RE/IV (Cash)** | DR เงินสด/ธนาคาร / CR รายได้ + CR ภาษีขาย | **ตัดสต็อกจริงทันที** |
+
+**กรณีที่ 3: ปรับปรุงรายการ**
+| เอกสาร | บันทึกบัญชี | สต็อก |
+|---|---|---|
+| CN ใบลดหนี้ | DR รับคืน + DR ภาษีขาย / CR ลูกหนี้ | รับสต็อกกลับคืน |
+| DN ใบเพิ่มหนี้ | DR ลูกหนี้ / CR รายได้ + CR ภาษีขาย | ตัดสต็อกเพิ่ม |
+
+**วิธีชำระเงิน (PM + accountCode) ใช้เฉพาะตอนรับเงินจริง = RE เท่านั้น**
+**RE ต้องดึงยอดจาก IV เท่านั้น — ห้ามเกิน remaining balance เด็ดขาด**
+**Partial Payment: IV status → "partial" บันทึก remaining balance ไว้รอ RE ครั้งต่อไป**
+
+---
+
 ### SESSION 2026-05-17 — TASK #34 GR LOT QR LABEL
 
 | # | Change | File | Status |
