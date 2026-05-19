@@ -417,12 +417,10 @@ export function registerExpenseRoutes(app: Express) {
               pmCode = apAcc.code;
               pmAccName = apAcc.nameTh || apAcc.name!;
             } else {
-              const resolvedPm = pmRec || pmRecs.find((p: any) => p.name === pmName || p.nameTh === pmName);
-              const rc = resolvedPm?.accountCode;
-              if (!rc) throw new Error(`ไม่พบรหัสบัญชีสำหรับวิธีชำระ "${pmName}" กรุณาตั้งค่าวิธีชำระเงินในระบบก่อนบันทึก`);
-              const a = acctMap.get(rc);
-              if (!a) throw new Error(`วิธีชำระ "${pmName}" ระบุรหัสบัญชี ${rc} แต่ไม่พบรหัสนี้ในผังบัญชี`);
-              pmCode = rc;
+              if (!pmRec || !pmRec.accountCode) throw new Error(`วิธีชำระเงิน "${pmName}" ยังไม่ได้ตั้งค่ารหัสบัญชีในระบบ กรุณาไปตั้งค่าที่ Settings > วิธีชำระเงิน ก่อนบันทึก`);
+              const a = acctMap.get(pmRec.accountCode);
+              if (!a) throw new Error(`วิธีชำระเงิน "${pmName}" ระบุรหัสบัญชี ${pmRec.accountCode} แต่ไม่พบรหัสนี้ในผังบัญชี กรุณาตรวจสอบผังบัญชี`);
+              pmCode = pmRec.accountCode;
               pmAccName = a.nameTh || a.name!;
             }
 
@@ -653,12 +651,10 @@ export function registerExpenseRoutes(app: Express) {
               pmCode = apAcc.code;
               pmAccName = apAcc.nameTh || apAcc.name!;
             } else {
-              const resolvedPm = pmRec || pmRecs.find((p: any) => p.name === pmName || p.nameTh === pmName);
-              const rc = resolvedPm?.accountCode;
-              if (!rc) throw new Error(`ไม่พบรหัสบัญชีสำหรับวิธีชำระ "${pmName}" กรุณาตั้งค่าวิธีชำระเงินในระบบก่อนบันทึก`);
-              const a = acctMap.get(rc);
-              if (!a) throw new Error(`วิธีชำระ "${pmName}" ระบุรหัสบัญชี ${rc} แต่ไม่พบรหัสนี้ในผังบัญชี`);
-              pmCode = rc;
+              if (!pmRec || !pmRec.accountCode) throw new Error(`วิธีชำระเงิน "${pmName}" ยังไม่ได้ตั้งค่ารหัสบัญชีในระบบ กรุณาไปตั้งค่าที่ Settings > วิธีชำระเงิน ก่อนบันทึก`);
+              const a = acctMap.get(pmRec.accountCode);
+              if (!a) throw new Error(`วิธีชำระเงิน "${pmName}" ระบุรหัสบัญชี ${pmRec.accountCode} แต่ไม่พบรหัสนี้ในผังบัญชี กรุณาตรวจสอบผังบัญชี`);
+              pmCode = pmRec.accountCode;
               pmAccName = a.nameTh || a.name!;
             }
 
