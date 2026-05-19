@@ -1511,6 +1511,33 @@ export function registerExpenseRoutes(app: Express) {
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.get("/api/wht-certs/:id/pdf", requireAuth, requireModule("purchases"), async (req, res) => {
+    try {
+      const [doc] = await db.select().from(withholdingTaxCerts).where(eq(withholdingTaxCerts.id, Number(req.params.id)));
+      if (!doc) return res.status(404).json({ message: "ไม่พบเอกสาร" });
+      { const ac = await checkDocOwnership(doc.companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
+      const [company] = await db.select().from(companies).where(eq(companies.id, doc.companyId));
+      let createdByName = "", createdBySignatureName = "", createdBySignatureUrl = "";
+      if (doc.createdBy) {
+        const u = await storage.getUser(doc.createdBy);
+        if (u) {
+          createdByName = u.fullName;
+          createdBySignatureName = (u as any).signatureName || u.fullName;
+          createdBySignatureUrl = (u as any).signatureUrl || "";
+        }
+      }
+      const items = await db.select().from(whtCertItems).where(eq(whtCertItems.whtCertId, doc.id));
+      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company, createdByName, createdBySignatureName, createdBySignatureUrl });
+      const filename = `wht-cert-${doc.certNo || doc.id}.pdf`;
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(filename)}"`);
+      res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error("WHT cert PDF error:", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/wht-certs", requireAuth, requireModule("purchases"), async (req, res) => {
     try {
       const body = req.body;
