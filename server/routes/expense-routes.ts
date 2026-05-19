@@ -1742,11 +1742,13 @@ export function registerExpenseRoutes(app: Express) {
       const [company] = await db.select().from(companies).where(eq(companies.id, Number(doc.company_id)));
       let createdBySignatureName = "";
       let createdByName = "";
+      let createdBySignatureUrl = "";
       if (doc.created_by) {
         const u = await storage.getUser(Number(doc.created_by));
         if (u) {
           createdByName = u.fullName;
-          createdBySignatureName = u.signatureName || u.fullName;
+          createdBySignatureName = (u as any).signatureName || u.fullName;
+          createdBySignatureUrl = (u as any).signatureUrl || "";
         }
       }
       const itemRows = await db.execute(sql.raw(`SELECT * FROM wht_cert_items WHERE wht_cert_id = ${Number(doc.id)}`));
@@ -1769,7 +1771,7 @@ export function registerExpenseRoutes(app: Express) {
         whtCertId: it.wht_cert_id, incomeType: it.income_type, incomeDescription: it.income_description,
         paidDate: it.paid_date, amountPaid: it.amount_paid, taxWithheld: it.tax_withheld, taxRate: it.tax_rate,
       }));
-      const pdfData = { ...docCamel, company, items: camelItems, createdByName, createdBySignatureName };
+      const pdfData = { ...docCamel, company, items: camelItems, createdByName, createdBySignatureName, createdBySignatureUrl };
       const pdfBuffer = await generateWhtCertPdf(pdfData);
       const filename = `wht-cert-${doc.cert_no || doc.id}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
@@ -2003,11 +2005,12 @@ export function registerExpenseRoutes(app: Express) {
       const [company] = await db.select().from(companies).where(eq(companies.id, doc.companyId));
       let createdByName = "";
       let createdBySignatureName = "";
+      let createdBySignatureUrlEmail = "";
       if (doc.createdBy) {
         const u = await storage.getUser(Number(doc.createdBy));
-        if (u) { createdByName = u.fullName; createdBySignatureName = u.signatureName || u.fullName; }
+        if (u) { createdByName = u.fullName; createdBySignatureName = (u as any).signatureName || u.fullName; createdBySignatureUrlEmail = (u as any).signatureUrl || ""; }
       }
-      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company, createdByName, createdBySignatureName });
+      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company, createdByName, createdBySignatureName, createdBySignatureUrl: createdBySignatureUrlEmail });
 
       const companyName = company?.name || "บริษัท";
       const nodemailer = await import("nodemailer");

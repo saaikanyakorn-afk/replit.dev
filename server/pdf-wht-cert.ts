@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as fs from "fs";
 import { createRequire } from "module";
 const _require = createRequire(
   typeof __filename !== "undefined"
@@ -16,6 +17,24 @@ const printer = new PdfPrinter({
     bolditalics: path.join(fontsDir, "Niramit-BoldItalic.ttf"),
   },
 });
+
+function loadLocalImageBase64(urlPath: string): string | null {
+  try {
+    if (!urlPath) return null;
+    // urlPath is like /api/local-file/FILENAME or /api/local-file/sub/FILENAME
+    const match = urlPath.match(/\/api\/local-file\/(.+)$/);
+    if (!match) return null;
+    const fileName = match[1];
+    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+    const filePath = path.join(uploadDir, fileName);
+    if (!fs.existsSync(filePath)) return null;
+    const ext = path.extname(fileName).toLowerCase();
+    const mimeMap: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp" };
+    const mime = mimeMap[ext] || "image/jpeg";
+    const b64 = fs.readFileSync(filePath).toString("base64");
+    return `data:${mime};base64,${b64}`;
+  } catch { return null; }
+}
 
 function fmtNum(val: string | number | null | undefined): string {
   const n = parseFloat(String(val || "0"));
@@ -113,7 +132,10 @@ function aggregateByIncomeType(items: any[], fallbackData: any): Record<string, 
 }
 
 function taxIdBoxes(taxId: string): any {
-  const digits = (taxId || "").replace(/\D/g, "").padEnd(13, " ").slice(0, 13).split("");
+  // Canvas for box outlines + relativePosition columns for digit text
+  // NOTE: always use explicit numeric widths in parent columns (avoid width:"*")
+  const raw = (taxId || "").replace(/\D/g, "").padEnd(13, " ").slice(0, 13);
+  const digits = raw.split("");
   const groups = [
     [digits[0]],
     [digits[1], digits[2], digits[3], digits[4]],
@@ -121,18 +143,27 @@ function taxIdBoxes(taxId: string): any {
     [digits[10], digits[11]],
     [digits[12]],
   ];
-  const items: any[] = [];
-  groups.forEach((group, gi) => {
-    if (gi > 0) items.push({ text: "-", fontSize: 7, bold: true, margin: [1, 2, 1, 0] });
-    group.forEach((d) => {
-      items.push({
-        table: { widths: [13], heights: [14], body: [[{ text: d.trim(), fontSize: 9, alignment: "center" }]] },
-        layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => "black", vLineColor: () => "black" },
-        margin: [0, 0, 0, 0],
-      });
-    });
-  });
-  return { columns: items, columnGap: 1 };
+  const boxW = 11, boxH = 12, dashW = 7;
+  let x = 0;
+  const rects: any[] = [];
+  const textItems: any[] = [];
+  for (let gi = 0; gi < groups.length; gi++) {
+    if (gi > 0) {
+      textItems.push({ text: "-", width: dashW, fontSize: 8, bold: true, alignment: "center", margin: [0, 2, 0, 0] });
+      x += dashW;
+    }
+    for (const d of groups[gi]) {
+      rects.push({ type: "rect", x, y: 0, w: boxW, h: boxH, lineWidth: 0.5, lineColor: "black", fillColor: "white" });
+      textItems.push({ text: d.trim() || " ", width: boxW, fontSize: 8, alignment: "center", margin: [0, 2, 0, 0] });
+      x += boxW;
+    }
+  }
+  return {
+    stack: [
+      { canvas: rects, width: x, height: boxH },
+      { columns: textItems, columnGap: 0, relativePosition: { x: 0, y: -boxH }, width: x },
+    ],
+  };
 }
 
 function cb(checked: boolean): any {
@@ -185,6 +216,8 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
   const totalPaid = parseFloat(data.amountPaid || "0");
   const totalTax = parseFloat(data.taxWithheld || "0");
   const dateParts = formatDateParts(data.certDate, "CE");
+  const signatureImageB64 = data.createdBySignatureUrl ? loadLocalImageBase64(data.createdBySignatureUrl) : null;
+  const stampImageB64 = data.stampUrl ? loadLocalImageBase64(data.stampUrl) : null;
 
   const border: [boolean, boolean, boolean, boolean] = [true, true, true, true];
   const noBorder: [boolean, boolean, boolean, boolean] = [false, false, false, false];
@@ -265,15 +298,16 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       sectionBox([
         {
           columns: [
-            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
+            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 370 },
             {
-              width: 210,
+              width: 185,
               stack: [
-                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7 },
+                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7, alignment: "right" },
                 taxIdBoxes(data.payerTaxId || ""),
               ],
             },
           ],
+          columnGap: 0,
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payerName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
@@ -285,15 +319,16 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       sectionBox([
         {
           columns: [
-            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
+            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 370 },
             {
-              width: 210,
+              width: 185,
               stack: [
-                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7 },
+                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7, alignment: "right" },
                 taxIdBoxes(data.payeeTaxId || ""),
               ],
             },
           ],
+          columnGap: 0,
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payeeName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
@@ -502,9 +537,17 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                   body: [
                     [
                       { text: "ลงชื่อ", border: noBorder, fontSize: 8 },
-                      { text: "", border: [false, false, false, true] as any, fontSize: 8 },
+                      signatureImageB64
+                        ? {
+                            stack: [
+                              { image: signatureImageB64, fit: [120, 32], alignment: "center", margin: [0, 0, 0, 0] },
+                              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 999, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                            ],
+                            border: [false, false, false, false] as any,
+                          }
+                        : { text: "", border: [false, false, false, true] as any, fontSize: 8 },
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
-                      { text: "ประทับตรา", border: noBorder, fontSize: 7.5, color: "#666" },
+                      { text: stampImageB64 ? "" : "ประทับตรา", border: noBorder, fontSize: 7.5, color: "#666" },
                     ],
                     [
                       { text: "(", border: noBorder, fontSize: 8, margin: [0, 2, 0, 0] },
@@ -517,7 +560,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         margin: [0, 2, 0, 0],
                       },
                       { text: ")", border: noBorder, fontSize: 8, margin: [0, 2, 0, 0] },
-                      { text: "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
+                      { text: stampImageB64 ? "(ถ้ามี)" : "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
                     ],
                     [
                       { text: "", border: noBorder },
