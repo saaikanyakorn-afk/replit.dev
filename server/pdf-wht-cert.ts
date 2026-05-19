@@ -597,7 +597,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         ? {
                             stack: [
                               { image: signatureImageB64, fit: [120, 32], alignment: "center", margin: [0, 0, 0, 0] },
-                              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 999, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
                             ],
                             border: [false, false, false, false] as any,
                           }
@@ -610,7 +610,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                       {
                         stack: [
                           { text: data.createdBySignatureName || data.createdByName || data.payerName || "", fontSize: 8, alignment: "center" },
-                          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 999, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+                          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
                         ],
                         border: noBorder,
                         margin: [0, 2, 0, 0],
