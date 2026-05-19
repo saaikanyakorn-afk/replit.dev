@@ -106,13 +106,24 @@ If you run out of context or time before updating this file — that is YOUR fai
 - **Dev push**: `git push github-dev main` — after every code change, no auth needed
 - **NEVER**: push entire branch to github-production
 
+### ⚠️ CRITICAL PUSH CHECKLIST — FILES EASY TO FORGET
+
+These files are **not tied to any single feature** — they will be skipped if you push selectively. You MUST include them:
+
+| File | Why easy to forget | Must push when |
+|------|--------------------|---------------|
+| `client/src/index.css` | Global stylesheet — not owned by any feature ticket | Any push that includes N6 (WHT cert) or any feature that uses Niramit font on frontend |
+| `package.json` + `package-lock.json` | New package installed: `@fontsource/niramit` (2026-05-19) — production `npm install` will fail or fall back to CDN without this | Same as above |
+
+**Background (2026-05-19):** Niramit font files (`server/fonts/Niramit-*.ttf`) already existed on production server — they were placed there by earlier code (pdfmake PDF generation via `pdf-pdfmake-generator.ts` + `pdf-wht-cert.ts`). But those files are **only readable by the Node.js backend** (file path access), they are NOT served over HTTP. The browser (frontend) was still fetching Niramit from Google Fonts CDN. Fix: installed `@fontsource/niramit` → imported in `client/src/index.css` (thai subset, all weights) → removed CDN `@import` from `document-renderer.tsx`. This makes Niramit available system-wide, bundled by Vite, zero CDN dependency — works on dev AND production.
+
 ---
 
 ## ═══════════════════════════════════
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-19 — พี่ช้าง + พี่ทราย session (WHT cert dropdown + PDF fix + PM lock). Handoff updated by main agent.
+**Last verified:** 2026-05-19 — พี่ช้าง session (WHT cert PDF checkbox fix + Niramit self-hosted font system-wide). Handoff updated by main agent.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
 **Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
 
@@ -132,7 +143,8 @@ Before she gives you a single task, you MUST brief her. Say something like:
 > - **Expense บันทึกไม่ได้ (timeout):** แก้แล้ว ✅
 > - **ใบเสร็จรับเงิน (RE) บันทึกเกินยอดค้าง:** แก้แล้ว — ระบบบล็อกทันที ✅
 > - **ใบหัก ณ ที่จ่าย (50 ทวิ) — PDF/LINE/Email เปิดไม่ได้:** แก้แล้ว — static import แทน dynamic require ✅
-> - **ใบหัก ณ ที่จ่าย — ปุ่ม actions หน้ารายการ:** เปลี่ยนเป็น dropdown เหมือนเอกสารอื่น ✅ — แต่ยังไม่มีปุ่มส่งอีเมล (ต้องสร้าง route + field)
+> - **ใบหัก ณ ที่จ่าย — ปุ่ม actions + ส่งอีเมล + PDF fix:** ✅ เสร็จ — dropdown + email dialog + checkbox canvas-based + tax ID column fix + share route camelCase fix
+> - **Niramit font system-wide:** ✅ เสร็จ — @fontsource/niramit bundled ใน Vite, ลบ Google CDN แล้ว — ⚠️ ต้อง push `client/src/index.css` + `package.json` + `package-lock.json` ด้วย (ดู CRITICAL PUSH CHECKLIST)
 > - **วิธีชำระเงิน (PM) ใบขอซื้อ/ใบสั่งซื้อ/ใบสั่งขาย:** ซ่อนแล้ว (blank white) — เอกสารเหล่านี้ไม่มีขั้นตอนชำระเงิน ✅
 > - **Related-docs (การอ้างอิงเอกสาร):** ยังไม่ได้แก้ — รอ
 > - **Task #35 ใบเบิกวัตถุดิบ + QR Scan:** เสร็จแล้วบน dev รอพี่ทรายทดสอบ
@@ -151,7 +163,7 @@ Before she gives you a single task, you MUST brief her. Say something like:
 | N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
-| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่ต้อง ALTER TABLE เลย: email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. มี dialog ยืนยัน/แก้ไข email ก่อนส่ง. ไฟล์ที่แก้: `expense-routes.ts` (2 routes ใหม่ + share route fix), `wht-cert-list.tsx` (dialog + dropdown item), `pdf-wht-cert.ts` (checkbox fix + tax ID column fix). **PDF fix (2026-05-19):** cb() เปลี่ยนเป็น canvas-based (ไม่ขึ้นกับ font ☑/☐ ไม่มีใน Niramit), tax ID column explicit width 210pt (แก้ pdfmake auto-width miscalculate), share route เพิ่ม missing camelCase map (formType, certDate, whtCondition, payerBranch, payeeBranch, seqNo) + items camelCase map | ✅ DEV DONE | พี่ทราย test บน dev → พี่ช้าง approves push to production |
+| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่ต้อง ALTER TABLE เลย: email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. มี dialog ยืนยัน/แก้ไข email ก่อนส่ง. ไฟล์ที่แก้: `expense-routes.ts` (2 routes ใหม่ + share route fix), `wht-cert-list.tsx` (dialog + dropdown item), `pdf-wht-cert.ts` (checkbox fix + tax ID column fix). **PDF fix (2026-05-19):** cb() เปลี่ยนเป็น canvas-based (ไม่ขึ้นกับ font ☑/☐ ไม่มีใน Niramit), tax ID column explicit width 210pt (แก้ pdfmake auto-width miscalculate), share route เพิ่ม missing camelCase map (formType, certDate, whtCondition, payerBranch, payeeBranch, seqNo) + items camelCase map. **Niramit font self-hosting (2026-05-19):** ติดตั้ง `@fontsource/niramit` + import ใน `client/src/index.css` (thai subset 300/400/500/600/700 + 400-italic) แทน Google Fonts CDN ที่เคยอยู่ใน `document-renderer.tsx` line 666 — ดู ⚠️ CRITICAL PUSH CHECKLIST ด้านล่าง | ✅ DEV DONE | พี่ทราย test บน dev → พี่ช้าง approves push to production |
 
 ### Business knowledge you MUST know before touching any code:
 
