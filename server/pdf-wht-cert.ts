@@ -598,9 +598,10 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
                       {
                         stack: [
-                          ...(stampImageB64 ? [{ image: stampImageB64, width: 95, margin: [0, 0, 0, -95] }] : []),
+                          ...(stampImageB64 ? [{ image: stampImageB64, fit: [95, 72] }] : []),
                         ],
                         border: noBorder,
+                        rowSpan: 3,
                       },
                     ],
                     [
@@ -622,7 +623,6 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         margin: [0, 2, 0, 0],
                       },
                       { text: "", border: noBorder },
-                      { text: "", border: noBorder },
                     ],
                     [
                       { text: "", border: noBorder },
@@ -636,7 +636,6 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         ],
                         border: noBorder, margin: [0, 2, 0, 0],
                       },
-                      { text: "", border: noBorder },
                       { text: "", border: noBorder },
                     ],
                   ],
