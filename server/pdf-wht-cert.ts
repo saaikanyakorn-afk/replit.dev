@@ -123,10 +123,10 @@ function taxIdBoxes(taxId: string): any {
   ];
   const items: any[] = [];
   groups.forEach((group, gi) => {
-    if (gi > 0) items.push({ text: "-", fontSize: 7, bold: true, margin: [1, 0, 1, 0] });
+    if (gi > 0) items.push({ text: "-", fontSize: 7, bold: true, margin: [1, 2, 1, 0] });
     group.forEach((d) => {
       items.push({
-        table: { widths: [10], heights: [12], body: [[{ text: d.trim(), fontSize: 8, alignment: "center" }]] },
+        table: { widths: [13], heights: [14], body: [[{ text: d.trim(), fontSize: 9, alignment: "center" }]] },
         layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => "black", vLineColor: () => "black" },
         margin: [0, 0, 0, 0],
       });
@@ -137,13 +137,13 @@ function taxIdBoxes(taxId: string): any {
 
 function cb(checked: boolean): any {
   const vecs: any[] = [
-    { type: "rect", x: 0, y: 0, w: 8, h: 8, lineWidth: 0.5, lineColor: "black", fillColor: "white" },
+    { type: "rect", x: 0, y: 0, w: 10, h: 10, lineWidth: 0.5, lineColor: "black", fillColor: "white" },
   ];
   if (checked) {
-    vecs.push({ type: "line", x1: 1.5, y1: 4.5, x2: 3.5, y2: 7.5, lineWidth: 1.2, lineColor: "black" });
-    vecs.push({ type: "line", x1: 3.5, y1: 7.5, x2: 7.5, y2: 1.5, lineWidth: 1.2, lineColor: "black" });
+    vecs.push({ type: "line", x1: 1.8, y1: 5.5, x2: 4, y2: 9, lineWidth: 1.2, lineColor: "black" });
+    vecs.push({ type: "line", x1: 4, y1: 9, x2: 9.5, y2: 1.5, lineWidth: 1.2, lineColor: "black" });
   }
-  return { canvas: vecs, width: 9, height: 9 };
+  return { canvas: vecs, width: 11, height: 11 };
 }
 
 function dotRow(label: string, value: string, labelWidth: number = 30): any {
@@ -159,15 +159,15 @@ function dotRow(label: string, value: string, labelWidth: number = 30): any {
       },
     ],
     columnGap: 2,
-    margin: [0, 1, 0, 1],
+    margin: [0, 0, 0, 1],
   };
 }
 
 function sectionBox(content: any[]): any {
   return {
-    table: { widths: ["*"], body: [[{ stack: content, margin: [3, 2, 3, 2] }]] },
+    table: { widths: ["*"], body: [[{ stack: content, margin: [3, 0, 3, 1] }]] },
     layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => "black", vLineColor: () => "black" },
-    margin: [0, 0, 0, 3],
+    margin: [0, 0, 0, 2],
   };
 }
 
@@ -247,19 +247,19 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
   const docDefinition: any = {
     pageSize: "A4",
     pageOrientation: "portrait",
-    pageMargins: [20, 15, 20, 15],
-    defaultStyle: { font: "Sarabun", fontSize: 8, lineHeight: 1.3 },
+    pageMargins: [10, 4, 10, 4],
+    defaultStyle: { font: "Sarabun", fontSize: 8, lineHeight: 1.1 },
     content: [
       // Title
       { text: "หนังสือรับรองการหักภาษี ณ ที่จ่าย", style: "header", alignment: "center", fontSize: 13, bold: true, margin: [0, 0, 0, 1] },
-      { text: "ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร", fontSize: 9, alignment: "center", margin: [0, 0, 0, 3] },
+      { text: "ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร", fontSize: 9, alignment: "center", margin: [0, 0, 0, 2] },
       // เล่มที่/เลขที่
       {
         columns: [
           { text: "", width: "*" },
           { text: `เล่มที่  ${data.bookNo || ""}    เลขที่  ${data.certNo || ""}`, fontSize: 8, bold: true, alignment: "right", width: "auto" },
         ],
-        margin: [0, 0, 0, 3],
+        margin: [0, 0, 0, 2],
       },
       // ผู้มีหน้าที่หักภาษี
       sectionBox([
@@ -429,7 +429,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           hLineColor: () => "black",
           vLineColor: () => "black",
         },
-        margin: [0, 0, 0, 3],
+        margin: [0, 0, 0, 2],
       },
       // ตัวอักษร
       {
@@ -456,7 +456,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           { text: data.pvdAmount || "         ", decoration: "underline" }, " บาท",
         ],
         fontSize: 7.5,
-        margin: [0, 0, 0, 3],
+        margin: [0, 0, 0, 2],
       },
       // ผู้จ่ายเงิน condition
       sectionBox([
@@ -543,7 +543,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           },
         ],
         columnGap: 8,
-        margin: [0, 3, 0, 3],
+        margin: [0, 2, 0, 2],
       },
       // footnote
       {
@@ -558,7 +558,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
             margin: [6, 0, 0, 0],
           },
         ],
-        margin: [0, 3, 0, 0],
+        margin: [0, 2, 0, 0],
         columnGap: 4,
       },
     ],
