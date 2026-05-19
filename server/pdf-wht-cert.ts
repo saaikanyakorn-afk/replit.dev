@@ -142,28 +142,32 @@ function taxIdBoxes(taxId: string): any {
     [digits[10], digits[11]],
     [digits[12]],
   ];
-  const boxW = 11, boxH = 12, dashW = 6.5;
-  let cx = 0;
-  const rects: any[] = [];
-  const textItems: any[] = [];
+  const boxW = 11, dashW = 6;
+  const cells: any[] = [];
+  const colWidths: number[] = [];
   for (let gi = 0; gi < groups.length; gi++) {
     if (gi > 0) {
-      textItems.push({ text: "-", width: dashW, fontSize: 8, bold: true, alignment: "center" });
-      cx += dashW;
+      cells.push({ text: "-", fontSize: 8, bold: true, alignment: "center", border: [false, false, false, false] });
+      colWidths.push(dashW);
     }
     for (const d of groups[gi]) {
-      rects.push({ type: "rect", x: cx, y: 0, w: boxW, h: boxH, lineWidth: 0.5, lineColor: "black", fillColor: "white" });
-      textItems.push({ text: d.trim() || " ", width: boxW, fontSize: 7, alignment: "center" });
-      cx += boxW;
+      cells.push({ text: d.trim() || " ", fontSize: 7, alignment: "center", border: [true, true, true, true] });
+      colWidths.push(boxW);
     }
   }
-  // canvas draws the visible boxes; text uses relativePosition to overlay on canvas;
-  // negative bottom margin cancels the extra layout height so the row stays compact
+  const cx = colWidths.reduce((a, b) => a + b, 0);
   return {
-    stack: [
-      { canvas: rects, width: cx, height: boxH },
-      { columns: textItems, columnGap: 0, relativePosition: { x: 0, y: -boxH }, width: cx, margin: [0, 0, 0, -(boxH - 2)] },
-    ],
+    table: { widths: colWidths, body: [cells] },
+    layout: {
+      hLineWidth: () => 0.5,
+      vLineWidth: () => 0.5,
+      hLineColor: () => "black",
+      vLineColor: () => "black",
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 2,
+      paddingBottom: () => 2,
+    },
     width: cx,
   };
 }
@@ -186,7 +190,7 @@ function dotRow(label: string, value: string | any[], labelWidth: number = 30): 
       {
         stack: [
           { text: typeof value === "string" ? (value || "") : value, fontSize: 8 },
-          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 530, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+          { canvas: [{ type: "line", x1: 0, y1: 0, x2: 490, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
         ],
         fontSize: 8,
         width: "*",
@@ -315,8 +319,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
         {
           columns: [
             { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
-            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 120 },
-            { ...taxIdBoxes(data.payerTaxId || ""), width: 169 },
+            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 116 },
+            { ...taxIdBoxes(data.payerTaxId || ""), width: 167 },
+            { text: "", width: 30 },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
@@ -334,8 +339,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
         {
           columns: [
             { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
-            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 120 },
-            { ...taxIdBoxes(data.payeeTaxId || ""), width: 169 },
+            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, alignment: "right", width: 116 },
+            { ...taxIdBoxes(data.payeeTaxId || ""), width: 167 },
+            { text: "", width: 30 },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
