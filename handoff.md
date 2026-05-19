@@ -123,9 +123,9 @@ These files are **not tied to any single feature** — they will be skipped if y
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-19 — พี่ช้าง session (WHT cert PDF checkbox fix + Niramit self-hosted font system-wide). Handoff updated by main agent.
+**Last verified:** 2026-05-19 — Kai session (WHT cert PDF signature image + email route parity). Handoff updated by main agent.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
+**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ + WHT cert PDF signature image ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
 
 ---
 
@@ -163,7 +163,7 @@ Before she gives you a single task, you MUST brief her. Say something like:
 | N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
-| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่ต้อง ALTER TABLE เลย: email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. มี dialog ยืนยัน/แก้ไข email ก่อนส่ง. ไฟล์ที่แก้: `expense-routes.ts` (2 routes ใหม่ + share route fix), `wht-cert-list.tsx` (dialog + dropdown item), `pdf-wht-cert.ts` (checkbox fix + tax ID column fix). **PDF fix (2026-05-19):** cb() เปลี่ยนเป็น canvas-based (ไม่ขึ้นกับ font ☑/☐ ไม่มีใน Niramit), tax ID column explicit width 210pt (แก้ pdfmake auto-width miscalculate), share route เพิ่ม missing camelCase map (formType, certDate, whtCondition, payerBranch, payeeBranch, seqNo) + items camelCase map. **Niramit font self-hosting (2026-05-19):** ติดตั้ง `@fontsource/niramit` + import ใน `client/src/index.css` (thai subset 300/400/500/600/700 + 400-italic) แทน Google Fonts CDN ที่เคยอยู่ใน `document-renderer.tsx` line 666 — ดู ⚠️ CRITICAL PUSH CHECKLIST ด้านล่าง | ✅ DEV DONE | พี่ทราย test บน dev → พี่ช้าง approves push to production |
+| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่ต้อง ALTER TABLE เลย: email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. มี dialog ยืนยัน/แก้ไข email ก่อนส่ง. ไฟล์ที่แก้: `expense-routes.ts` (2 routes ใหม่ + share route fix), `wht-cert-list.tsx` (dialog + dropdown item), `pdf-wht-cert.ts` (checkbox fix + tax ID column fix). **PDF fix (2026-05-19):** cb() เปลี่ยนเป็น canvas-based (ไม่ขึ้นกับ font ☑/☐ ไม่มีใน Niramit), tax ID column explicit width 210pt (แก้ pdfmake auto-width miscalculate), share route เพิ่ม missing camelCase map (formType, certDate, whtCondition, payerBranch, payeeBranch, seqNo) + items camelCase map. **Niramit font self-hosting (2026-05-19):** ติดตั้ง `@fontsource/niramit` + import ใน `client/src/index.css` (thai subset 300/400/500/600/700 + 400-italic) แทน Google Fonts CDN ที่เคยอยู่ใน `document-renderer.tsx` line 666 — ดู ⚠️ CRITICAL PUSH CHECKLIST ด้านล่าง. **Signature image (2026-05-19):** `loadLocalImageBase64()` helper ใน `pdf-wht-cert.ts` อ่านไฟล์จาก `uploads/` → base64 → embed ใน pdfmake; share route + email route (`expense-routes.ts`) ดึง `user.signatureUrl` → ส่งเป็น `createdBySignatureUrl` → PDF size เพิ่ม 30460→36058 bytes ยืนยัน embed สำเร็จ | ✅ DEV DONE | พี่ทราย test บน dev → พี่ช้าง approves push to production |
 
 ### Business knowledge you MUST know before touching any code:
 
@@ -203,6 +203,36 @@ Before she gives you a single task, you MUST brief her. Say something like:
 - **All channels (share link, LINE, Email PDF) route through `/api/share/wht-cert/:token/pdf`** — one fix fixes all channels simultaneously
 - Actions dropdown pattern: WHT cert list was the ONLY document list using individual icon buttons instead of DropdownMenu — fixed to match other docs (แก้ไข, ดูตัวอย่าง/สั่งพิมพ์, ลิงก์สำหรับแชร์, ส่งผ่าน LINE, อนุมัติ, ลบ)
 - **ส่งอีเมล: NOT YET DONE** — `withholdingTaxCerts` table has no `payeeEmail` column, no send-email route exists — see N6 in pending work above
+
+**WHT cert PDF — Self-Diagnosis Method (proven 2026-05-19, Kai can do this independently up to a level without พี่ทราย):**
+
+This method lets Kai verify PDF changes end-to-end without needing พี่ทราย to open the browser. Use it for any layout/content fix on `pdf-wht-cert.ts`.
+
+1. **Use the share token URL** — no login required, works from curl or browser:
+   - Test cert: WHT cert #47, companyId=4
+   - Share token: `bbade9d239b76786618910221c7fa7c46dc8622d9ef84045`
+   - PDF endpoint: `GET /api/share/wht-cert/bbade9d239b76786618910221c7fa7c46dc8622d9ef84045/pdf`
+   - Share page: `/share/wht-cert/bbade9d239b76786618910221c7fa7c46dc8622d9ef84045`
+
+2. **ALWAYS restart_workflow after every file edit** — tsx server does NOT hot-reload TypeScript files. File size change in response confirms new code loaded.
+
+3. **Verify with curl + size check:**
+   ```bash
+   curl -s -o /tmp/test.pdf "http://localhost:5000/api/share/wht-cert/<token>/pdf" -w "SIZE:%{size_download}"
+   ```
+   - HTTP 200 + no server errors in logs = code ran without crash
+   - Size increase = new content (image, additional section) embedded correctly
+   - Size same as before restart = old code still running → restart again
+
+4. **Compare against HTML print reference:** `client/src/pages/purchases/wht-cert-print.tsx` is the authoritative layout. Match every section against it.
+
+5. **Known pdfmake pitfalls for this file:**
+   - `width: "*"` on left column inside `sectionBox` (table→cell→stack→columns) → right column becomes invisible. Fix: use explicit numeric width (e.g. `370`)
+   - Tax ID boxes: canvas+relativePosition approach only — nested table approach breaks at 3 levels deep
+   - Checkboxes (☑/☐): canvas-based only — Niramit font does NOT include checkbox glyphs
+   - Images: use `loadLocalImageBase64(url)` helper at top of `pdf-wht-cert.ts` — reads from `uploads/` dir, returns `"data:image/jpeg;base64,..."` or `null` if file missing
+
+6. **Limit of self-diagnosis:** Visual confirmation of bottom sections (signature area, date, footnote) requires พี่ทราย to open the PDF in the browser — screenshot tool cannot scroll inside the PDF iframe. Kai can confirm: no crash, correct file size, top sections visible. พี่ทราย confirms: bottom layout matches expectation.
 
 **PM dropdown lock (confirmed by พี่ทราย + พี่ช้าง 2026-05-19):**
 - Documents WITH payment step → PM dropdown active: Tax Invoice, Receipt, Expense, Purchase Invoice, Debit Note (both sides)
@@ -1136,6 +1166,7 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 
 | Date | What | Result |
 |------|------|--------|
+| 2026-05-19 | WHT cert PDF — signature image embed: `loadLocalImageBase64()` helper + signatureImageB64 in `pdf-wht-cert.ts`; share route + email route ดึง `user.signatureUrl` → `createdBySignatureUrl`; PDF size 30460→36058 bytes ยืนยัน embed สำเร็จ | ✅ dev |
 | 2026-05-19 | WHT cert PDF fix — `expense-routes.ts` dynamic require → static import `generateWhtCertPdf` — แก้ทุก channel (share link/LINE/Email PDF) | ✅ dev |
 | 2026-05-19 | WHT cert list actions — เปลี่ยนจากปุ่ม icon เรียงกันเป็น DropdownMenu เหมือนเอกสารอื่น | ✅ dev |
 | 2026-05-19 | PM dropdown lock — ซ่อน วิธีชำระเงิน ใน PR/PO/SO (blank white cell) — ใบเหล่านี้ไม่มีขั้นตอนชำระเงิน | ✅ dev |
