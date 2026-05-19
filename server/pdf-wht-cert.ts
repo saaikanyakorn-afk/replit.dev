@@ -300,7 +300,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
         ]),
         dotRow("สาขา", data.payerBranch || "สำนักงานใหญ่"),
         dotRow("ที่อยู่", data.payerAddress || ""),
-        { text: "(ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)", fontSize: 6.5, color: "#666", margin: [22, 0, 0, 0] },
+        { text: "(ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)", fontSize: 6.5, color: "#666", margin: [32, 0, 0, 0] },
       ]),
       // ผู้ถูกหักภาษี
       sectionBox([
@@ -319,7 +319,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
         ]),
         dotRow("สาขา", data.payeeBranch || "สำนักงานใหญ่"),
         dotRow("ที่อยู่", data.payeeAddress || ""),
-        { text: "(ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)", fontSize: 6.5, color: "#666", margin: [22, 0, 0, 0] },
+        { text: "(ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)", fontSize: 6.5, color: "#666", margin: [32, 0, 0, 0] },
       ]),
       // ลำดับที่ + form type
       sectionBox([
