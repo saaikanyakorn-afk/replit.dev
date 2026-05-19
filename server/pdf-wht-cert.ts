@@ -143,25 +143,23 @@ function taxIdBoxes(taxId: string): any {
   ];
   const boxW = 11, boxH = 12, dashW = 7;
   let cx = 0;
-  const rects: any[] = [];
-  const textItems: any[] = [];
+  const parts: string[] = [];
   for (let gi = 0; gi < groups.length; gi++) {
     if (gi > 0) {
-      textItems.push({ text: "-", width: dashW, fontSize: 8, bold: true, alignment: "center", margin: [0, 2, 0, 0] });
+      parts.push(`<text x="${cx + dashW / 2}" y="${boxH - 2}" font-size="8" font-family="Arial" text-anchor="middle">-</text>`);
       cx += dashW;
     }
     for (const d of groups[gi]) {
-      rects.push({ type: "rect", x: cx, y: 0, w: boxW, h: boxH, lineWidth: 0.5, lineColor: "black" });
-      textItems.push({ text: d.trim() || " ", width: boxW, fontSize: 8, alignment: "center", margin: [0, 2, 0, 0] });
+      parts.push(`<rect x="${cx + 0.25}" y="0.25" width="${boxW - 0.5}" height="${boxH - 0.5}" fill="white" stroke="black" stroke-width="0.5"/>`);
+      const digit = d.trim();
+      if (digit) {
+        parts.push(`<text x="${cx + boxW / 2}" y="${boxH - 2}" font-size="8" font-family="Arial" text-anchor="middle">${digit}</text>`);
+      }
       cx += boxW;
     }
   }
-  return {
-    stack: [
-      { canvas: rects, width: cx, height: boxH },
-      { columns: textItems, columnGap: 0, width: cx, margin: [0, -boxH, 0, 0] },
-    ],
-  };
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${cx}" height="${boxH}">${parts.join("")}</svg>`;
+  return { svg: svgStr, width: cx, height: boxH };
 }
 
 function cb(checked: boolean): any {
