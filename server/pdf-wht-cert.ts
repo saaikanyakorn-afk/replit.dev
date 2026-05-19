@@ -285,16 +285,18 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       sectionBox([
         {
           columns: [
-            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 370 },
+            { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "auto" },
+            { width: "*", text: "" },
             {
-              width: 185,
-              stack: [
-                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7, alignment: "right" },
+              width: "auto",
+              columns: [
+                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
                 taxIdBoxes(data.payerTaxId || ""),
               ],
+              columnGap: 2,
             },
           ],
-          columnGap: 0,
+          columnGap: 4,
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payerName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
@@ -306,16 +308,18 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       sectionBox([
         {
           columns: [
-            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: 370 },
+            { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "auto" },
+            { width: "*", text: "" },
             {
-              width: 185,
-              stack: [
-                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7, alignment: "right" },
+              width: "auto",
+              columns: [
+                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
                 taxIdBoxes(data.payeeTaxId || ""),
               ],
+              columnGap: 2,
             },
           ],
-          columnGap: 0,
+          columnGap: 4,
           margin: [0, 0, 0, 2],
         },
         dotRow("ชื่อ", `${data.payeeName || ""}  (ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)`),
