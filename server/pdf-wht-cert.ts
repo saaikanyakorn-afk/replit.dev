@@ -589,7 +589,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                       signatureImageB64
                         ? {
                             stack: [
-                              { image: signatureImageB64, fit: [80, 26], alignment: "left", margin: [0, 0, 0, 0] },
+                              { image: signatureImageB64, fit: [80, 26], alignment: "center", margin: [0, 0, 0, 0] },
                               { canvas: [{ type: "line", x1: 0, y1: 0, x2: 80, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
                             ],
                             border: [false, false, false, false] as any,
