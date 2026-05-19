@@ -623,6 +623,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         margin: [0, 2, 0, 0],
                       },
                       { text: "", border: noBorder },
+                      { text: "", border: noBorder },
                     ],
                     [
                       { text: "", border: noBorder },
@@ -636,6 +637,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         ],
                         border: noBorder, margin: [0, 2, 0, 0],
                       },
+                      { text: "", border: noBorder },
                       { text: "", border: noBorder },
                     ],
                   ],
