@@ -643,6 +643,19 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
         columnGap: 8,
         margin: [0, 2, 0, 2],
       },
+      // dashed separator above footnote
+      {
+        canvas: [
+          {
+            type: "line",
+            x1: 0, y1: 0,
+            x2: 575, y2: 0,
+            lineWidth: 0.5,
+            dash: { length: 3, space: 2 },
+          },
+        ],
+        margin: [0, 3, 0, 0],
+      },
       // footnote
       {
         columns: [
