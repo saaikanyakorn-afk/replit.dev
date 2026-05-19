@@ -427,50 +427,50 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
             // row 4a
             ...incomeTableRows("4a", "4. (ก) ดอกเบี้ย ฯลฯ ตามมาตรา 40 (4) (ก)"),
             // row 4b
-            ...incomeTableRows("4b", "   (ข) เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ ตามมาตรา 40 (4) (ข)"),
-            // sub-rows dividend
+            ...incomeTableRows("4b", [{ columns: [{ text: "", width: 13 }, { text: "(ข) เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ ตามมาตรา 40 (4) (ข)", fontSize: 8 }] }]),
+            // sub-rows dividend – indent levels: (1)/(2)=26pt, (1.x)/(2.x)=39pt
             [[
-              { text: "   (1) กรณีผู้ได้รับเงินปันผลได้รับเครดิตภาษี โดยจ่ายจากกำไรสุทธิของกิจการที่ต้องเสียภาษีเงินได้นิติบุคคลในอัตราดังนี้", fontSize: 7, colSpan: 4, border },
+              { columns: [{ text: "", width: 26 }, { text: "(1) กรณีผู้ได้รับเงินปันผลได้รับเครดิตภาษี โดยจ่ายจากกำไรสุทธิของกิจการที่ต้องเสียภาษีเงินได้นิติบุคคลในอัตราดังนี้", fontSize: 7 }], colSpan: 4, border },
               {}, {}, {},
             ]][0],
             [[
-              { text: "        (1.1) อัตราร้อยละ 30 ของกำไรสุทธิ", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(1.1) อัตราร้อยละ 30 ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "        (1.2) อัตราร้อยละ 25 ของกำไรสุทธิ", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(1.2) อัตราร้อยละ 25 ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "        (1.3) อัตราร้อยละ 20 ของกำไรสุทธิ", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(1.3) อัตราร้อยละ 20 ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "        (1.4) อัตราอื่นๆ (ระบุ) .................. ของกำไรสุทธิ", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(1.4) อัตราอื่นๆ (ระบุ) .................. ของกำไรสุทธิ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "   (2) กรณีผู้ได้รับเงินปันผลไม่ได้รับเครดิตภาษี เนื่องจากจ่ายจาก", fontSize: 7, colSpan: 4, border },
+              { columns: [{ text: "", width: 26 }, { text: "(2) กรณีผู้ได้รับเงินปันผลไม่ได้รับเครดิตภาษี เนื่องจากจ่ายจาก", fontSize: 7 }], colSpan: 4, border },
               {}, {}, {},
             ]][0],
             [[
-              { text: "        (2.1) กำไรสุทธิของกิจการที่ได้รับยกเว้นภาษีเงินได้นิติบุคคล", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(2.1) กำไรสุทธิของกิจการที่ได้รับยกเว้นภาษีเงินได้นิติบุคคล", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "        (2.2) เงินปันผลหรือเงินส่วนแบ่งของกำไรที่ได้รับยกเว้นไม่ต้องนำมารวมคำนวณ", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(2.2) เงินปันผลหรือเงินส่วนแบ่งของกำไรที่ได้รับยกเว้นไม่ต้องนำมารวมคำนวณ", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "        (2.3) กำไรสุทธิส่วนที่ได้หักผลขาดทุนสุทธิยกมาไม่เกิน 5 ปี ก่อนรอบระยะเวลาบัญชีปีปัจจุบัน", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(2.3) กำไรสุทธิส่วนที่ได้หักผลขาดทุนสุทธิยกมาไม่เกิน 5 ปี ก่อนรอบระยะเวลาบัญชีปีปัจจุบัน", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "        (2.4) กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย (equity method)", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(2.4) กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย (equity method)", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             [[
-              { text: "        (2.5) อื่นๆ (ระบุ) ......................................................", fontSize: 7, border },
+              { columns: [{ text: "", width: 39 }, { text: "(2.5) อื่นๆ (ระบุ) ......................................................", fontSize: 7 }], border },
               { text: "", border }, { text: "", border }, { text: "", border },
             ]][0],
             // row 5
