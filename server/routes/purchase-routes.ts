@@ -1641,31 +1641,29 @@ export function registerPurchaseRoutes(app: Express) {
       const userCompanies = await db.select().from(companies).where(eq(companies.tenantId, user.tenantId));
       const companyIds = userCompanies.map(c => c.id);
 
-      if (companyIds.length > 0) {
-        const localContacts = await db.select().from(contacts)
-          .where(and(
-            sql`${contacts.companyId} IN (${sql.join(companyIds.map(id => sql`${id}`), sql`, `)})`,
-            eq(contacts.taxId, taxId)
-          ))
-          .limit(1);
-        if (localContacts.length > 0) {
-          const c = localContacts[0];
-          return res.json({
-            name: c.name,
-            address: c.address || "",
-            branch: c.branch || "สำนักงานใหญ่",
-            source: "local",
-            contactId: c.id,
-          });
-        }
+      const [localContacts, branches] = await Promise.all([
+        companyIds.length > 0
+          ? db.select().from(contacts).where(and(
+              sql`${contacts.companyId} IN (${sql.join(companyIds.map(id => sql`${id}`), sql`, `)})`,
+              eq(contacts.taxId, taxId)
+            )).limit(1)
+          : Promise.resolve([]),
+        lookupRdVatAll(taxId),
+      ]);
+
+      const contactId = localContacts.length > 0 ? localContacts[0].id : undefined;
+
+      if (branches.length > 0) {
+        const first = branches[0];
+        return res.json({ ...first, branches, ...(contactId ? { contactId } : {}) });
       }
 
-      const branches = await lookupRdVatAll(taxId);
-      if (branches.length === 0) {
-        return res.status(404).json({ message: "ไม่พบข้อมูลในระบบกรมสรรพากร" });
+      if (localContacts.length > 0) {
+        const c = localContacts[0];
+        return res.json({ name: c.name, address: c.address || "", branch: c.branch || "สำนักงานใหญ่", source: "local", contactId: c.id });
       }
-      const first = branches[0];
-      res.json({ ...first, branches });
+
+      return res.status(404).json({ message: "ไม่พบข้อมูลในระบบกรมสรรพากร" });
     } catch (err: any) {
       res.status(500).json({ message: err.message || "เกิดข้อผิดพลาด" });
     }

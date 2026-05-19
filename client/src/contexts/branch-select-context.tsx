@@ -46,7 +46,7 @@ export function BranchSelectProvider({ children }: { children: ReactNode }) {
     <BranchSelectContext.Provider value={{ selectBranch }}>
       {children}
       <Dialog open={state.open} onOpenChange={(open) => { if (!open) handleCancel(); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Building2 className="h-5 w-5 text-[#fb9678]" />
