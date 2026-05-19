@@ -288,8 +288,14 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
         {
           columns: [
             { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
-            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
-            taxIdBoxes(data.payerTaxId || ""),
+            {
+              width: 300,
+              columns: [
+                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
+                { ...taxIdBoxes(data.payerTaxId || ""), width: 171 },
+              ],
+              columnGap: 2,
+            },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
@@ -304,8 +310,14 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
         {
           columns: [
             { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
-            { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
-            taxIdBoxes(data.payeeTaxId || ""),
+            {
+              width: 300,
+              columns: [
+                { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 6.5, width: "auto" },
+                { ...taxIdBoxes(data.payeeTaxId || ""), width: 171 },
+              ],
+              columnGap: 2,
+            },
           ],
           columnGap: 4,
           margin: [0, 0, 0, 2],
