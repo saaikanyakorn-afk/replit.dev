@@ -413,7 +413,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           body: [
             // header
             [
-              { text: "ประเภทเงินได้พึงประเมินที่จ่าย", fontSize: 8, bold: true, alignment: "left", border },
+              { text: "ประเภทเงินได้พึงประเมินที่จ่าย", fontSize: 8, bold: true, alignment: "left", verticalAlignment: "middle", border },
               { text: "วัน เดือน\nหรือปีภาษี ที่จ่าย", fontSize: 7.5, bold: true, alignment: "center", border },
               { text: "จำนวนเงินที่จ่าย", fontSize: 7.5, bold: true, alignment: "center", border },
               { text: "ภาษีที่หัก\nและนำส่งไว้", fontSize: 7.5, bold: true, alignment: "center", border },
