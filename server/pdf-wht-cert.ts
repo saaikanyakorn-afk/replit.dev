@@ -300,7 +300,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
   const docDefinition: any = {
     pageSize: "A4",
     pageOrientation: "portrait",
-    pageMargins: [10, 36, 10, 8],
+    pageMargins: [10, 12, 10, 9],
     defaultStyle: { font: "Sarabun", fontSize: 8, lineHeight: 1.1 },
     content: [
       // Title
@@ -647,7 +647,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           },
         ],
         columnGap: 8,
-        margin: [0, 2, 0, 2],
+        margin: [0, 2, 0, 0],
       },
       // dashed separator above footnote
       {
@@ -660,22 +660,22 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
             dash: { length: 3, space: 2 },
           },
         ],
-        margin: [0, 2, 0, 0],
+        margin: [0, 1, 0, 0],
       },
       // footnote
       {
         columns: [
-          { text: "หมายเหตุ เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)* หมายถึง", bold: true, fontSize: 7, color: "#888888", width: "auto" },
+          { text: "หมายเหตุ เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)* หมายถึง", bold: true, fontSize: 6.5, color: "#888888", width: "auto" },
           {
             stack: [
-              { text: "1. กรณีบุคคลธรรมดาไทย ให้ใช้เลขประจำตัวประชาชนของกรมการปกครอง", fontSize: 7, color: "#888888" },
-              { text: "2. กรณีนิติบุคคล ให้ใช้เลขทะเบียนนิติบุคคลของกรมพัฒนาธุรกิจการค้า", fontSize: 7, color: "#888888" },
-              { text: "3. กรณีอื่นๆ นอกเหนือจาก 1. และ 2. ให้ใช้เลขประจำตัวผู้เสียภาษีอากร (13 หลัก) ของกรมสรรพากร", fontSize: 7, color: "#888888" },
+              { text: "1. กรณีบุคคลธรรมดาไทย ให้ใช้เลขประจำตัวประชาชนของกรมการปกครอง", fontSize: 6.5, color: "#888888" },
+              { text: "2. กรณีนิติบุคคล ให้ใช้เลขทะเบียนนิติบุคคลของกรมพัฒนาธุรกิจการค้า", fontSize: 6.5, color: "#888888" },
+              { text: "3. กรณีอื่นๆ นอกเหนือจาก 1. และ 2. ให้ใช้เลขประจำตัวผู้เสียภาษีอากร (13 หลัก) ของกรมสรรพากร", fontSize: 6.5, color: "#888888" },
             ],
             margin: [6, 0, 0, 0],
           },
         ],
-        margin: [0, 1, 0, 0],
+        margin: [0, 0, 0, 0],
         columnGap: 4,
       },
     ],
@@ -749,10 +749,10 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           const stampImage = await pdfDoc.embedPng(stampBytes);
 
           // Place stamp right of signature section
-          // Measured from rendered PDF: signature section center ≈ 114pt from page bottom
-          // (was 146pt with top margin=4; now top margin=36 → content shifts down 32pt → y -= 32)
+          // Measured from rendered PDF: signature section center ≈ 138pt from page bottom
+          // (was 146pt with top margin=4; now top margin=12 → content shifts down 8pt → y -= 8)
           const x = width - 10 - stampW - 8;  // right-aligned with margin
-          const y = 114 - stampH / 2;          // vertically centered in sig section
+          const y = 138 - stampH / 2;          // vertically centered in sig section
 
           page.drawImage(stampImage, { x, y, width: stampW, height: stampH });
           return Buffer.from(await pdfDoc.save());
