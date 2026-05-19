@@ -1511,6 +1511,32 @@ export function registerExpenseRoutes(app: Express) {
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  // Auto-compute seq_no from position in attachment list (same company+formType+month+year, sorted by paidDate ASC, id ASC)
+  async function computeWhtSeqNo(certId: number, companyId: number, formType: string | null, paidDate: string | null): Promise<string> {
+    if (!paidDate) return "";
+    try {
+      const d = new Date(paidDate);
+      const ceYear = d.getFullYear();
+      const monthNum = d.getMonth() + 1;
+      const startDate = `${ceYear}-${String(monthNum).padStart(2, "0")}-01`;
+      const lastDay = new Date(ceYear, monthNum, 0).getDate();
+      const endDate = `${ceYear}-${String(monthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const conditions: any[] = [
+        eq(withholdingTaxCerts.companyId, companyId),
+        sql`${withholdingTaxCerts.paidDate} >= ${startDate}`,
+        sql`${withholdingTaxCerts.paidDate} <= ${endDate}`,
+        sql`${withholdingTaxCerts.status} != 'cancelled'`,
+      ];
+      if (formType) conditions.push(eq(withholdingTaxCerts.formType, formType));
+      const peers = await db.select({ id: withholdingTaxCerts.id })
+        .from(withholdingTaxCerts)
+        .where(and(...conditions))
+        .orderBy(withholdingTaxCerts.paidDate, withholdingTaxCerts.id);
+      const pos = peers.findIndex((r) => r.id === certId);
+      return pos >= 0 ? String(pos + 1) : "";
+    } catch { return ""; }
+  }
+
   app.get("/api/wht-certs/:id/pdf", requireAuth, requireModule("purchases"), async (req, res) => {
     try {
       const [doc] = await db.select().from(withholdingTaxCerts).where(eq(withholdingTaxCerts.id, Number(req.params.id)));
@@ -1532,7 +1558,9 @@ export function registerExpenseRoutes(app: Express) {
         const dsRows = await db.execute(sql.raw(`SELECT stamp_url FROM document_settings WHERE company_id = ${doc.companyId} LIMIT 1`));
         stampUrl = ((dsRows as any).rows?.[0]?.stamp_url) || null;
       } catch {}
-      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company, createdByName, createdBySignatureName, createdBySignatureUrl, stampUrl });
+      // Auto-fill seqNo from attachment position if not manually set
+      const resolvedSeqNo = doc.seqNo || await computeWhtSeqNo(doc.id, doc.companyId, doc.formType || null, doc.paidDate ? String(doc.paidDate) : null);
+      const pdfBuffer = await generateWhtCertPdf({ ...doc, seqNo: resolvedSeqNo, items, company, createdByName, createdBySignatureName, createdBySignatureUrl, stampUrl });
       const filename = `wht-cert-${doc.certNo || doc.id}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(filename)}"`);
@@ -1808,7 +1836,9 @@ export function registerExpenseRoutes(app: Express) {
         const dsRows = await db.execute(sql.raw(`SELECT stamp_url FROM document_settings WHERE company_id = ${Number(doc.company_id)} LIMIT 1`));
         stampUrl = ((dsRows as any).rows?.[0]?.stamp_url) || null;
       } catch (_) {}
-      const pdfData = { ...docCamel, company, items: camelItems, createdByName, createdBySignatureName, createdBySignatureUrl, stampUrl };
+      // Auto-fill seqNo from attachment position if not manually set
+      const resolvedSeqNo = doc.seq_no || await computeWhtSeqNo(Number(doc.id), Number(doc.company_id), doc.form_type || null, doc.paid_date ? String(doc.paid_date) : null);
+      const pdfData = { ...docCamel, seqNo: resolvedSeqNo, company, items: camelItems, createdByName, createdBySignatureName, createdBySignatureUrl, stampUrl };
       const pdfBuffer = await generateWhtCertPdf(pdfData);
       const filename = `wht-cert-${doc.cert_no || doc.id}.pdf`;
       res.setHeader("Content-Type", "application/pdf");
