@@ -151,7 +151,7 @@ Before she gives you a single task, you MUST brief her. Say something like:
 | N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ⏳ Waiting | พี่ทราย tests first |
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes), awaiting พี่ทราย test + พี่ช้าง approval | ⏳ Waiting | พี่ทราย confirms → พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
-| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่เคยมีตั้งแต่ต้น ต้องสร้างใหม่ทั้งหมด: (1) เพิ่ม `payeeEmail` column ใน `withholding_tax_certs` table, (2) สร้าง `/api/wht-certs/:id/send-email` route ใน expense-routes.ts, (3) เพิ่ม "ส่งอีเมล" ใน dropdown wht-cert-list.tsx — **MUST follow full 10-step migration checklist (replit.md Rule 2) — ดูขั้นตอนในหัวข้อ Production Schema Change Procedure ด้านล่าง** | ❌ NOT YET DONE | **Kai MUST study rule first** → VERIFY production DB → พี่ช้าง approves every production step |
+| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่ต้อง ALTER TABLE เลย: email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. มี dialog ยืนยัน/แก้ไข email ก่อนส่ง. ไฟล์ที่แก้: `expense-routes.ts` (2 routes ใหม่), `wht-cert-list.tsx` (dialog + dropdown item) | ✅ DEV DONE | พี่ทราย test บน dev → พี่ช้าง approves push to production |
 
 ### Business knowledge you MUST know before touching any code:
 

@@ -13,8 +13,10 @@ import { useCompany } from "@/lib/company-context";
 import {
   Search, Plus, FileText, Edit2, Trash2, Eye,
   CheckCircle2, Clock, XCircle,
-  Printer, Link2, Download, BarChart3, Layers, Loader2, MessageSquare, MoreHorizontal
+  Printer, Link2, Download, BarChart3, Layers, Loader2, MessageSquare, MoreHorizontal, Mail
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,6 +120,7 @@ export default function WhtCertList() {
   const [consSearched, setConsSearched] = useState(false);
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [lineDialog, setLineDialog] = useState<{ open: boolean; url: string; docNo: string; payeeName: string }>({ open: false, url: "", docNo: "", payeeName: "" });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; docId: number | null; email: string; payeeName: string; certNo: string; loading: boolean; sending: boolean }>({ open: false, docId: null, email: "", payeeName: "", certNo: "", loading: false, sending: false });
 
   const { dateEra, dateFmt } = useDateSettings();
   const { data: docSettings } = useQuery<any>({
@@ -238,6 +241,36 @@ export default function WhtCertList() {
       setTimeout(() => setLineDialog({ open: true, url, docNo: doc.certNo || "", payeeName: doc.payeeName || "" }), 150);
     } catch {
       toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleOpenEmailDialog = async (doc: any) => {
+    setEmailDialog({ open: true, docId: doc.id, email: "", payeeName: doc.payeeName || "", certNo: doc.certNo || "", loading: true, sending: false });
+    try {
+      const res = await apiRequest("GET", `/api/wht-certs/${doc.id}/send-email-info`);
+      const data = await res.json();
+      setEmailDialog(prev => ({ ...prev, email: data.suggestedEmail || "", loading: false }));
+    } catch {
+      setEmailDialog(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailDialog.docId) return;
+    setEmailDialog(prev => ({ ...prev, sending: true }));
+    try {
+      const res = await apiRequest("POST", `/api/wht-certs/${emailDialog.docId}/send-email`, { toEmail: emailDialog.email });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "ส่งอีเมลสำเร็จ", description: data.message, variant: "success" as any });
+        setEmailDialog(prev => ({ ...prev, open: false, sending: false }));
+      } else {
+        toast({ title: "ส่งอีเมลไม่สำเร็จ", description: data.message, variant: "destructive" });
+        setEmailDialog(prev => ({ ...prev, sending: false }));
+      }
+    } catch (err: any) {
+      toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
+      setEmailDialog(prev => ({ ...prev, sending: false }));
     }
   };
 
@@ -431,6 +464,9 @@ export default function WhtCertList() {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleSendLine(doc)} className="flex gap-2 text-green-600">
                                       <MessageSquare className="h-3.5 w-3.5" /> ส่งผ่าน LINE
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleOpenEmailDialog(doc)} className="flex gap-2 text-blue-600" data-testid={`button-send-email-${doc.id}`}>
+                                      <Mail className="h-3.5 w-3.5" /> ส่งอีเมล
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     {doc.status === "draft" && (
@@ -834,6 +870,50 @@ export default function WhtCertList() {
         customerName={lineDialog.payeeName}
         companyId={companyId}
       />
+
+      <Dialog open={emailDialog.open} onOpenChange={(open) => setEmailDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-600" />
+              ส่งอีเมลใบ 50 ทวิ
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {emailDialog.certNo && (
+              <p className="text-sm text-muted-foreground">เลขที่: <span className="font-medium text-foreground">{emailDialog.certNo}</span> — {emailDialog.payeeName}</p>
+            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="wht-email-input">อีเมลผู้รับ</Label>
+              {emailDialog.loading ? (
+                <div className="flex items-center gap-2 h-9 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> กำลังดึงอีเมล...</div>
+              ) : (
+                <Input
+                  id="wht-email-input"
+                  data-testid="input-wht-email"
+                  type="email"
+                  placeholder="กรอกอีเมลผู้รับ"
+                  value={emailDialog.email}
+                  onChange={(e) => setEmailDialog(prev => ({ ...prev, email: e.target.value }))}
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEmailDialog(prev => ({ ...prev, open: false }))} disabled={emailDialog.sending}>
+              ยกเลิก
+            </Button>
+            <Button
+              data-testid="button-confirm-send-email"
+              onClick={handleSendEmail}
+              disabled={emailDialog.sending || emailDialog.loading || !emailDialog.email}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {emailDialog.sending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />กำลังส่ง...</> : <><Mail className="h-4 w-4 mr-2" />ส่งอีเมล</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

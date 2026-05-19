@@ -1954,4 +1954,64 @@ export function registerExpenseRoutes(app: Express) {
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.get("/api/wht-certs/:id/send-email-info", requireAuth, requireModule("purchases"), async (req, res) => {
+    try {
+      const [doc] = await db.select().from(withholdingTaxCerts).where(eq(withholdingTaxCerts.id, Number(req.params.id)));
+      if (!doc) return res.status(404).json({ message: "ไม่พบหนังสือรับรอง 50 ทวิ" });
+      const ac = await checkDocOwnership(doc.companyId, req.user);
+      if (!ac.allowed) return res.status(403).json({ message: ac.message });
+
+      let suggestedEmail = "";
+      if (doc.sourceDocType === "expense" && doc.sourceDocId) {
+        const [srcDoc] = await db.select({ contactEmail: expenses.contactEmail }).from(expenses).where(eq(expenses.id, doc.sourceDocId));
+        suggestedEmail = srcDoc?.contactEmail || "";
+      }
+      if (!suggestedEmail && doc.payeeVendorId) {
+        const [contact] = await db.select({ email: contacts.email }).from(contacts).where(eq(contacts.id, doc.payeeVendorId));
+        suggestedEmail = contact?.email || "";
+      }
+      res.json({ suggestedEmail, payeeName: doc.payeeName || "", certNo: doc.certNo || "" });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/wht-certs/:id/send-email", requireAuth, requireModule("purchases"), async (req, res) => {
+    try {
+      const [doc] = await db.select().from(withholdingTaxCerts).where(eq(withholdingTaxCerts.id, Number(req.params.id)));
+      if (!doc) return res.status(404).json({ message: "ไม่พบหนังสือรับรอง 50 ทวิ" });
+      const ac = await checkDocOwnership(doc.companyId, req.user);
+      if (!ac.allowed) return res.status(403).json({ message: ac.message });
+
+      const { toEmail } = req.body;
+      if (!toEmail) return res.status(400).json({ message: "กรุณาระบุอีเมลผู้รับ" });
+
+      const smtpRows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
+      const smtpCfg: Record<string, string> = {};
+      for (const r of (smtpRows.rows || []) as any[]) smtpCfg[r.config_key] = r.config_value;
+      if (!smtpCfg.SYSADMIN_SMTP_HOST || !smtpCfg.SYSADMIN_SMTP_USER || !smtpCfg.SYSADMIN_SMTP_PASS) {
+        return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP — กรุณาตั้งค่าใน System Config ก่อน" });
+      }
+
+      const items = await db.select().from(whtCertItems).where(eq(whtCertItems.whtCertId, doc.id));
+      const [company] = await db.select().from(companies).where(eq(companies.id, doc.companyId));
+      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company });
+
+      const companyName = company?.name || "บริษัท";
+      const nodemailer = await import("nodemailer");
+      const transporter = nodemailer.default.createTransport({
+        host: smtpCfg.SYSADMIN_SMTP_HOST,
+        port: Number(smtpCfg.SYSADMIN_SMTP_PORT || "587"),
+        secure: smtpCfg.SYSADMIN_SMTP_SECURE === "true",
+        auth: { user: smtpCfg.SYSADMIN_SMTP_USER, pass: smtpCfg.SYSADMIN_SMTP_PASS.trim() },
+      });
+      await transporter.sendMail({
+        from: smtpCfg.SYSADMIN_SMTP_FROM || smtpCfg.SYSADMIN_SMTP_USER,
+        to: toEmail,
+        subject: `หนังสือรับรองการหักภาษี ณ ที่จ่าย ${doc.certNo || ""} จาก ${companyName}`,
+        html: `<div style="font-family:sans-serif;padding:20px"><p>เรียน ${doc.payeeName || "ท่าน"},</p><p>กรุณาตรวจสอบหนังสือรับรองการหักภาษี ณ ที่จ่าย เลขที่ <strong>${doc.certNo || ""}</strong> ที่แนบมาพร้อมอีเมลนี้</p><p>ขอบคุณ,<br/>${companyName}</p></div>`,
+        attachments: [{ filename: `wht-cert-${doc.certNo || doc.id}.pdf`, content: pdfBuffer, contentType: "application/pdf" }],
+      });
+      res.json({ success: true, message: `ส่งอีเมลไปยัง ${toEmail} สำเร็จ` });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
 }
