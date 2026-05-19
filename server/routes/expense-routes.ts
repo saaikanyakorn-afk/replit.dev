@@ -1993,7 +1993,13 @@ export function registerExpenseRoutes(app: Express) {
 
       const items = await db.select().from(whtCertItems).where(eq(whtCertItems.whtCertId, doc.id));
       const [company] = await db.select().from(companies).where(eq(companies.id, doc.companyId));
-      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company });
+      let createdByName = "";
+      let createdBySignatureName = "";
+      if (doc.createdBy) {
+        const u = await storage.getUser(Number(doc.createdBy));
+        if (u) { createdByName = u.fullName; createdBySignatureName = u.signatureName || u.fullName; }
+      }
+      const pdfBuffer = await generateWhtCertPdf({ ...doc, items, company, createdByName, createdBySignatureName });
 
       const companyName = company?.name || "บริษัท";
       const nodemailer = await import("nodemailer");
