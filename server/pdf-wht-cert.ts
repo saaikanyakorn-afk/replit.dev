@@ -300,7 +300,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
   const docDefinition: any = {
     pageSize: "A4",
     pageOrientation: "portrait",
-    pageMargins: [10, 4, 10, 4],
+    pageMargins: [10, 42, 10, 10],
     defaultStyle: { font: "Sarabun", fontSize: 8, lineHeight: 1.1 },
     content: [
       // Title
