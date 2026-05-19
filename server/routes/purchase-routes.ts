@@ -1584,44 +1584,50 @@ export function registerPurchaseRoutes(app: Express) {
 - วันที่ต้องเป็น DD/MM/YYYY ปี พ.ศ.
 - ส่งกลับ JSON เท่านั้น ห้ามมี markdown code block`;
 
-  async function lookupDBD(taxId: string): Promise<{ name: string; address: string; branch: string; source: string } | null> {
-    if (!taxId || taxId.length !== 13) return null;
+  function extractXmlVal(xml: string, tag: string): string {
+    const m = xml.match(new RegExp(`<${tag}><anyType[^>]*>([^<]+)<\\/anyType><\\/${tag}>`));
+    return m ? m[1].trim() : "";
+  }
+
+  interface RdBranch { name: string; address: string; branch: string; branchNumber: number; source: string; }
+
+  async function lookupRdVatBranch(taxId: string, branchNumber: number): Promise<RdBranch | null> {
     try {
+      const soapBody = `<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:vat="https://rdws.rd.go.th/serviceRD3/vatserviceRD3"><soap:Header/><soap:Body><vat:Service><vat:username>anonymous</vat:username><vat:password>anonymous</vat:password><vat:TIN>${taxId}</vat:TIN><vat:Name></vat:Name><vat:ProvinceCode>0</vat:ProvinceCode><vat:BranchNumber>${branchNumber}</vat:BranchNumber><vat:AmphurCode>0</vat:AmphurCode></vat:Service></soap:Body></soap:Envelope>`;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-      const resp = await fetch(`https://openapi.dbd.go.th/api/v1/juristic_person/${taxId}`, {
-        signal: controller.signal,
-        headers: { "Accept": "application/json" },
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      const resp = await fetch("https://rdws.rd.go.th/serviceRD3/vatserviceRD3.asmx", {
+        method: "POST", signal: controller.signal,
+        headers: { "Content-Type": "application/soap+xml; charset=utf-8" },
+        body: soapBody,
       });
       clearTimeout(timeout);
       if (!resp.ok) return null;
-      const data: any = await resp.json();
-      if (!data || data.status?.code !== "1000") return null;
-      const records = data.data;
-      if (!Array.isArray(records) || records.length === 0) return null;
-      const person = records[0]?.["cd:OrganizationJuristicPerson"];
-      if (!person) return null;
-      const name = person["cd:OrganizationJuristicNameTH"] || person["cd:OrganizationJuristicNameEN"] || "";
-      if (!name) return null;
-
-      let address = "";
-      const addr = person["cd:OrganizationJuristicAddress"] || person["cd:JuristicAddress"] || {};
-      if (addr) {
-        const parts = [
-          addr["cd:AddressNo"] || addr["cd:BuildingName"] || "",
-          addr["cd:Moo"] ? `หมู่ ${addr["cd:Moo"]}` : "",
-          addr["cd:Soi"] ? `ซอย${addr["cd:Soi"]}` : "",
-          addr["cd:Road"] ? `ถนน${addr["cd:Road"]}` : "",
-          addr["cd:SubDistrict"] ? `ตำบล${addr["cd:SubDistrict"]}` : (addr["cd:Tambon"] ? `แขวง${addr["cd:Tambon"]}` : ""),
-          addr["cd:District"] ? `อำเภอ${addr["cd:District"]}` : (addr["cd:Amphoe"] ? `เขต${addr["cd:Amphoe"]}` : ""),
-          addr["cd:Province"] ? `จังหวัด${addr["cd:Province"]}` : "",
-          addr["cd:Postcode"] || "",
-        ].filter(Boolean);
-        address = parts.join(" ");
-      }
-
-      return { name, address, branch: "สำนักงานใหญ่", source: "dbd" };
+      const xml = await resp.text();
+      if (extractXmlVal(xml, "vmsgerr").toLowerCase().includes("not found")) return null;
+      const titleName = extractXmlVal(xml, "vtitleName");
+      const vName = extractXmlVal(xml, "vName");
+      if (!vName || vName === "-") return null;
+      const fullName = (titleName && titleName !== "-" ? titleName + " " : "") + vName;
+      const v = (f: string) => { const s = extractXmlVal(xml, f); return s && s !== "-" ? s : ""; };
+      const addrParts = [
+        v("vHouseNumber"), v("vMooNumber") ? `หมู่ ${v("vMooNumber")}` : "",
+        v("vSoiName") ? `ซอย${v("vSoiName")}` : "", v("vStreetName") ? `ถนน${v("vStreetName")}` : "",
+        v("vThambol") ? `แขวง${v("vThambol")}` : "", v("vAmphur") ? `เขต${v("vAmphur")}` : "",
+        v("vProvince"), v("vPostCode"),
+      ].filter(Boolean);
+      const branchNo = extractXmlVal(xml, "vBranchNumber");
+      const branchName = extractXmlVal(xml, "vBranchName");
+      const branchLabel = branchNo === "0" ? "สำนักงานใหญ่"
+        : (branchName && branchName !== "-" ? branchName : `สาขาที่ ${branchNo}`);
+      return { name: fullName, address: addrParts.join(" "), branch: branchLabel, branchNumber: Number(branchNo) || branchNumber, source: "rd" };
     } catch { return null; }
+  }
+
+  async function lookupRdVatAll(taxId: string): Promise<RdBranch[]> {
+    if (!taxId || taxId.length !== 13) return [];
+    const results = await Promise.all(Array.from({ length: 10 }, (_, i) => lookupRdVatBranch(taxId, i)));
+    return results.filter((r): r is RdBranch => r !== null);
   }
 
   app.get("/api/dbd-lookup/:taxId", requireAuth, async (req, res) => {
@@ -1654,11 +1660,12 @@ export function registerPurchaseRoutes(app: Express) {
         }
       }
 
-      const result = await lookupDBD(taxId);
-      if (!result) {
-        return res.status(404).json({ message: "ไม่พบข้อมูลนิติบุคคล" });
+      const branches = await lookupRdVatAll(taxId);
+      if (branches.length === 0) {
+        return res.status(404).json({ message: "ไม่พบข้อมูลในระบบกรมสรรพากร" });
       }
-      res.json(result);
+      const first = branches[0];
+      res.json({ ...first, branches });
     } catch (err: any) {
       res.status(500).json({ message: err.message || "เกิดข้อผิดพลาด" });
     }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useToast } from "./use-toast";
+import { useBranchSelect, RdBranch } from "@/contexts/branch-select-context";
 
 interface DBDResult {
   name: string;
@@ -11,7 +12,11 @@ interface DBDResult {
   email?: string;
 }
 
-async function serverDBDLookup(taxId: string): Promise<{ result: DBDResult | null; status: "found" | "not_found" | "error" }> {
+interface ApiResponse extends DBDResult {
+  branches?: RdBranch[];
+}
+
+async function serverDBDLookup(taxId: string): Promise<{ result: ApiResponse | null; status: "found" | "not_found" | "error" }> {
   try {
     const res = await fetch(`/api/dbd-lookup/${taxId}`, { credentials: "include" });
     if (res.ok) {
@@ -43,6 +48,7 @@ async function serverDBDSearch(query: string): Promise<DBDResult[]> {
 export function useDbdLookup() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { selectBranch } = useBranchSelect();
 
   const lookup = async (taxId: string): Promise<DBDResult | null> => {
     const cleanId = taxId.replace(/\D/g, "");
@@ -53,15 +59,26 @@ export function useDbdLookup() {
     setLoading(true);
     try {
       toast({ title: "กำลังค้นหาข้อมูล..." });
-      const serverResult = await serverDBDLookup(cleanId);
-      if (serverResult.result) {
-        const src = serverResult.result.source === "local" ? "จากรายชื่อในระบบ" : "จาก DBD";
-        toast({ title: `พบข้อมูล ${src}: ${serverResult.result.name}` });
-        return serverResult.result;
+      const { result, status } = await serverDBDLookup(cleanId);
+
+      if (result) {
+        const src = result.source === "local" ? "จากรายชื่อในระบบ"
+          : result.source === "rd" ? "จากกรมสรรพากร" : "จากระบบ";
+
+        if (result.branches && result.branches.length > 1) {
+          toast({ title: `พบ ${result.branches.length} สาขา กรุณาเลือกสาขา` });
+          const chosen = await selectBranch(result.branches);
+          if (!chosen) return null;
+          toast({ title: `เลือกสาขา: ${chosen.branch}` });
+          return { name: chosen.name, address: chosen.address, branch: chosen.branch, source: chosen.source };
+        }
+
+        toast({ title: `พบข้อมูล${src}: ${result.name}` });
+        return result;
       }
 
-      if (serverResult.status === "not_found") {
-        toast({ title: "ไม่พบข้อมูลนิติบุคคลสำหรับเลขนี้", variant: "destructive" });
+      if (status === "not_found") {
+        toast({ title: "ไม่พบข้อมูลในระบบกรมสรรพากร", variant: "destructive" });
       } else {
         toast({ title: "ไม่สามารถค้นหาได้ กรุณาลองใหม่", variant: "destructive" });
       }
@@ -78,8 +95,7 @@ export function useDbdLookup() {
     if (!query || query.length < 2) return [];
     setLoading(true);
     try {
-      const results = await serverDBDSearch(query);
-      return results;
+      return await serverDBDSearch(query);
     } catch {
       return [];
     } finally {
