@@ -578,16 +578,8 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           {
             width: "*",
             alignment: "center",
-            margin: [0, 0, 5, 0],
             stack: [
               { text: "ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ", fontSize: 7.5, alignment: "center", margin: [0, 0, 0, 8] },
-              ...(stampImageB64 ? [{
-                columns: [
-                  { width: "*", text: "" },
-                  { image: stampImageB64, fit: [80, 80], width: 80, alignment: "center" },
-                ],
-                margin: [0, 0, 0, -80],
-              }] : []),
               {
                 table: {
                   widths: ["auto", "*", "auto", "auto"],
@@ -604,7 +596,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                           }
                         : { text: "", border: [false, false, false, true] as any, fontSize: 8 },
                       { text: "ผู้จ่ายเงิน", border: noBorder, fontSize: 8 },
-                      { text: stampImageB64 ? "" : "ประทับตรา", border: noBorder, fontSize: 7.5, color: "#666" },
+                      stampImageB64
+                        ? { image: stampImageB64, fit: [65, 65], alignment: "center", rowSpan: 3, border: noBorder, margin: [4, 0, 0, 0] }
+                        : { text: "ประทับตรา", border: noBorder, fontSize: 7.5, color: "#666" },
                     ],
                     [
                       { text: "(", border: noBorder, fontSize: 8, margin: [0, 2, 0, 0] },
@@ -617,7 +611,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         margin: [0, 2, 0, 0],
                       },
                       { text: ")", border: noBorder, fontSize: 8, margin: [0, 2, 0, 0] },
-                      { text: stampImageB64 ? "" : "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
+                      stampImageB64
+                        ? { text: "", border: noBorder }
+                        : { text: "นิติบุคคล", border: noBorder, fontSize: 7.5, color: "#666", margin: [0, 2, 0, 0] },
                     ],
                     [
                       { text: "", border: noBorder },
@@ -626,7 +622,9 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                         alignment: "center", fontSize: 8, border: noBorder, margin: [0, 2, 0, 0],
                       },
                       { text: "", border: noBorder },
-                      { text: stampImageB64 ? "" : "(ถ้ามี)", border: noBorder, fontSize: 7, color: "#666", margin: [0, 2, 0, 0] },
+                      stampImageB64
+                        ? { text: "", border: noBorder }
+                        : { text: "(ถ้ามี)", border: noBorder, fontSize: 7, color: "#666", margin: [0, 2, 0, 0] },
                     ],
                     [
                       { text: "", border: noBorder },
