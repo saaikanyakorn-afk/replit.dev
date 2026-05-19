@@ -495,12 +495,13 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       // ตัวอักษร
       {
         columns: [
-          { text: "รวมเงินภาษีที่หักนำส่ง (ตัวอักษร)", bold: true, fontSize: 8, width: "auto" },
+          { text: "รวมเงินภาษีที่หักนำส่ง (ตัวอักษร)", bold: true, fontSize: 8, width: 175, noWrap: true },
           {
             stack: [
               { text: numberToThaiWords(totalTax), fontSize: 8, bold: true },
-              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 999, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
+              { canvas: [{ type: "line", x1: 0, y1: 0, x2: 530, y2: 0, lineWidth: 0.5, dash: { length: 2 } }] },
             ],
+            width: "*",
             margin: [4, 0, 0, 0],
           },
         ],
