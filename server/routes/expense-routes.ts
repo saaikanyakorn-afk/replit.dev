@@ -1755,13 +1755,21 @@ export function registerExpenseRoutes(app: Express) {
       const docCamel = {
         ...doc,
         certNo: doc.cert_no, bookNo: doc.book_no, companyId: doc.company_id,
-        payerName: doc.payer_name, payerTaxId: doc.payer_tax_id, payerAddress: doc.payer_address,
-        payeeName: doc.payee_name, payeeTaxId: doc.payee_tax_id, payeeAddress: doc.payee_address,
+        certDate: doc.cert_date, seqNo: doc.seq_no,
+        payerName: doc.payer_name, payerTaxId: doc.payer_tax_id, payerAddress: doc.payer_address, payerBranch: doc.payer_branch,
+        payeeName: doc.payee_name, payeeTaxId: doc.payee_tax_id, payeeAddress: doc.payee_address, payeeBranch: doc.payee_branch,
+        formType: doc.form_type, whtCondition: doc.wht_condition, whtConditionOther: doc.wht_condition_other,
         paidDate: doc.paid_date, totalIncome: doc.total_income, taxWithheld: doc.tax_withheld,
         whtRate: doc.wht_rate, incomeType: doc.income_type, incomeTypeOther: doc.income_type_other,
+        amountPaid: doc.amount_paid, gpfAmount: doc.gpf_amount, ssoAmount: doc.sso_amount, pvdAmount: doc.pvd_amount,
         createdBy: doc.created_by,
       };
-      const pdfData = { ...docCamel, company, items, createdByName, createdBySignatureName };
+      const camelItems = ((itemRows as any).rows || []).map((it: any) => ({
+        ...it,
+        whtCertId: it.wht_cert_id, incomeType: it.income_type, incomeDescription: it.income_description,
+        paidDate: it.paid_date, amountPaid: it.amount_paid, taxWithheld: it.tax_withheld, taxRate: it.tax_rate,
+      }));
+      const pdfData = { ...docCamel, company, items: camelItems, createdByName, createdBySignatureName };
       const pdfBuffer = await generateWhtCertPdf(pdfData);
       const filename = `wht-cert-${doc.cert_no || doc.id}.pdf`;
       res.setHeader("Content-Type", "application/pdf");

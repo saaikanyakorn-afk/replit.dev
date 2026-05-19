@@ -135,8 +135,15 @@ function taxIdBoxes(taxId: string): any {
   return { columns: items, columnGap: 1 };
 }
 
-function cb(checked: boolean): string {
-  return checked ? "☑" : "☐";
+function cb(checked: boolean): any {
+  const vecs: any[] = [
+    { type: "rect", x: 0, y: 0, w: 8, h: 8, lineWidth: 0.5, lineColor: "black", fillColor: "white" },
+  ];
+  if (checked) {
+    vecs.push({ type: "line", x1: 1.5, y1: 4.5, x2: 3.5, y2: 7.5, lineWidth: 1.2, lineColor: "black" });
+    vecs.push({ type: "line", x1: 3.5, y1: 7.5, x2: 7.5, y2: 1.5, lineWidth: 1.2, lineColor: "black" });
+  }
+  return { canvas: vecs, width: 9, height: 9 };
 }
 
 function dotRow(label: string, value: string, labelWidth: number = 30): any {
@@ -260,7 +267,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           columns: [
             { text: "ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
             {
-              width: "auto",
+              width: 210,
               stack: [
                 { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7 },
                 taxIdBoxes(data.payerTaxId || ""),
@@ -280,7 +287,7 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
           columns: [
             { text: "ผู้ถูกหักภาษี ณ ที่จ่าย :-", bold: true, fontSize: 8, width: "*" },
             {
-              width: "auto",
+              width: 210,
               stack: [
                 { text: "เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*", fontSize: 7 },
                 taxIdBoxes(data.payeeTaxId || ""),
@@ -312,16 +319,16 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
                 widths: ["auto", "auto", "auto", "auto"],
                 body: [
                   [
-                    { text: `${cb(data.formType === "pnd1")} ภ.ง.ด.1`, border: noBorder, fontSize: 8 },
-                    { text: `${cb(data.formType === "pnd1a")} ภ.ง.ด.1ก`, border: noBorder, fontSize: 8 },
-                    { text: `${cb(data.formType === "pnd1a_special")} ภ.ง.ด.1ก พิเศษ`, border: noBorder, fontSize: 8 },
-                    { text: `${cb(data.formType === "pnd2")} ภ.ง.ด.2`, border: noBorder, fontSize: 8 },
+                    { columns: [cb(data.formType === "pnd1"), { text: " ภ.ง.ด.1", fontSize: 8 }], columnGap: 2, border: noBorder },
+                    { columns: [cb(data.formType === "pnd1a"), { text: " ภ.ง.ด.1ก", fontSize: 8 }], columnGap: 2, border: noBorder },
+                    { columns: [cb(data.formType === "pnd1a_special"), { text: " ภ.ง.ด.1ก พิเศษ", fontSize: 8 }], columnGap: 2, border: noBorder },
+                    { columns: [cb(data.formType === "pnd2"), { text: " ภ.ง.ด.2", fontSize: 8 }], columnGap: 2, border: noBorder },
                   ],
                   [
-                    { text: `${cb(data.formType === "pnd3")} ภ.ง.ด.3`, border: noBorder, fontSize: 8 },
-                    { text: `${cb(data.formType === "pnd2a")} ภ.ง.ด.2ก`, border: noBorder, fontSize: 8 },
-                    { text: `${cb(data.formType === "pnd3a")} ภ.ง.ด.3ก`, border: noBorder, fontSize: 8 },
-                    { text: `${cb(data.formType === "pnd53")} ภ.ง.ด.53`, border: noBorder, fontSize: 8 },
+                    { columns: [cb(data.formType === "pnd3"), { text: " ภ.ง.ด.3", fontSize: 8 }], columnGap: 2, border: noBorder },
+                    { columns: [cb(data.formType === "pnd2a"), { text: " ภ.ง.ด.2ก", fontSize: 8 }], columnGap: 2, border: noBorder },
+                    { columns: [cb(data.formType === "pnd3a"), { text: " ภ.ง.ด.3ก", fontSize: 8 }], columnGap: 2, border: noBorder },
+                    { columns: [cb(data.formType === "pnd53"), { text: " ภ.ง.ด.53", fontSize: 8 }], columnGap: 2, border: noBorder },
                   ],
                 ],
               },
@@ -454,14 +461,17 @@ export async function generateWhtCertPdf(data: any): Promise<Buffer> {
       // ผู้จ่ายเงิน condition
       sectionBox([
         {
-          text: [
-            { text: "ผู้จ่ายเงิน  ", bold: true },
-            { text: `${cb(data.whtCondition === "1")} (1) หัก ณ ที่จ่าย  ` },
-            { text: `${cb(data.whtCondition === "2")} (2) ออกให้ตลอดไป  ` },
-            { text: `${cb(data.whtCondition === "3")} (3) ออกให้ครั้งเดียว  ` },
-            { text: `${cb(data.whtCondition === "4")} (4) อื่นๆ (ระบุ) ${data.whtCondition === "4" && data.whtConditionOther ? data.whtConditionOther : ".................."}` },
+          columns: [
+            { text: "ผู้จ่ายเงิน  ", bold: true, fontSize: 8, width: "auto" },
+            { columns: [cb(data.whtCondition === "1"), { text: " (1) หัก ณ ที่จ่าย", fontSize: 8 }], columnGap: 2, width: "auto" },
+            { text: "  ", width: 6 },
+            { columns: [cb(data.whtCondition === "2"), { text: " (2) ออกให้ตลอดไป", fontSize: 8 }], columnGap: 2, width: "auto" },
+            { text: "  ", width: 6 },
+            { columns: [cb(data.whtCondition === "3"), { text: " (3) ออกให้ครั้งเดียว", fontSize: 8 }], columnGap: 2, width: "auto" },
+            { text: "  ", width: 6 },
+            { columns: [cb(data.whtCondition === "4"), { text: ` (4) อื่นๆ (ระบุ) ${data.whtCondition === "4" && data.whtConditionOther ? data.whtConditionOther : ".................."}`, fontSize: 8 }], columnGap: 2, width: "*" },
           ],
-          fontSize: 8,
+          columnGap: 2,
         },
       ]),
       // warning + signature
