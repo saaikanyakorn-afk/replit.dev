@@ -129,6 +129,7 @@ const TOTAL_FIELD_OPTIONS = [
 const A4_W_MM = 210;
 const A4_H_MM = 297;
 const PREVIEW_SCALE = 2.5;
+const PREVIEW_BASE_SCALE = 2.5;
 
 const SAMPLE_DATA: Record<string, string> = {
   customerName: "บริษัท สินว่ารวย จำกัด",
@@ -194,8 +195,21 @@ export default function CustomFormTemplates() {
   const [bgUploading, setBgUploading] = useState(false);
   const [bgPreviewUrl, setBgPreviewUrl] = useState<string>("");
   const [bgFile, setBgFile] = useState<File | null>(null);
+  const [dynamicScale, setDynamicScale] = useState(PREVIEW_BASE_SCALE);
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
   const { uploadFile } = useUpload();
+
+  useEffect(() => {
+    const el = previewContainerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setDynamicScale(w / A4_W_MM);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const { data: templates = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/custom-form-templates", companyId],
@@ -624,14 +638,15 @@ export default function CustomFormTemplates() {
               <Card className="border-none shadow-sm sticky top-4 max-h-[calc(100vh-80px)] flex flex-col">
                 <CardHeader className="pb-2 shrink-0">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-[#539BFF]" /> ตัวอย่าง (A4 ย่อ)
+                    <Eye className="h-4 w-4 text-[#539BFF]" /> ตัวอย่าง (A4 เต็มหน้า)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex justify-center overflow-y-auto flex-1 pb-4">
+                <CardContent className="overflow-y-auto flex-1 pb-4 px-3">
+                  <div ref={previewContainerRef} style={{ width: "100%" }}>
                   <div
                     style={{
-                      width: pw * PREVIEW_SCALE,
-                      height: ph * PREVIEW_SCALE,
+                      width: pw * dynamicScale,
+                      height: ph * dynamicScale,
                       position: "relative",
                       border: "1px solid #ddd",
                       background: "#fff",
@@ -653,10 +668,10 @@ export default function CustomFormTemplates() {
                           key={`f-${i}`}
                           style={{
                             position: "absolute",
-                            left: f.x * PREVIEW_SCALE,
-                            top: f.y * PREVIEW_SCALE,
-                            width: f.width * PREVIEW_SCALE,
-                            fontSize: f.fontSize * PREVIEW_SCALE * 0.35,
+                            left: f.x * dynamicScale,
+                            top: f.y * dynamicScale,
+                            width: f.width * dynamicScale,
+                            fontSize: f.fontSize * dynamicScale * 0.35,
                             fontWeight: f.fontWeight || "normal",
                             textAlign: (f.align || "left") as any,
                             whiteSpace: "nowrap",
@@ -680,10 +695,10 @@ export default function CustomFormTemplates() {
                             key={`i-${ci}-${ri}`}
                             style={{
                               position: "absolute",
-                              left: col.x * PREVIEW_SCALE,
-                              top: topY * PREVIEW_SCALE,
-                              width: col.width * PREVIEW_SCALE,
-                              fontSize: col.fontSize * PREVIEW_SCALE * 0.35,
+                              left: col.x * dynamicScale,
+                              top: topY * dynamicScale,
+                              width: col.width * dynamicScale,
+                              fontSize: col.fontSize * dynamicScale * 0.35,
                               textAlign: col.align as any,
                               whiteSpace: "nowrap",
                               overflow: "hidden",
@@ -703,10 +718,10 @@ export default function CustomFormTemplates() {
                           key={`t-${i}`}
                           style={{
                             position: "absolute",
-                            left: t.x * PREVIEW_SCALE,
-                            top: t.y * PREVIEW_SCALE,
-                            width: t.width * PREVIEW_SCALE,
-                            fontSize: t.fontSize * PREVIEW_SCALE * 0.35,
+                            left: t.x * dynamicScale,
+                            top: t.y * dynamicScale,
+                            width: t.width * dynamicScale,
+                            fontSize: t.fontSize * dynamicScale * 0.35,
                             textAlign: (t.align || "right") as any,
                             whiteSpace: "nowrap",
                             overflow: "hidden",
@@ -719,6 +734,7 @@ export default function CustomFormTemplates() {
                         </div>
                       );
                     })}
+                  </div>
                   </div>
                 </CardContent>
               </Card>
