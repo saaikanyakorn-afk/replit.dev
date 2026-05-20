@@ -123,9 +123,9 @@ These files are **not tied to any single feature** — they will be skipped if y
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-19 — Kai session (WHT cert seqNo auto-compute + LINE card purple + email PDF stamp/seqNo fix). Handoff updated by main agent.
+**Last verified:** 2026-05-20 — Kai session (custom print form template preview scaling + พี่ช้าง session audit). Handoff updated by main agent.
 **Production status:** Last known deploy #75 (2026-05-15) ✅
-**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ + WHT cert PDF signature image ✅ + WHT cert seqNo auto-compute ✅ + LINE card purple/data ✅ + Email PDF stamp+seqNo ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
+**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ + WHT cert PDF signature image ✅ + WHT cert seqNo auto-compute ✅ + LINE card purple/data ✅ + Email PDF stamp+seqNo ✅ + Custom print form preview scaling ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
 
 ---
 
@@ -367,6 +367,99 @@ The test พี่ช้าง uses: *"If you really read those documents like a
 2. Say out loud what you understood and what you are about to do — wait for confirmation
 3. If you are about to write `X || Y`, `X ? X : Y`, or `catch {}` around accounting code — **stop. Rule 0a.**
 4. The three changes (MO nav, DB warmup, retry logic) are still UNVERIFIED — do not build on them without พี่ช้าง review
+
+---
+
+### SESSION 2026-05-20 — CUSTOM PRINT FORM PREVIEW SCALING + SESSION AUDIT
+
+#### CONTEXT: WHY THIS SESSION EXISTS
+พี่ทราย was working on `/settings/custom-forms` (Custom Print Form Templates). The previous session (2026-05-19 night) left the A4 preview with a `dynamicScale is not defined` runtime error — the variable was removed from code but the old Vite bundle was still cached. This session was started to fix that and continue improving the preview panel.
+
+**IMPORTANT NOTE FROM พี่ช้าง:** This session's agent started coding WITHOUT reading replit.md, handoff.md, or db/schema-history.md first — violating the mandatory session-start procedure. พี่ช้าง conducted an audit. This is a systemic platform problem: `replit.md` content is NOT injected into agent system prompts, so every new session must actively choose to read it first. Next agent: READ THE FILES BEFORE TOUCHING CODE.
+
+---
+
+#### WHAT WAS DONE THIS SESSION (all changes in `client/src/pages/settings/custom-form-templates.tsx`)
+
+**Commit 886711956 — 2026-05-20 00:17 UTC**
+- **What:** Added `const [bgFile, setBgFile] = useState<File | null>(null)` state variable
+- **Why:** Previous session had a `setBgFile is not defined` runtime error. The background image upload UI referenced `setBgFile` but the state was missing.
+- **File:** `custom-form-templates.tsx` (+1 line)
+
+**Commit 8261ff11 — 2026-05-20 00:21 UTC**
+- **What:** Made the preview Card scrollable — added `max-h-[calc(100vh-80px)] flex flex-col` to `<Card>`, `overflow-y-auto flex-1` to `<CardContent>`
+- **Why:** The A4 preview was taller than the viewport, causing the bottom to be cut off with no way to scroll
+- **File:** `custom-form-templates.tsx` (3 lines changed)
+
+**Commit be606839 — 2026-05-20 00:25 UTC**
+- **What:** Added `ResizeObserver` to measure container width → computed `dynamicScale` to scale A4 content to fit container width
+- **Why:** Previous approach used a fixed `PREVIEW_SCALE` constant. Wanted the preview to fill available space on any screen size.
+- **Note:** This introduced `dynamicScale` in state. Then immediately refactored again (see below).
+- **File:** `custom-form-templates.tsx` (+32/-16)
+
+**Commit e8a782d9 — 2026-05-20 00:26 UTC**
+- **What:** Added coordinate tracker — `onMouseMove` on the preview div reads mouse position, converts to mm using `cssScale * BASE_PX`, shows tooltip overlay with `X: __ mm, Y: __ mm`
+- **Why:** พี่ทราย needs to position form fields precisely. Without coordinates, she'd have to guess where to type X/Y values for each field. The tracker lets her hover over a spot and read the exact mm value to type in.
+- **State added:** `const [hoverCoord, setHoverCoord] = useState<{x:number,y:number}|null>(null)`
+- **File:** `custom-form-templates.tsx` (+20 lines)
+
+**Commit c9b8f286 — 2026-05-20 00:32 UTC**
+- **What:** Major refactor of preview scaling approach. Switched from `dynamicScale` (a React state float) to CSS `transform: scale(cssScale)` with `transformOrigin: "top left"`.
+  - `BASE_PX = 2` (renders A4 at 2× pixel density for sharpness, then scales down with CSS)
+  - `containerWidth` state (measured by ResizeObserver)
+  - `cssScale = containerWidth / (pw * BASE_PX)` computed inline during render
+  - Inner A4 div: fixed `width: pw*BASE_PX, height: ph*BASE_PX`, `transform: scale(cssScale)`
+  - Outer wrapper: `height: ph * BASE_PX * cssScale` (to occupy correct space after CSS scale)
+- **Why:** CSS transform scale is the correct approach — it scales the rendered pixels visually without affecting layout flow. The previous approach caused layout jank and the `dynamicScale` variable scope issue that broke the bundle.
+- **File:** `custom-form-templates.tsx` (+101/-115, significant restructure)
+
+**Commit 6ef2fb61 — 2026-05-20 00:33 UTC**
+- **What:** Checkpoint commit only (no code change). `client/public/opengraph.jpg` binary changed (Replit auto-screenshot).
+- **Why:** Auto-checkpoint from Replit platform.
+
+**Commit 412dbaa0 — 2026-05-20 00:35 UTC** ← FINAL STATE
+- **What:** Fixed horizontal overflow. Outer wrapper div had `width: containerWidth` (a pixel number), which caused a scrollbar when the measured width was slightly off. Changed to `width: "100%"`.
+- **Why:** `containerWidth` is measured AFTER the first render so initial value = 0. The div would render at 0 width, then jump to measured width, causing flicker + possible horizontal scroll. `width: "100%"` lets CSS handle it naturally.
+- **File:** `custom-form-templates.tsx` (1 line: `width: containerWidth` → `width: "100%"`)
+
+---
+
+#### FINAL STATE OF PREVIEW ARCHITECTURE (as of this session)
+
+```
+<Card max-h-[calc(100vh-80px)] flex flex-col>
+  <CardHeader shrink-0> ... </CardHeader>
+  <CardContent overflow-y-auto flex-1>
+    {/* outer: width=100%, measured by ResizeObserver → containerWidth */}
+    <div ref={previewContainerRef} style={{ width: "100%" }}>
+      {/* wrapper: takes correct height in flow so scrolling works */}
+      <div style={{ width:"100%", height: ph*BASE_PX*cssScale, position:"relative", overflow:"hidden", cursor:"crosshair" }}
+           onMouseMove → setHoverCoord(x mm, y mm)
+           onMouseLeave → setHoverCoord(null)>
+        {/* coordinate tooltip overlay */}
+        {hoverCoord && <div style={{position:"absolute", top:4, right:4, zIndex:50, ...}}>X: {x}mm Y: {y}mm</div>}
+        {/* A4 canvas at 2× pixel density, scaled DOWN with CSS transform */}
+        <div style={{ width: pw*BASE_PX, height: ph*BASE_PX, transform: `scale(${cssScale})`, transformOrigin: "top left", position:"absolute" }}>
+          {/* background image, field labels, etc. */}
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>
+```
+
+**Key values:**
+- `BASE_PX = 2` (pixel density multiplier, makes text crisp)
+- `pw, ph` = page width/height in mm from selected template
+- `cssScale = containerWidth / (pw * BASE_PX)` — computed every render
+- `containerWidth` = measured by ResizeObserver on `previewContainerRef`
+
+---
+
+#### WHAT IS NOT DONE / NEXT STEPS
+- Feature is functional but **not production-pushed** — awaiting พี่ทราย full test + พี่ช้าง push approval
+- พี่ทราย needs to test: field positioning with coordinate tracker, background image upload, save/load template
+- No DB schema changes this session. No migration needed.
 
 ---
 
