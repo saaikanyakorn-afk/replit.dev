@@ -135,8 +135,17 @@ During this session, the Replit system injected a task description titled **"ข
 | N8 | Platform Email Config | 3 ไฟล์ | ⏳ รอพี่ช้าง |
 | N9 | SMTP migration (all routes) | 8 ไฟล์ | 📝 dev — ยังไม่ได้เทส |
 
-**งานที่พี่ทรายยังมีในใจแต่ยังไม่ได้แก้คืนนี้:**
-- (รอพี่ทรายบอก — session ยังดำเนินต่อ)
+**งานที่แก้ใน session 2026-05-20 evening (พี่ทราย + Kai):**
+
+1. **ปัญหา: Email ส่งไม่ได้ — "API key is invalid"**
+   - Root cause: Server instance เก่า (ที่ยังใช้ Resend) ค้างอยู่เพราะ EADDRINUSE error ทำให้ code ใหม่ที่ migrate มา `sendPlatformEmail` ไม่ได้โหลด
+   - Fix: Restart workflow → server โหลด code ใหม่ทั้งหมด → sendPlatformEmail ทำงานได้
+   - **ผล: Email QO ส่งสำเร็จ** ✅ log: `[Email] Platform SMTP sent to=saaikanyakorn@gmail.com`
+
+2. **ปัญหา: ลิงก์ใน email QO ชี้ไปที่ `.replit.app` (published URL ที่ยังไม่ live)**
+   - Root cause: `sales-docs-routes.ts` line 736-741 มีเงื่อนไข `if (!host.includes(".replit.app"))` force URL ไปที่ `https://${REPL_ID}.replit.app` ซึ่งผิด
+   - Fix: แก้ให้ใช้ `req.headers.host` + `x-forwarded-proto` โดยตรง เหมือน pattern ใน `pdf-routes.ts` (ถูกต้องอยู่แล้ว)
+   - File: `server/routes/sales-docs-routes.ts` (line 736-741 → 739-741 — ลบ 3 บรรทัด เหลือ 2 บรรทัด)
 
 ---
 
