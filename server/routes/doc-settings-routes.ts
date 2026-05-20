@@ -317,7 +317,9 @@ app.put("/api/settings/smtp", requireAuth, requireRole("admin", "super_admin"), 
     const { host, port, user, pass, from, secure } = req.body;
     if (!host || !user) return res.status(400).json({ message: "กรุณากรอก SMTP Host และ Username" });
     const upsert = async (key: string, val: string) => {
-      await db.execute(sql.raw(`INSERT INTO system_config(config_key,config_value) VALUES(${JSON.stringify(key)},${JSON.stringify(val)}) ON CONFLICT(config_key) DO UPDATE SET config_value=EXCLUDED.config_value`));
+      const k = key.replace(/'/g, "''");
+      const v = String(val).replace(/'/g, "''");
+      await db.execute(sql.raw(`INSERT INTO system_config(config_key,config_value) VALUES('${k}','${v}') ON CONFLICT(config_key) DO UPDATE SET config_value=EXCLUDED.config_value`));
     };
     await upsert("PLATFORM_EMAIL_SMTP_HOST", String(host));
     await upsert("PLATFORM_EMAIL_SMTP_PORT", String(port || 587));
