@@ -87,21 +87,6 @@ If you cannot recite that from memory — stop what you are doing and keep readi
 
 **NEVER suggest regenerating a GitHub token. NEVER ask พี่ช้าง to update GITHUB_PAT_PRODUCTION. Token-based push is permanently retired.**
 
-### Push to github-production (etaxcenter repo) — SSH Deploy Key ONLY
-
-Replit has an SSH deploy key registered at `~/.ssh/id_ed25519` with write access to `saaikanyakorn-afk/etaxcenter`.
-
-**Every agent MUST use this exact command to push:**
-```bash
-GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" git push git@github.com:saaikanyakorn-afk/etaxcenter.git main
-```
-
-**Rules:**
-- This SSH key never expires — no token rotation needed, ever
-- Do NOT use `git push github-production main` (HTTPS remote URL is stale)
-- Do NOT suggest `git remote set-url` (blocked by Replit)
-- Do NOT touch `GITHUB_PAT_PRODUCTION` secret for push purposes
-- After push confirms `xxx..yyy  main -> main` → production server can cherry-pick
 
 **Deploy key details** (for reference only — do not regenerate):
 - Name: `2nd Replit Deploy key` on `saaikanyakorn-afk/etaxcenter`
