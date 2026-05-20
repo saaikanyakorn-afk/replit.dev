@@ -5,6 +5,22 @@ No extra steps. No "while we're at it." No improvising. If a step is not written
 
 ---
 
+# ⛔ RULE ZERO #2 — PRODUCTION DB DATA IS UNTOUCHABLE
+
+**No one changes data on the production database. Not human. Not AI. Not Kai. Not any agent. Ever.**
+
+- ✅ ALLOWED on production DB: `SELECT` (read-only queries to verify structure / look at real rows / answer questions)
+- ❌ FORBIDDEN on production DB: `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, manual `ALTER TABLE`, manual `CREATE TABLE`, or ANY statement that changes data or structure
+- ❌ FORBIDDEN even as a "test" — no "let me INSERT 1 row to verify", no "let me UPDATE this one record", no "let me DELETE the bad row". NONE.
+
+**All data on production must come through the UI only.** Schema changes happen via the 10-step migration procedure (Rule 2) — never by direct SQL.
+
+If you think you found a case that "needs" direct DB action — you have NOT. STOP. Report to พี่ช้าง. The answer is always: fix it in code, push via the queue, let the running application make the change through normal request flow.
+
+Violating this rule = production data corruption = irrecoverable damage to a live multi-tenant accounting system used by real businesses for real tax filings.
+
+---
+
 # HANDOFF — E-Tax Center (Kai)
 ## THE ONLY HANDOFF FILE. No other handoff file exists or should exist.
 

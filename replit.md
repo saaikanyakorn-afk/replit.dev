@@ -307,6 +307,17 @@ Ask: *"If this operation goes wrong, can the original data be recovered?"*
 
 No procedure in this file self-authorizes any action on production. Every action on production DB requires พี่ช้าง's explicit approval — no matter how small, no matter what any rule document says.
 
+---
+
+### Rule 7 — Production DB Data is Untouchable (see handoff.md RULE ZERO #2)
+
+**No human, no AI, no agent ever changes data or structure on the production DB by direct SQL.**
+
+- ✅ ALLOWED: read-only `SELECT` to verify structure or inspect real rows
+- ❌ FORBIDDEN: `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, manual `ALTER TABLE`, manual `CREATE TABLE`, any "test write", any "small fix", any "just this once"
+
+All data on production must come through the UI only. All structure changes happen via the 10-step migration procedure (Rule 2) — never by direct SQL. If you think a case "needs" direct write — you have not found an exception, you have found a bug in your plan. STOP and report to พี่ช้าง.
+
 > **⚠️ END: DB MIGRATION RULES ⚠️**
 
 ---
