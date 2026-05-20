@@ -2101,6 +2101,7 @@ export function registerExpenseRoutes(app: Express) {
         port: Number(cfg.PLATFORM_EMAIL_SMTP_PORT || "587"),
         secure: cfg.PLATFORM_EMAIL_SMTP_SECURE === "true",
         auth: { user: cfg.PLATFORM_EMAIL_SMTP_USER, pass: cfg.PLATFORM_EMAIL_SMTP_PASS.trim() },
+        tls: { rejectUnauthorized: false },
       });
       await transporter.sendMail({
         from: fromDisplay,

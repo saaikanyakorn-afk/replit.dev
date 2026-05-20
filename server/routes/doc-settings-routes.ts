@@ -368,6 +368,7 @@ app.post("/api/settings/smtp/test", requireAuth, requireRole("admin", "super_adm
       host: cfg.PLATFORM_EMAIL_SMTP_HOST, port: Number(cfg.PLATFORM_EMAIL_SMTP_PORT || 587),
       secure: cfg.PLATFORM_EMAIL_SMTP_SECURE === "true",
       auth: { user: cfg.PLATFORM_EMAIL_SMTP_USER, pass: cfg.PLATFORM_EMAIL_SMTP_PASS.trim() },
+      tls: { rejectUnauthorized: false },
     });
     const fromAddress = cfg.PLATFORM_EMAIL_SMTP_FROM || "noreply@etaxcenter.com";
     const fromDisplay = `อีเมลอัตโนมัติจาก E-Tax Center <${fromAddress}>`;
