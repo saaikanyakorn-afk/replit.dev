@@ -43,6 +43,7 @@ import ListExportButton from "@/components/list-export-button";
 import { parseAttachedUrl } from "@/components/multi-file-attachment";
 import { useBulkDelete } from "@/hooks/use-bulk-delete";
 import { BulkDeleteButton, BulkDeleteConfirmDialog, SelectAllCheckbox, RowCheckbox } from "@/components/bulk-delete-bar";
+import SendEmailDialog from "@/components/send-email-dialog";
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: any }> = {
   new: { label: "ใหม่", color: "bg-red-100 text-red-600 border-red-200", icon: FileText },
@@ -80,6 +81,7 @@ export default function QuotationList() {
   const [journalDoc, setJournalDoc] = useState<{ open: boolean; id: number } | null>(null);
   const [attachDoc, setAttachDoc] = useState<{ open: boolean; attachedUrl: string; docNo: string } | null>(null);
   const [lineDialog, setLineDialog] = useState<{ open: boolean; url: string; docNo: string; customerName: string }>({ open: false, url: "", docNo: "", customerName: "" });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; id: number; email: string; docNo: string } | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterBranch, setFilterBranch] = useState("all");
   const now = new Date();
@@ -411,20 +413,7 @@ export default function QuotationList() {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
 
-                                <DropdownMenuItem onClick={async () => {
-                                  try {
-                                    const res = await apiRequest("POST", `/api/quotations/${qo.id}/send-email`);
-                                    const data = await res.json();
-                                    if (data.success) {
-                                      toast({ title: "ส่งอีเมลสำเร็จ", description: data.message || `ส่งใบเสนอราคาไปยัง ${qo.contactEmail || "ลูกค้า"} แล้ว`, variant: "success" as any });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/quotations"] });
-                                    } else {
-                                      toast({ title: "ไม่สามารถส่งอีเมลได้", description: data.message || "กรุณาตรวจสอบอีเมลลูกค้า", variant: "destructive" });
-                                    }
-                                  } catch (err: any) {
-                                    toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
-                                  }
-                                }} className="flex gap-2 text-[var(--theme-primary)]">
+                                <DropdownMenuItem onClick={() => setEmailDialog({ open: true, id: qo.id, email: (qo as any).contactEmail || "", docNo: (qo as any).quotationNo || "" })} className="flex gap-2 text-[var(--theme-primary)]">
                                   <MailCheck className="h-4 w-4" /> ส่งอีเมลใบเสนอราคา
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={async () => {
@@ -560,6 +549,26 @@ export default function QuotationList() {
         <AttachmentViewDialog open={attachDoc.open} onOpenChange={(open) => { if (!open) setAttachDoc(null); }} attachedUrl={attachDoc.attachedUrl} docNo={attachDoc.docNo} />
       )}
       <BulkDeleteConfirmDialog open={bulk.showConfirm} onOpenChange={bulk.setShowConfirm} count={bulk.selectedIds.size} docLabel="ใบเสนอราคา" onConfirm={bulk.confirmDelete} />
+      {emailDialog && (
+        <SendEmailDialog
+          open={emailDialog.open}
+          onOpenChange={(open) => { if (!open) setEmailDialog(null); }}
+          defaultEmail={emailDialog.email}
+          docLabel="ใบเสนอราคา"
+          docNo={emailDialog.docNo}
+          onConfirm={async (email) => {
+            const res = await apiRequest("POST", `/api/quotations/${emailDialog.id}/send-email`, { email });
+            const data = await res.json();
+            if (data.success) {
+              toast({ title: "ส่งอีเมลสำเร็จ", description: data.message, variant: "success" as any });
+              queryClient.invalidateQueries({ queryKey: ["/api/quotations"] });
+              setEmailDialog(null);
+            } else {
+              toast({ title: "ส่งไม่สำเร็จ", description: data.message || "กรุณาตรวจสอบอีเมลลูกค้า", variant: "destructive" });
+            }
+          }}
+        />
+      )}
     </Layout>
   );
 }

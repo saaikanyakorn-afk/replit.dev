@@ -147,6 +147,19 @@ During this session, the Replit system injected a task description titled **"ข
    - Fix: แก้ให้ใช้ `req.headers.host` + `x-forwarded-proto` โดยตรง เหมือน pattern ใน `pdf-routes.ts` (ถูกต้องอยู่แล้ว)
    - File: `server/routes/sales-docs-routes.ts` (line 736-741 → 739-741 — ลบ 3 บรรทัด เหลือ 2 บรรทัด)
 
+3. **Feature: Email Confirm Dialog ทุกเอกสาร**
+   - พี่ทรายต้องการ dialog ยืนยัน/แก้อีเมลก่อนส่ง เหมือนกันทุกเอกสาร
+   - สร้าง shared component: `client/src/components/send-email-dialog.tsx`
+     - Props: `open`, `onOpenChange`, `defaultEmail`, `docLabel`, `docNo`, `onConfirm`
+     - Pre-fill อีเมลจาก contactEmail, แก้ได้ก่อนส่ง, มีปุ่มยกเลิก/ส่ง, loading state
+   - แก้ 5 list pages ให้เปิด dialog แทนส่งทันที:
+     - `client/src/pages/sales/quotation-list.tsx`
+     - `client/src/pages/purchases/purchase-invoice-list.tsx`
+     - `client/src/pages/purchases/purchase-order-list.tsx`
+     - `client/src/pages/purchases/purchase-request-list.tsx`
+     - `client/src/pages/purchases/expense-list.tsx`
+   - หมายเหตุ: `wht-cert-list.tsx` มี dialog แบบนี้อยู่แล้ว ไม่ต้องแก้
+
 ---
 
 # ⛔ RULE ZERO — DO NOT INVENT ANYTHING WHEN DEALING WITH PRODUCTION

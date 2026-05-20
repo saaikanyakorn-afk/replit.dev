@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LineSendDialog from "@/components/line-send-dialog";
+import SendEmailDialog from "@/components/send-email-dialog";
 import RelatedDocsDialog from "@/components/related-docs-dialog";
 import { parseAttachedUrl } from "@/components/multi-file-attachment";
 import {
@@ -67,6 +68,7 @@ export default function PurchaseRequestList() {
   });
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [lineDialog, setLineDialog] = useState<{ open: boolean; url: string; docNo: string; customerName: string }>({ open: false, url: "", docNo: "", customerName: "" });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; id: number; email: string; docNo: string; vendorName: string } | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterBranch, setFilterBranch] = useState("all");
   const now = new Date();
@@ -354,22 +356,7 @@ export default function PurchaseRequestList() {
                                 }} className="flex gap-2 text-green-600">
                                   <MessageSquare className="h-3.5 w-3.5" /> ส่งผ่าน LINE
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={async () => {
-                                  if (!pr.contactEmail) {
-                                    toast({ title: "ไม่มีอีเมลผู้ขาย", variant: "destructive" });
-                                    return;
-                                  }
-                                  try {
-                                    const res = await apiRequest("POST", `/api/documents/purchase_request/${pr.id}/send-email`, {
-                                      recipientEmail: pr.contactEmail,
-                                      recipientName: pr.vendorName,
-                                    });
-                                    const data = await res.json();
-                                    toast({ title: data.success !== false ? "ส่งอีเมลสำเร็จ" : "ส่งไม่สำเร็จ", description: data.message, variant: data.success !== false ? ("success" as any) : "destructive" });
-                                  } catch (err: any) {
-                                    toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
-                                  }
-                                }} className="flex gap-2" style={{ color: 'var(--theme-primary)' }}>
+                                <DropdownMenuItem onClick={() => setEmailDialog({ open: true, id: pr.id, email: pr.contactEmail || "", docNo: pr.prNo || "", vendorName: pr.vendorName || "" })} className="flex gap-2" style={{ color: 'var(--theme-primary)' }}>
                                   <MailCheck className="h-3.5 w-3.5" /> ส่งอีเมล
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleClone(pr.id)} className="flex gap-2">
@@ -451,6 +438,21 @@ export default function PurchaseRequestList() {
         customerName={lineDialog.customerName}
         companyId={companyId}
       />
+      {emailDialog && (
+        <SendEmailDialog
+          open={emailDialog.open}
+          onOpenChange={(open) => { if (!open) setEmailDialog(null); }}
+          defaultEmail={emailDialog.email}
+          docLabel="ใบขอซื้อ"
+          docNo={emailDialog.docNo}
+          onConfirm={async (email) => {
+            const res = await apiRequest("POST", `/api/documents/purchase_request/${emailDialog.id}/send-email`, { recipientEmail: email, recipientName: emailDialog.vendorName });
+            const data = await res.json();
+            toast({ title: data.success !== false ? "ส่งอีเมลสำเร็จ" : "ส่งไม่สำเร็จ", description: data.message, variant: data.success !== false ? ("success" as any) : "destructive" });
+            if (data.success !== false) setEmailDialog(null);
+          }}
+        />
+      )}
     </Layout>
   );
 }

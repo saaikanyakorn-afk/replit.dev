@@ -38,6 +38,7 @@ import { toLocalDateStr } from "@/lib/utils";
 import ListExportButton from "@/components/list-export-button";
 import { useBulkDelete } from "@/hooks/use-bulk-delete";
 import { BulkDeleteButton, BulkDeleteConfirmDialog, SelectAllCheckbox, RowCheckbox } from "@/components/bulk-delete-bar";
+import SendEmailDialog from "@/components/send-email-dialog";
 
 const exportColumns = [
   { header: "วันที่", key: "apDate", width: 14 },
@@ -95,6 +96,7 @@ export default function PurchaseInvoiceList() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [lineDialog, setLineDialog] = useState<{ open: boolean; url: string; docNo: string; customerName: string }>({ open: false, url: "", docNo: "", customerName: "" });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; id: number; email: string; docNo: string; vendorName: string } | null>(null);
   const [journalDoc, setJournalDoc] = useState<{ open: boolean; id: number } | null>(null);
   const [relatedInline, setRelatedInline] = useState<{ open: boolean; id: number } | null>(null);
 
@@ -470,22 +472,7 @@ export default function PurchaseInvoiceList() {
                                 }} className="flex gap-2 text-green-600">
                                   <MessageSquare className="h-3.5 w-3.5" /> ส่งผ่าน LINE
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={async () => {
-                                  if (!ap.contactEmail) {
-                                    toast({ title: "ไม่มีอีเมลผู้ขาย", variant: "destructive" });
-                                    return;
-                                  }
-                                  try {
-                                    const res = await apiRequest("POST", `/api/documents/purchase_invoice/${ap.id}/send-email`, {
-                                      recipientEmail: ap.contactEmail,
-                                      recipientName: ap.vendorName,
-                                    });
-                                    const data = await res.json();
-                                    toast({ title: data.success !== false ? "ส่งอีเมลสำเร็จ" : "ส่งไม่สำเร็จ", description: data.message, variant: data.success !== false ? ("success" as any) : "destructive" });
-                                  } catch (err: any) {
-                                    toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" });
-                                  }
-                                }} className="flex gap-2" style={{ color: 'var(--theme-primary)' }}>
+                                <DropdownMenuItem onClick={() => setEmailDialog({ open: true, id: ap.id, email: ap.contactEmail || "", docNo: ap.apNo || "", vendorName: ap.vendorName || "" })} className="flex gap-2" style={{ color: 'var(--theme-primary)' }}>
                                   <MailCheck className="h-3.5 w-3.5" /> ส่งอีเมล
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleClone(ap.id)} className="flex gap-2">
@@ -569,6 +556,21 @@ export default function PurchaseInvoiceList() {
       )}
       {relatedInline && (
         <RelatedDocsDialog open={relatedInline.open} onOpenChange={(open) => { if (!open) setRelatedInline(null); }} docType="purchase-invoice" docId={relatedInline.id} />
+      )}
+      {emailDialog && (
+        <SendEmailDialog
+          open={emailDialog.open}
+          onOpenChange={(open) => { if (!open) setEmailDialog(null); }}
+          defaultEmail={emailDialog.email}
+          docLabel="ใบแจ้งหนี้ซื้อ"
+          docNo={emailDialog.docNo}
+          onConfirm={async (email) => {
+            const res = await apiRequest("POST", `/api/documents/purchase_invoice/${emailDialog.id}/send-email`, { recipientEmail: email, recipientName: emailDialog.vendorName });
+            const data = await res.json();
+            toast({ title: data.success !== false ? "ส่งอีเมลสำเร็จ" : "ส่งไม่สำเร็จ", description: data.message, variant: data.success !== false ? ("success" as any) : "destructive" });
+            if (data.success !== false) setEmailDialog(null);
+          }}
+        />
       )}
     </Layout>
   );
