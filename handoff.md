@@ -273,6 +273,56 @@ The next Kai cannot see your conversation. They only see this file. If the answe
 
 If you run out of context or time before updating this file — that is YOUR failure, not the next Kai's problem. Update this file FIRST before doing anything else.
 
+### 9. db.transaction() — UNDERSTAND BEFORE YOU USE IT (taught by พี่ช้าง, 2026-05-20)
+
+**The root problem:** `db.transaction()` holds a database connection open for the entire duration of the block — every SELECT, every INSERT, every UPDATE inside it. If the pool has 10 connections and 10 concurrent users each trigger a transaction that starts with a read query and runs for 2 seconds, the pool is exhausted. New requests time out. Server appears to crash.
+
+**Why programmers misuse it:** Laziness. Using `db.transaction()` means you don't have to think about cascade operations — the database "handles" atomicity for you. But this laziness has a cost: it holds connections far longer than necessary and can bring down the server under real user load.
+
+**The philosophy (พี่ช้าง's exact words):** *"transaction or tx is the sloppy way to throw responsibility of 'coding' of cascade update — you should 'code' manually. In short and direct words: lazy to code more lines. Doing that improperly or sloppily will do more harm than good. It shows the programmer DOES NOT CARE if the server will crash because of his laziness."*
+
+**The right approach — TWO steps before touching any `db.transaction()` block:**
+
+**Step 1: Learn the business requirement of THAT screen.**
+What does this operation actually need to do? What data does it read? What does it write? In what order? Does a failure midway require a full rollback, or can it be handled step by step?
+
+**Step 2: Decide if a transaction is actually necessary.**
+Ask yourself: does this operation genuinely require atomicity (all-or-nothing)? Or did the programmer just wrap everything in a transaction because it was easier than writing the cascade code manually?
+
+| Situation | Right approach |
+|-----------|---------------|
+| READ queries before writes | Do ALL reads with plain `db.select()` OUTSIDE any transaction. Pass results as variables into the write phase. |
+| Cascade writes where partial failure = bad data | Write the cascade code manually. If step 2 fails after step 1 succeeded, write the cleanup (delete what you inserted) yourself. Do NOT rely on transaction rollback as a substitute for thinking. |
+| Genuine atomicity required (e.g., deduct stock + record movement — must be together or not at all) | Transaction is acceptable — but STILL do all reads first outside the transaction. The transaction should contain ONLY the writes. |
+| Transaction wrapping reads + writes "because it's easier" | Remove the transaction entirely. Code every step explicitly. |
+
+**What "code it manually" means:**
+```typescript
+// WRONG — lazy, holds connection from first SELECT through all INSERTs:
+await db.transaction(async (tx) => {
+  const [rec] = await tx.select().from(someTable).where(...);  // read holds connection
+  await tx.insert(table1).values(...);
+  await tx.insert(table2).values(...);
+  await tx.update(table3).set(...).where(...);
+});
+
+// RIGHT — reads outside, writes sequential, manual cleanup on failure:
+const [rec] = await db.select().from(someTable).where(...);  // read, connection released immediately
+if (!rec) return res.status(404)...;
+// validate business rules here (no connection held)
+
+const [inserted1] = await db.insert(table1).values(...).returning();  // connection open then closed
+try {
+  await db.insert(table2).values(...);  // connection open then closed
+} catch (err) {
+  await db.delete(table1).where(eq(table1.id, inserted1.id));  // manual rollback
+  throw err;
+}
+await db.update(table3).set(...).where(...);  // connection open then closed
+```
+
+**DO NOT blindly remove every `db.transaction()` you see.** Each screen has its own business requirement. Study first. Decide second. Code third. Applying this pattern without understanding the business requirement of each screen is just as irresponsible as the original lazy transaction.
+
 ---
 
 **Why ONE file:** Two active files = confusion + conflict. Newer = truth. One file = no conflict possible.
