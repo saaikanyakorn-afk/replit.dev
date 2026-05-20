@@ -704,6 +704,26 @@ If พี่ช้าง denies a Group 2 file change → you MUST create a `-ex
 
 ---
 
+## 🚫 PRODUCTION REPO BLACKLIST (NEVER PUSH — DEV-ONLY FILES)
+
+These files are dev-side only. They have NO purpose on production server. Pushing them is a security/hygiene violation. If found on prod repo (`saaikanyakorn-afk/etaxcenter`) → DELETE via GitHub API immediately.
+
+| Pattern | Why dev-only | Risk if leaked to prod |
+|---------|--------------|------------------------|
+| `replit.md` | Agent documentation | Has historically contained plaintext DB credentials in code examples |
+| `handoff.md` | Agent handoff log | Same as above + exposes internal procedures |
+| `db/*.md` | Schema history, pending push queue, dev↔prod diff | Exposes migration plans / DB structure to anyone with repo read access |
+| `*.bat` | Windows local scripts (พี่ช้าง runs on `C:\GitApp\etaxcenter`) | Often contain `set PGPASSWORD=...` for local DB backup |
+| `scripts/diff-*` | dev↔prod schema diff scripts | Query both DBs — code paths reveal prod connection patterns |
+| `.local/*` | Agent working files (subagent outputs, session plans) | Internal state, no prod purpose |
+| Anything containing `backup`, `secret`, `credential`, `password` in filename | Self-explanatory | Review manually before any push |
+
+**Enforcement rule (พี่ช้าง 2026-05-20):** Before EVERY GitHub API PUT to `saaikanyakorn-afk/etaxcenter`, check the file path against this list. If match → STOP, do not push, no exceptions. Add new patterns whenever a new "dev-only" file type appears.
+
+**2026-05-20 cleanup:** `replit.md` + `deepmain_backup.bat` DELETED from prod repo (commits `e35dd41` + `45f68ba`) after audit found leaked DB password (not rotated per พี่ช้าง decision, but removed from current state of prod repo). `handoff.md` was already absent from prod repo (✅). `scripts/daily-backup-deepmain.bat` was clean (placeholder only ✅). Git history on BOTH repos still contains the old password — agents with repo clone access can still `git log -p` to find it. Mitigation: keep prod GitHub PAT (`etaxerp`) guarded — only พี่ช้าง grants per-session, see GitHub PAT section below.
+
+---
+
 ## 🔑 PRODUCTION CREDENTIALS — ALL IN ONE PLACE
 
 ### Production Database (deep-main)
@@ -728,7 +748,7 @@ process.env.DB_PROD_URL
 ```
 
 **⚠️ NEVER say "I can't connect to deep-main."**
-- Use `process.env.DB_PROD_URL` — already set in Replit Secrets (shared), port **20541** ✅
+- Use `process.env.DB_PROD_URL` — should be set in Replit Secrets (shared), port **20541**. If empty → ask พี่ช้าง to set it (do NOT paste the URL with password in chat — use the 🔒 Secrets UI). Verified missing 2026-05-20 → re-added by พี่ช้าง.
 - Do NOT use machines table id=2 — may have different credentials
 - Do NOT use port 5432 — custom port is **20541**
 

@@ -26,3 +26,5 @@ logs/
 deploy-package/
 
 # Dev-only files — never push to any remote
+.local/
+db/dev-vs-prod-diff.md

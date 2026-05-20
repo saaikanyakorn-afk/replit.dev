@@ -160,6 +160,20 @@ If you run out of context or time before updating this file — that is YOUR fai
 - **Dev push**: `git push github-dev main` — after every code change, no auth needed
 - **NEVER**: push entire branch to github-production
 
+  **🚫 BLACKLIST — FILES THAT MUST NEVER EXIST ON PRODUCTION REPO (`saaikanyakorn-afk/etaxcenter`):**
+  These files are dev-side only — docs for agents, local scripts, planning files. They have NO purpose on production server. If you find any of them on prod repo → DELETE via GitHub API immediately (security: they have historically contained plaintext credentials).
+  - `replit.md` — agent documentation (dev only)
+  - `handoff.md` — agent handoff log (dev only)
+  - `db/*.md` — schema history, pending push queue, dev↔prod diff (dev only)
+  - `*.bat` — Windows local scripts (พี่ช้าง runs from `C:\GitApp\etaxcenter`, not prod)
+  - `scripts/diff-*` — dev↔prod schema diff scripts (dev only, queries both DBs)
+  - `.local/*` — agent working files (subagent outputs, session plans, etc.)
+  - Any file whose name contains `backup`, `secret`, `credential`, `password` — review before push
+
+  **Before EVERY push:** check the file path against this blacklist. If match → DO NOT push, no exceptions. Add new patterns here whenever a new "dev-only" file type appears.
+
+  **2026-05-20 cleanup:** `replit.md` + `deepmain_backup.bat` were DELETED from prod repo (commits `e35dd41` + `45f68ba`) after audit found leaked DB password. Do NOT re-push them.
+
 ### ⚠️ CRITICAL PUSH CHECKLIST — FILES EASY TO FORGET
 
 These files are **not tied to any single feature** — they will be skipped if you push selectively. You MUST include them:
