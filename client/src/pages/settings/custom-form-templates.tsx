@@ -621,13 +621,13 @@ export default function CustomFormTemplates() {
             </div>
 
             <div className="xl:w-[560px]">
-              <Card className="border-none shadow-sm sticky top-4">
-                <CardHeader className="pb-2">
+              <Card className="border-none shadow-sm sticky top-4 max-h-[calc(100vh-80px)] flex flex-col">
+                <CardHeader className="pb-2 shrink-0">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Eye className="h-4 w-4 text-[#539BFF]" /> ตัวอย่าง (A4 ย่อ)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex justify-center overflow-auto">
+                <CardContent className="flex justify-center overflow-y-auto flex-1 pb-4">
                   <div
                     style={{
                       width: pw * PREVIEW_SCALE,
