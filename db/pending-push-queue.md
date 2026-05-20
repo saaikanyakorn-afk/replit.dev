@@ -86,7 +86,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 ---
 
 ### N6-hotfix — WHT cert print page: iframe ส่งแค่ cookie ไม่มี Bearer token → 401 บน production
-**Status:** ⏳ awaiting พี่ช้าง approval
+**Status:** ✅ DONE 2026-05-20 (Bangkok) — build passed, pm2 online
 **Schema change:** NO
 **Push type:** Code-only, 1 ไฟล์ (frontend only)
 
