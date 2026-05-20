@@ -2061,11 +2061,14 @@ export function registerExpenseRoutes(app: Express) {
       const { toEmail } = req.body;
       if (!toEmail) return res.status(400).json({ message: "กรุณาระบุอีเมลผู้รับ" });
 
-      const smtpRows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
-      const smtpCfg: Record<string, string> = {};
-      for (const r of (smtpRows.rows || []) as any[]) smtpCfg[r.config_key] = r.config_value;
-      if (!smtpCfg.SYSADMIN_SMTP_HOST || !smtpCfg.SYSADMIN_SMTP_USER || !smtpCfg.SYSADMIN_SMTP_PASS) {
-        return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP — กรุณาตั้งค่าใน System Config ก่อน" });
+      const cfgRows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_RESEND_API_KEY','SYSADMIN_RESEND_FROM','SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
+      const cfg: Record<string, string> = {};
+      for (const r of (cfgRows.rows || []) as any[]) cfg[r.config_key] = r.config_value;
+
+      const hasResend = !!cfg.SYSADMIN_RESEND_API_KEY;
+      const hasSmtp = !!(cfg.SYSADMIN_SMTP_HOST && cfg.SYSADMIN_SMTP_USER && cfg.SYSADMIN_SMTP_PASS);
+      if (!hasResend && !hasSmtp) {
+        return res.status(400).json({ message: "ยังไม่ได้ตั้งค่าระบบส่งอีเมล — กรุณาตั้งค่า Resend API Key ใน System Config ก่อน" });
       }
 
       const items = await db.select().from(whtCertItems).where(eq(whtCertItems.whtCertId, doc.id));
@@ -2086,20 +2089,44 @@ export function registerExpenseRoutes(app: Express) {
       const pdfBuffer = await generateWhtCertPdf({ ...doc, seqNo: resolvedSeqNoEmail, items, company, createdByName, createdBySignatureName, createdBySignatureUrl: createdBySignatureUrlEmail, stampUrl: stampUrlEmail });
 
       const companyName = company?.name || "บริษัท";
-      const nodemailer = await import("nodemailer");
-      const transporter = nodemailer.default.createTransport({
-        host: smtpCfg.SYSADMIN_SMTP_HOST,
-        port: Number(smtpCfg.SYSADMIN_SMTP_PORT || "587"),
-        secure: smtpCfg.SYSADMIN_SMTP_SECURE === "true",
-        auth: { user: smtpCfg.SYSADMIN_SMTP_USER, pass: smtpCfg.SYSADMIN_SMTP_PASS.trim() },
-      });
-      await transporter.sendMail({
-        from: smtpCfg.SYSADMIN_SMTP_FROM || smtpCfg.SYSADMIN_SMTP_USER,
-        to: toEmail,
-        subject: `หนังสือรับรองการหักภาษี ณ ที่จ่าย ${doc.certNo || ""} จาก ${companyName}`,
-        html: `<div style="font-family:sans-serif;padding:20px"><p>เรียน ${doc.payeeName || "ท่าน"},</p><p>กรุณาตรวจสอบหนังสือรับรองการหักภาษี ณ ที่จ่าย เลขที่ <strong>${doc.certNo || ""}</strong> ที่แนบมาพร้อมอีเมลนี้</p><p>ขอบคุณ,<br/>${companyName}</p></div>`,
-        attachments: [{ filename: `wht-cert-${doc.certNo || doc.id}.pdf`, content: pdfBuffer, contentType: "application/pdf" }],
-      });
+      const subject = `หนังสือรับรองการหักภาษี ณ ที่จ่าย ${doc.certNo || ""} จาก ${companyName}`;
+      const htmlBody = `<div style="font-family:sans-serif;padding:20px"><p>เรียน ${doc.payeeName || "ท่าน"},</p><p>กรุณาตรวจสอบหนังสือรับรองการหักภาษี ณ ที่จ่าย เลขที่ <strong>${doc.certNo || ""}</strong> ที่แนบมาพร้อมอีเมลนี้</p><p>ขอบคุณ,<br/>${companyName}</p></div>`;
+      const pdfBase64 = pdfBuffer.toString("base64");
+      const attachmentName = `wht-cert-${doc.certNo || doc.id}.pdf`;
+
+      if (hasResend) {
+        const fromAddr = cfg.SYSADMIN_RESEND_FROM || "noreply@etaxerp.com";
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${cfg.SYSADMIN_RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: fromAddr,
+            to: [toEmail],
+            subject,
+            html: htmlBody,
+            attachments: [{ filename: attachmentName, content: pdfBase64 }],
+          }),
+        });
+        if (!resendRes.ok) {
+          const errBody = await resendRes.json().catch(() => ({})) as any;
+          throw new Error(errBody?.message || `Resend API error ${resendRes.status}`);
+        }
+      } else {
+        const nodemailer = await import("nodemailer");
+        const transporter = nodemailer.default.createTransport({
+          host: cfg.SYSADMIN_SMTP_HOST,
+          port: Number(cfg.SYSADMIN_SMTP_PORT || "587"),
+          secure: cfg.SYSADMIN_SMTP_SECURE === "true",
+          auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
+        });
+        await transporter.sendMail({
+          from: cfg.SYSADMIN_SMTP_FROM || cfg.SYSADMIN_SMTP_USER,
+          to: toEmail,
+          subject,
+          html: htmlBody,
+          attachments: [{ filename: attachmentName, content: pdfBuffer, contentType: "application/pdf" }],
+        });
+      }
       res.json({ success: true, message: `ส่งอีเมลไปยัง ${toEmail} สำเร็จ` });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
