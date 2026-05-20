@@ -653,7 +653,7 @@ export default function CustomFormTemplates() {
                     return (
                       /* wrapper: sets height so scroll works correctly */
                       <div
-                        style={{ width: containerWidth, height: scaledH, position: "relative", overflow: "hidden", cursor: "crosshair" }}
+                        style={{ width: "100%", height: scaledH, position: "relative", overflow: "hidden", cursor: "crosshair" }}
                         onMouseMove={e => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           const xMm = (e.clientX - rect.left) / (cssScale * BASE_PX);
