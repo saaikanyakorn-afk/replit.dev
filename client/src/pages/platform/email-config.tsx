@@ -64,6 +64,7 @@ const SMTP_PRESETS = [
 export default function EmailConfig() {
   const { toast } = useToast();
   const [form, setForm] = useState({ host: "", port: 587, user: "", pass: "", from: "", secure: false });
+  const [hasPass, setHasPass] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -72,11 +73,12 @@ export default function EmailConfig() {
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/sysadmin/smtp-config", { credentials: "include" })
+    fetch("/api/settings/smtp", { credentials: "include" })
       .then(r => r.json())
       .then(d => {
         const host = d.host || "";
-        setForm({ host, port: d.port || 587, user: d.user || "", pass: d.pass || "", from: d.from || "", secure: d.secure || false });
+        setForm({ host, port: Number(d.port) || 587, user: d.user || "", pass: "", from: d.from || "", secure: d.secure || false });
+        setHasPass(!!d.hasPass);
         const matched = SMTP_PRESETS.find(p => p.host === host);
         if (matched) setActivePreset(matched.id);
         setLoading(false);
@@ -98,13 +100,15 @@ export default function EmailConfig() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/sysadmin/smtp-config", {
+      const res = await fetch("/api/settings/smtp", {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
+      setHasPass(true);
+      setForm(f => ({ ...f, pass: "" }));
       toast({ title: "✅ " + data.message });
     } catch (e: any) {
       toast({ title: "เกิดข้อผิดพลาด", description: e.message, variant: "destructive" });
@@ -120,13 +124,13 @@ export default function EmailConfig() {
     }
     setTesting(true);
     try {
-      const res = await fetch("/api/sysadmin/smtp-config/test", {
+      const res = await fetch("/api/settings/smtp/test", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           testEmail,
           host: form.host, port: form.port, user: form.user,
-          pass: form.pass.startsWith("••••") ? undefined : form.pass,
+          pass: form.pass || undefined,
           from: form.from, secure: form.secure,
         }),
       });
@@ -232,14 +236,14 @@ export default function EmailConfig() {
 
                 <div>
                   <Label className="text-sm">{currentPreset?.passLabel || "Password / API Key"}</Label>
-                  {form.pass.startsWith("••••") ? (
+                  {hasPass && !form.pass ? (
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 border rounded-md px-3 py-2 bg-green-50 border-green-300 text-sm text-green-700 flex items-center gap-2">
                         <ShieldCheck className="h-4 w-4 shrink-0" />
                         <span>Key ถูกบันทึกในระบบแล้ว</span>
                       </div>
                       <Button type="button" variant="outline" size="sm" className="shrink-0 text-rose-600 border-rose-300 hover:bg-rose-50"
-                        onClick={() => setForm(f => ({ ...f, pass: "" }))} data-testid="btn-clear-smtp-pass">
+                        onClick={() => setHasPass(false)} data-testid="btn-clear-smtp-pass">
                         <RotateCcw className="h-3.5 w-3.5 mr-1" /> เปลี่ยน Key
                       </Button>
                     </div>
@@ -259,7 +263,7 @@ export default function EmailConfig() {
                       </Button>
                     </div>
                   )}
-                  {!form.pass.startsWith("••••") && form.pass && (
+                  {!hasPass && form.pass && (
                     <p className="text-[10px] text-amber-600 mt-1">กรุณากด "บันทึก" ก่อนทดสอบ</p>
                   )}
                 </div>
