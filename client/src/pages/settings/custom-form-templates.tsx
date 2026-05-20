@@ -193,6 +193,7 @@ export default function CustomFormTemplates() {
   const [selectedFieldKey, setSelectedFieldKey] = useState("");
   const [bgUploading, setBgUploading] = useState(false);
   const [bgPreviewUrl, setBgPreviewUrl] = useState<string>("");
+  const [bgFile, setBgFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUpload();
 
