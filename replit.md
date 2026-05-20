@@ -947,7 +947,8 @@ VALUES ('vXXX', 'What changed', 'alter_column|add_column|data_migration', 'etaxe
 4. **NEVER checkout `client/` as folder** — cherry-pick individual files only
 5. **NEVER `pm2 restart all`** — the ONLY correct command is `pm2 restart etax-center`
    - **NEVER ask พี่ช้าง to send `pm2 logs`** — remote connection makes it impossible to Ctrl+C. Use `npm run schema:diff` from Replit to verify migration results directly against prod DB instead.
-   - **ALWAYS give deploy commands as a single `&&`-chained one-liner** — พี่ช้าง uses remote connection, one paste is safer than multiple separate commands. Format: `pm2 stop etax-center && git fetch origin && git checkout origin/main -- <files> && npm install && pm2 start etax-center`
+   - **ALWAYS give deploy commands as a single `&&`-chained one-liner** — พี่ช้าง uses remote connection, one paste is safer than multiple separate commands. Format: `pm2 stop etax-center && git fetch origin && git checkout origin/main -- <files> && npm install && npm run build && pm2 start etax-center`
+   - ⚠️ **`npm run build` IS MANDATORY** — production runs `node dist/index.cjs` (compiled bundle). Skipping build = server runs OLD code, migrations never fire, all changes are silently ignored.
    - ⚠️ Process name is `etax-center` — NOT `etax`, NOT `etaxcenter`, NOT `app`, NOT `server`
    - Before writing any deploy command, verify the name here. Do NOT guess.
    - Wrong name = error on server, deploy fails, new server admin cannot fix it without knowing the correct name
