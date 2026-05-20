@@ -256,6 +256,75 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
+### N11 — Manufacturing Features Batch (Tasks #35, #37, #38, #40, #41, #47, #68, #76, #80, #89–#94)
+**Status:** 📝 dev — พี่ทราย ยังไม่ได้เทสบน dev ทั้งหมด (บาง Task เทสแล้ว ระหว่าง 17–18 พ.ค.)
+**Schema change:** YES — 6 migrations รอ approve (ดูด้านล่าง)
+**Push type:** Schema migration push (Rule 2 — 10-step procedure)
+
+**งานที่รวมอยู่:**
+- **Task #35** — Material Issue form (เบิกวัตถุดิบ) — เชื่อมสต็อกจริง, concurrency lock
+- **Task #37** — เชื่อมใบเบิกวัตถุดิบกับสต็อกคลัง — แสดงยอดคงเหลือก่อนเบิก
+- **Task #38** — ผูกใบเบิกกับ MO — เห็นใบเบิกทั้งหมดของ MO นั้น
+- **Task #40** — แจ้งเตือนสต็อก Lot ใกล้หมดก่อนสร้างใบเบิก + ตั้งค่า threshold ใน general settings
+- **Task #41** — ประวัติการเบิกต่อ Lot
+- **Task #47** — Show low-stock lot warnings บน lot list
+- **Task #68** — ขั้นตอนการผลิตต่อ BOM + Scan Station (process-scan-station)
+- **Task #76** — Excel export low-stock lot
+- **Task #80** — ลบ production step log ที่บันทึกผิด
+- **Task #89** — แสดงชื่อ supervisor บน scan station log
+- **Task #90** — Supervisor filter logs by person
+- **Task #91** — Real-time log history หลัง scan
+- **Task #94** — Live refresh indicator บน scan station
+- **WIP warehouse** — คลังสินค้า WIP สำหรับสั่งผลิต
+- **Production Finish** — ฟอร์ม/รายการใบเสร็จสิ้นการผลิต + NCR (Non-Conformance Report)
+- **Goods receiving delete** — ลบใบรับสินค้าที่อนุมัติแล้วได้ + reverse inventory
+- **Manufacturing order navigation** — หลังบันทึก MO → navigate to list
+
+**⚠️ Schema migrations (6 รายการ — รอ N11 approval ทั้งหมด):**
+ใน `server/migrations-runner.ts` บรรทัดที่ commented out:
+```
+// run("runProductionFinishMigration", ...)   ← production_finish + NCR tables
+// run("runNcrMigration", ...)                ← ncr table
+// run("runLotLowStockThresholdMigration",...)← lot_low_stock_threshold column
+// run("runWarehouseColumnsForMfgMigration",...)← warehouse columns on material_issues
+// run("runBomProcessStepsMigration",...)     ← bom_process_steps table (Task #68)
+// run("runWipWarehouseMigration",...)        ← wip_warehouse_id on MO
+```
+ต้อง uncomment ทั้ง 6 บรรทัด ใน push session → push `migrations-runner.ts` → restart → re-comment → push อีกครั้ง
+
+| File | Role | Status |
+|------|------|--------|
+| `server/migrations-runner.ts` | Uncomment 6 migrations สำหรับ N11 | 📝 dev |
+| `shared/schema-extra.ts` | Migration functions ทั้ง 6 + schema tables ใหม่ | 📝 dev |
+| `shared/schema.ts` | general_settings + lot threshold field | 📝 dev |
+| `server/routes/manufacturing-routes.ts` | API routes ทั้งหมดของ MO, BOM, scan station, finish, NCR | 📝 dev |
+| `server/routes/products-routes.ts` | Material issue routes, lot history, goods-receiving delete | 📝 dev |
+| `server/routes/doc-settings-routes.ts` | Low-stock threshold settings (อยู่ใน N8 ด้วย — push ครั้งเดียว) | 📝 dev |
+| `client/src/app-extra.tsx` | Register NCR, production-finish routes | 📝 dev |
+| `client/src/components/manufacturing-layout.tsx` | Layout สำหรับ manufacturing module | 📝 dev |
+| `client/src/pages/inventory/manufacturing-form.tsx` | MO form — WIP warehouse, navigate-to-list after save | 📝 dev |
+| `client/src/pages/inventory/manufacturing-list.tsx` | MO list page | 📝 dev |
+| `client/src/pages/inventory/bom-form.tsx` | BOM form — process steps (Task #68) | 📝 dev |
+| `client/src/pages/inventory/material-issue-form.tsx` | เบิกวัตถุดิบ — lot select, MO link, low-stock warning | 📝 dev |
+| `client/src/pages/inventory/material-issue-list.tsx` | รายการใบเบิก | 📝 dev |
+| `client/src/pages/inventory/product-lots.tsx` | Lot list — low-stock warning, lot history, Excel export | 📝 dev |
+| `client/src/pages/inventory/goods-receiving-form.tsx` | GR form — delete approved GR + reverse | 📝 dev |
+| `client/src/pages/inventory/goods-receiving-list.tsx` | GR list | 📝 dev |
+| `client/src/pages/manufacturing/process-scan-station.tsx` | Scan station — real-time log, supervisor name/filter, live indicator, delete log | 📝 dev |
+| `client/src/pages/manufacturing/production-finish-form.tsx` | ฟอร์มใบเสร็จสิ้นการผลิต | 📝 dev |
+| `client/src/pages/manufacturing/production-finish-list.tsx` | รายการใบเสร็จสิ้นการผลิต | 📝 dev |
+| `client/src/pages/manufacturing/ncr-form.tsx` | NCR form | 📝 dev |
+| `client/src/pages/manufacturing/ncr-list.tsx` | NCR list | 📝 dev |
+| `client/src/pages/manufacturing/bom.tsx` | BOM management page | 📝 dev |
+| `client/src/pages/manufacturing/orders.tsx` | Manufacturing orders page | 📝 dev |
+| `client/src/pages/manufacturing/mes-scan-station.tsx` | MES scan station | 📝 dev |
+| `client/src/pages/manufacturing/mes-unit-detail.tsx` | MES unit detail | 📝 dev |
+| `client/src/pages/manufacturing/mes-work-orders.tsx` | MES work orders | 📝 dev |
+| `client/src/pages/manufacturing/traceability.tsx` | Traceability page | 📝 dev |
+| `client/src/pages/settings/general-settings.tsx` | เพิ่ม low-stock threshold setting | 📝 dev |
+
+---
+
 ### N7 — RD VAT service + multi-branch dialog + address formatting
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅
 **Schema change:** NO
@@ -288,4 +357,4 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
-**Last verified:** 2026-05-20 — พี่ทราย session. N4 file list confirmed from git log — เพิ่ม `related-docs-dialog.tsx` (af307627 18 พ.ค.) เข้า N4 (21 files). N7, N8 awaiting พี่ช้าง. N9, N10 dev ยังไม่ได้เทส. N3 + N6 + N6-hotfix deployed ✅.
+**Last verified:** 2026-05-20 — พี่ทราย session. N4 (21 files) confirmed from git log. N11 เพิ่มใหม่ — Manufacturing Features Batch (Tasks #35–#94, 27 files, 6 schema migrations). N7, N8 awaiting พี่ช้าง. N9, N10, N11 dev ยังไม่ได้เทสทั้งหมด. N3 + N6 + N6-hotfix deployed ✅.
