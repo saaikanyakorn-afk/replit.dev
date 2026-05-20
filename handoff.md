@@ -5,6 +5,19 @@ No extra steps. No "while we're at it." No improvising. If a step is not written
 
 ---
 
+# ⛔ RULE ZERO #3 — BREVO SMTP IN system_config IS UNTOUCHABLE
+
+**SYSADMIN_SMTP_* keys in the `system_config` table = Brevo SMTP = 2FA email delivery for sysAdmin login.**
+
+- Removing or changing these credentials = **sysAdmin cannot receive 2FA code = cannot login to production = system locked out**
+- **NEVER** advise พี่ทราย or anyone to overwrite the current platform SMTP credentials
+- **NEVER** run any UPDATE on SYSADMIN_SMTP_* keys
+- N8 added a webmail preset to the UI as preparation for a future migration ONLY — it does NOT mean the switch happens now
+- Any migration off Brevo requires a **separate, explicit plan approved by พี่ช้าง** with a tested replacement 2FA flow first
+- The `email-config.tsx` UI page shows current platform SMTP — **do not instruct anyone to save new credentials there until migration is planned**
+
+---
+
 # ⛔ RULE ZERO #2 — PRODUCTION DB DATA IS UNTOUCHABLE
 
 **No one changes data on the production database. Not human. Not AI. Not Kai. Not any agent. Ever.**
