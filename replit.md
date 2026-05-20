@@ -742,7 +742,7 @@ process.env.DB_PROD_URL
 - Do NOT use port 5432 — custom port is **20541**
 
 ### GitHub Production PAT (github-production remote → saaikanyakorn-afk/etaxcenter)
-- **env var**: `GITHUB_PAT_PRODUCTION` — stored in Replit Secrets (shared), **intentionally set to OLD/wrong value as a safety trap** — do NOT use env var for push; always use token from `.git/config`
+- **env var**: `GITHUB_PAT_PRODUCTION` — stored in Replit Secrets (shared)
 - **Token name on GitHub**: `etaxerp` — Fine-grained PAT, All repositories, Contents: Read and write
 - **⏰ EXPIRATION: Aug 09, 2026** — alert พี่ช้าง on **Aug 07, 2026** (2 days before)
 - **✅ Production token (etaxerp) regenerated 2026-05-11** — confirmed working
