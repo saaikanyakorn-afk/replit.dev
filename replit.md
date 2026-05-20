@@ -178,8 +178,8 @@ When พี่ทราย reports a layout issue on ANY document:
 Before writing any migration code, query the production DB directly from the dev environment to confirm current state.
 
 ```bash
-PGPASSWORD=nJKsyhE4583Hz psql -h deep-main.hopto.org -p 20541 -U etaxusr -d etax-production \
-  -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='<table>';"
+# Credentials live ONLY in the DB_PROD_URL Replit Secret. Never hardcoded here.
+psql "$DB_PROD_URL" -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='<table>';"
 ```
 
 **Never assume production matches dev. They are separate databases. Verify every time.**
@@ -2347,9 +2347,8 @@ DB_PROD_URL    = postgresql://***@deep-main.hopto.org:5432/etax-production
 
 ### How to Re-Verify Baseline (commands from dev environment)
 ```bash
-# 1. Query system_config in etax-production DB
-PGPASSWORD=nJKsyhE4583Hz psql -h deep-main.hopto.org -p 20541 -U etaxusr -d etax-production \
-  -c "SELECT config_key, config_value FROM system_config ORDER BY config_key;"
+# 1. Query system_config in etax-production DB (credentials = $DB_PROD_URL Replit Secret)
+psql "$DB_PROD_URL" -c "SELECT config_key, config_value FROM system_config ORDER BY config_key;"
 
 # 2. Read LAN probe log (run ON production server — Windows)
 type C:\GitApp\etaxcenter\logs\lan-probe.log
@@ -2383,12 +2382,14 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- <file1> 
 completes before any migration code runs on the fresh start.
 List ONLY the files that changed for this specific step. Nothing else.
 
-### Production DB Credentials (for direct query from dev environment)
+### Production DB Credentials — NEVER WRITTEN IN ANY DOCUMENT
+
+Credentials live ONLY in the `DB_PROD_URL` Replit Secret. They are intentionally NOT printed in any markdown file in this repo — past leaks have been redacted. Any new agent who does not see `$DB_PROD_URL` in their environment must STOP and ask พี่ช้าง. Do NOT search git history, do NOT grep for passwords, do NOT request the connection string in chat — ask พี่ช้าง to populate the secret if it is missing.
+
+Usage from dev environment (read-only verification only — see Rule 7):
+```bash
+psql "$DB_PROD_URL" -c "SELECT ... ;"      # SELECT only
 ```
-postgresql://etaxusr:nJKsyhE4583Hz@deep-main.hopto.org:20541/etax-production
-psql: PGPASSWORD=nJKsyhE4583Hz psql -h deep-main.hopto.org -p 20541 -U etaxusr -d etax-production
-```
-Use this to verify production state directly from dev — no console needed on DB server.
 
 ### DB Migration Checklist (must follow every time — no shortcuts)
 See `shared/schema-extra.ts` header for full rules. Summary:

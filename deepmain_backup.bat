@@ -19,7 +19,15 @@ if not exist "%DEST%" (
     mkdir "%DEST%"
 )
 
-set PGPASSWORD=nJKsyhE4583Hz
+if "%PGPASSWORD%"=="" (
+    set /p PGPASSWORD=กรุณาใส่ password ของ etaxusr: 
+)
+if "%PGPASSWORD%"=="" (
+    echo [ERROR] ไม่ได้ใส่ password
+    pause
+    exit /b 1
+)
+
 set TIMESTAMP=%date:~-4%%date:~3,2%%date:~0,2%_%time:~0,2%%time:~3,2%%time:~6,2%
 set TIMESTAMP=%TIMESTAMP: =0%
 set OUTFILE=%DEST%\deepmain_backup_%TIMESTAMP%.sql

@@ -310,11 +310,12 @@ This method lets Kai verify PDF changes end-to-end without needing พี่ท�
 
 **Before writing a single line of code:**
 1. Read replit.md Rule 0–6 in full (DB Migration section)
-2. VERIFY production DB state first — query real columns, do not assume dev = production:
+2. VERIFY production DB state first — query real columns, do not assume dev = production.
+   Credentials are NEVER written in any doc. Use the `DB_PROD_URL` Replit Secret:
    ```
-   PGPASSWORD=nJKsyhE4583Hz psql -h deep-main.hopto.org -p 20541 -U etaxusr -d etax-production \
-     -c "SELECT column_name FROM information_schema.columns WHERE table_name='<table>';"
+   psql "$DB_PROD_URL" -c "SELECT column_name FROM information_schema.columns WHERE table_name='<table>';"
    ```
+   If `$DB_PROD_URL` is not set in your session, STOP and ask พี่ช้าง — do NOT request credentials from any document.
 
 **The 10-step checklist (Rule 2 — no shortcuts):**
 1. VERIFY FIRST — query prod DB before writing any code
