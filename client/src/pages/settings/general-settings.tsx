@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Sliders, Save, Loader2, Bell, Globe, Clock, Shield, PenTool, Upload, X, Package } from "lucide-react";
+import { Sliders, Save, Loader2, Bell, Globe, Clock, Shield, PenTool, Upload, X, Package, Mail, Eye, EyeOff, Send } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -76,6 +76,43 @@ export default function GeneralSettings() {
   });
 
   const handleSave = () => mutation.mutate(form);
+
+  const [smtp, setSmtp] = useState({ host: "", port: "587", user: "", pass: "", from: "", secure: false, hasPass: false });
+  const [smtpLoaded, setSmtpLoaded] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpTestEmail, setSmtpTestEmail] = useState("");
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings/smtp", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { setSmtp({ host: d.host || "", port: String(d.port || 587), user: d.user || "", pass: d.hasPass ? "***" : "", from: d.from || "", secure: !!d.secure, hasPass: !!d.hasPass }); } setSmtpLoaded(true); })
+      .catch(() => setSmtpLoaded(true));
+  }, []);
+
+  const handleSmtpSave = async () => {
+    setSmtpSaving(true);
+    try {
+      const res = await fetch("/api/settings/smtp", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(smtp) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.message);
+      setSmtp(s => ({ ...s, hasPass: s.pass ? true : s.hasPass, pass: s.pass && s.pass !== "***" ? "***" : s.pass }));
+      toast({ title: "บันทึก SMTP สำเร็จ ✅" });
+    } catch (e: any) { toast({ title: "บันทึก SMTP ล้มเหลว", description: e.message, variant: "destructive" }); }
+    finally { setSmtpSaving(false); }
+  };
+
+  const handleSmtpTest = async () => {
+    setSmtpTesting(true);
+    try {
+      const res = await fetch("/api/settings/smtp/test", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ testEmail: smtpTestEmail }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.message);
+      toast({ title: "ส่ง email ทดสอบสำเร็จ ✅", description: d.message });
+    } catch (e: any) { toast({ title: "ส่ง email ล้มเหลว", description: e.message, variant: "destructive" }); }
+    finally { setSmtpTesting(false); }
+  };
 
   if (isLoading) {
     return (
@@ -377,6 +414,70 @@ export default function GeneralSettings() {
                 </div>
               );
             })}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Mail className="h-5 w-5 text-blue-500" />
+              ตั้งค่า SMTP สำหรับส่งอีเมล
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">ใช้สำหรับส่งเอกสาร (ใบ 50 ทวิ ฯลฯ) ทางอีเมลให้คู่ค้า</p>
+            {!smtpLoaded ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="h-4 w-4 animate-spin" /> กำลังโหลด...</div>
+            ) : (
+              <div className="space-y-3">
+                {smtp.hasPass && (
+                  <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-700">
+                    ✅ ตั้งค่า SMTP แล้ว
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">SMTP Host *</Label>
+                    <Input value={smtp.host} onChange={e => setSmtp(s => ({ ...s, host: e.target.value }))} placeholder="smtp.example.com" className="mt-1" data-testid="input-smtp-host" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Port</Label>
+                    <Input type="number" value={smtp.port} onChange={e => setSmtp(s => ({ ...s, port: e.target.value }))} className="mt-1" data-testid="input-smtp-port" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Username / Email *</Label>
+                  <Input value={smtp.user} onChange={e => setSmtp(s => ({ ...s, user: e.target.value }))} placeholder="sender@example.com" className="mt-1" data-testid="input-smtp-user" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Password {smtp.hasPass ? "(กรอกใหม่เพื่อเปลี่ยน)" : "*"}</Label>
+                  <div className="relative mt-1">
+                    <Input type={showSmtpPass ? "text" : "password"} value={smtp.pass} onChange={e => setSmtp(s => ({ ...s, pass: e.target.value }))} placeholder={smtp.hasPass ? "••••••••" : "รหัสผ่าน"} className="pr-10" data-testid="input-smtp-pass" />
+                    <button type="button" onClick={() => setShowSmtpPass(v => !v)} className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600">
+                      {showSmtpPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">From Address (ชื่อที่แสดงใน From)</Label>
+                  <Input value={smtp.from} onChange={e => setSmtp(s => ({ ...s, from: e.target.value }))} placeholder="noreply@example.com" className="mt-1" data-testid="input-smtp-from" />
+                  <p className="text-xs text-gray-400 mt-1">ชื่อบริษัทของลูกค้าจะแสดงเป็น display name อัตโนมัติ เช่น "บริษัท ABC จำกัด &lt;{smtp.from || "noreply@example.com"}&gt;"</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={smtp.secure} onCheckedChange={v => setSmtp(s => ({ ...s, secure: v }))} data-testid="switch-smtp-secure" />
+                  <Label className="text-sm cursor-pointer">SSL/TLS (port 465)</Label>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Input value={smtpTestEmail} onChange={e => setSmtpTestEmail(e.target.value)} placeholder="ทดสอบส่งไปที่ email..." className="flex-1" data-testid="input-smtp-test-email" />
+                  <Button variant="outline" onClick={handleSmtpTest} disabled={smtpTesting || !smtp.hasPass} data-testid="btn-smtp-test">
+                    {smtpTesting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />} ทดสอบ
+                  </Button>
+                  <Button onClick={handleSmtpSave} disabled={smtpSaving} className="bg-[#fb9678] hover:bg-[#e8855a] text-white" data-testid="btn-smtp-save">
+                    {smtpSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />} บันทึก
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

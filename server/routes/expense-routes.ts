@@ -2068,7 +2068,7 @@ export function registerExpenseRoutes(app: Express) {
       const hasResend = !!cfg.SYSADMIN_RESEND_API_KEY;
       const hasSmtp = !!(cfg.SYSADMIN_SMTP_HOST && cfg.SYSADMIN_SMTP_USER && cfg.SYSADMIN_SMTP_PASS);
       if (!hasResend && !hasSmtp) {
-        return res.status(400).json({ message: "ยังไม่ได้ตั้งค่าระบบส่งอีเมล — กรุณาตั้งค่า Resend API Key ใน System Config ก่อน" });
+        return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP — กรุณาไปที่ ตั้งค่า → ตั้งค่าระบบ → ตั้งค่า SMTP สำหรับส่งอีเมล" });
       }
 
       const items = await db.select().from(whtCertItems).where(eq(whtCertItems.whtCertId, doc.id));
