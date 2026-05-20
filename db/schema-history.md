@@ -423,8 +423,10 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 **Actual prod state (discovered 2026-05-20 via schema:diff):**
 - Tables `material_issues` + `material_issue_items` already existed on prod (pushed by earlier session — not recorded)
 - Column `from_warehouse_id` was MISSING on prod → patched: migration now includes `ALTER TABLE material_issues ADD COLUMN IF NOT EXISTS from_warehouse_id INTEGER`
-- Flag `CREATE_MATERIAL_ISSUE_TABLES_20260517` was NOT set on prod → will be set on next pm2 restart
+- Flag `CREATE_MATERIAL_ISSUE_TABLES_20260517` was NOT set on prod before deploy
+
+**Lesson learned (2026-05-20):** Production runs `node dist/index.cjs` — deploy command MUST include `npm run build` before `pm2 start` or server runs stale compiled code silently. Rule added to replit.md + handoff.md.
 
 **Reason:** Task #35 — เบิกวัตถุดิบล็อตเข้าไลน์ผลิตด้วย QR Scan. New module for issuing raw materials to production lines, with QR scan support for employee cards and product lot labels.
 
-**Status:** ✅ Pushed to production 2026-05-20 — commits `585cd33` (schema-extra), `845583b` (migrations-runner NEW), `b4fc9d6` (products-routes), `40c80c7` (index-extra). **Awaiting พี่ช้าง: `pm2 stop etax-center → git pull → npm install → pm2 start etax-center`**
+**Status:** ✅ CONFIRMED on production 2026-05-20 12:21 Bangkok — flag `done_2026-05-20 12:21:57.506835+07`, `from_warehouse_id` column EXISTS. Commits: `585cd33` (schema-extra), `845583b` (migrations-runner NEW), `b4fc9d6` (products-routes), `40c80c7` (index-extra).

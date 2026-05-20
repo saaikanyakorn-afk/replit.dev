@@ -30,7 +30,7 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 ## ACTIVE QUEUE
 
 ### N3 — Material Issue (เบิกวัตถุดิบ Lot Scan)
-**Status:** 🔁 RE-DEPLOY NEEDED 2026-05-20 — source files pushed ✅, but `npm run build` was missing → dist/ not rebuilt → server ran old code, migration never fired
+**Status:** ✅ DONE 2026-05-20 12:21 (Bangkok) — migration confirmed: flag SET, `from_warehouse_id` EXISTS on prod
 **Schema change:** YES — `material_issues` + `material_issue_items` tables (ENTRY #009)
 **Push type:** Schema migration push (Rule 2 — 10-step procedure)
 
