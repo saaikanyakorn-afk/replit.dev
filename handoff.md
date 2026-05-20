@@ -191,9 +191,9 @@ These files are **not tied to any single feature** — they will be skipped if y
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-20 — Kai session (N3 material-issue deploy ✅ + N6 WHT cert PDF/email/LINE deploy ✅ + N6-hotfix iframe auth 401 fix deploy ✅). Handoff updated by main agent.
+**Last verified:** 2026-05-20 — Kai session (N3+N6+N6-hotfix deployed ✅ + N8 SMTP Email config built on dev ✅). Handoff updated by main agent.
 **Production status:** N3 ✅ deployed 2026-05-20 12:21 | N6 ✅ deployed 2026-05-20 | N6-hotfix ✅ deployed 2026-05-20 (latest)
-**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ + WHT cert PDF signature image ✅ + WHT cert seqNo auto-compute ✅ + LINE card purple/data ✅ + Email PDF stamp+seqNo ✅ + Custom print form preview scaling ✅ — code deployed to production via N3+N6+N6-hotfix. N4/N7 still pending push.
+**Dev status:** Payment-side journal fixes ✅ + N3 ✅ + N6/hotfix ✅ + **N8 SMTP Email config ✅ (dev only, not yet pushed to prod)** — N4/N7 still pending push.
 
 ---
 
