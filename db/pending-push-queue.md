@@ -225,6 +225,35 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
+### N10 — Email Dialog (SendEmailDialog) + Quotation Share URL Fix
+**Status:** 📝 dev — พี่ทราย ยังไม่ได้เทส
+**Schema change:** NO
+**Push type:** Code-only push (12 files — 1 new component + 10 list pages + 1 backend fix)
+
+**สิ่งที่เปลี่ยน:**
+1. **New shared component** — `send-email-dialog.tsx` — dialog ยืนยัน/แก้อีเมลก่อนส่ง (props: open, defaultEmail, docLabel, docNo, onConfirm)
+2. **Quotation share URL fix** — `sales-docs-routes.ts` ลบ condition บังคับ `.replit.app` → ใช้ `req.headers.host` + `x-forwarded-proto` โดยตรง
+3. **Email dialog ใน 10 list pages** — ปุ่ม "ส่งอีเมล" (MailCheck icon สีม่วง theme) ใน dropdown หลัง LINE button + เรียก `POST /api/documents/{docType}/{id}/send-email`
+
+⚠️ **หมายเหตุ:** `sales-docs-routes.ts` อยู่ใน N4 และ N9 ด้วย — push ครั้งเดียวครอบคลุมทั้ง 3 entries
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/components/send-email-dialog.tsx` | **NEW** — shared email confirm dialog component | 📝 dev |
+| `server/routes/sales-docs-routes.ts` | Quotation share URL fix (req.headers.host — ลบ .replit.app condition) | 📝 dev |
+| `client/src/pages/sales/quotation-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/purchases/purchase-invoice-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/purchases/purchase-order-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/purchases/purchase-request-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/purchases/expense-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/sales/invoice-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/sales/sales-order-list.tsx` | เพิ่ม email dialog (pre-fill contactEmail) | 📝 dev |
+| `client/src/pages/sales/tax-invoice-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/sales/receipt-list.tsx` | เพิ่ม email dialog | 📝 dev |
+| `client/src/pages/sales/credit-note-list.tsx` | เพิ่ม email dialog | 📝 dev |
+
+---
+
 ### N7 — RD VAT service + multi-branch dialog + address formatting
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅
 **Schema change:** NO
