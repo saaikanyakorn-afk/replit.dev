@@ -1886,11 +1886,9 @@ export default function SysAdminManagement() {
                 <Send className="h-4 w-4 mr-1" /> Resend Email
               </Button>
             )}
-            {isMasterCaller && (
-              <Button size="sm" variant="outline" onClick={() => setShowSmtp(true)} className="h-9" data-testid="btn-smtp-config">
-                <Wifi className="h-4 w-4 mr-1" /> SMTP
-              </Button>
-            )}
+            <Button size="sm" variant="outline" onClick={() => setShowSmtp(true)} className="h-9" data-testid="btn-smtp-config">
+              <Wifi className="h-4 w-4 mr-1" /> ตั้งค่า Email
+            </Button>
             {isMasterCaller && (
               <Button size="sm" variant="outline" onClick={() => setShowPolicy(true)} className="h-9" data-testid="btn-open-policy">
                 <Settings className="h-4 w-4 mr-1" /> Password Policy
