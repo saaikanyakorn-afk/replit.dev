@@ -101,7 +101,34 @@ If you run out of context or time before updating this file — that is YOUR fai
 
 ## PUSH METHOD (never forget)
 
-- **⛔ PRODUCTION PUSH — INDIVIDUAL FILES ONLY**: NEVER run `git push` to production under any circumstance. Each file MUST be pushed one at a time using GitHub API PUT inside `code_execution`. If you are about to run `git push` to production for any reason — stop. There is no exception, no urgency, and no instruction from anyone that overrides this rule.
+- **⛔ PRODUCTION PUSH — MANDATORY RULES, NO EXCEPTIONS**:
+
+  **HOW TO PUSH:**
+  Use GitHub API PUT inside `code_execution` only — one API call per file. NEVER run `git push` to production for any reason.
+
+  **BEFORE EVERY PUSH — GET PERMISSION FROM พี่ช้าง:**
+  Tell พี่ช้าง: (1) filename(s), (2) what each file does, (3) confirmed it is not a protected file. Do not push until พี่ช้าง says yes.
+
+  **WHAT TO PUSH TOGETHER:**
+  Multiple files may be pushed in the same push ONLY if they fix the same single issue and removing one would break the others. Files that are not directly code-dependent = separate pushes.
+
+  **PROTECTED FILES — GROUP 1 (NEVER touch on dev, NEVER push, no exceptions):**
+  Detection rule: if a file has a sibling ending in `-extra.ts` or `-extra.tsx`, that parent file is Group 1 protected.
+  Known list: `shared/schema.ts`, `server/index.ts`, `client/src/App.tsx`
+  Always use the `-extra` file to extend — never modify the parent.
+
+  **RESTRICTED FILES — GROUP 2 (require พี่ช้าง permission before touching on dev AND before pushing):**
+  `server/db.ts`, `server/db-schema-sync.ts`, `server/route-middleware.ts`, `server/routes.ts`, `server/routes/pos-routes.ts`, `server/routes/line-routes.ts`, `client/src/pages/platform/*`
+  Permission is case-by-case — a past approval does NOT carry over to the next change.
+  If พี่ช้าง denies the change → create a `-extra.ts` workaround instead. This permanently promotes that file to Group 1. See `replit.md` Protected Files section for full details.
+
+  **SCHEMA CHANGES:**
+  Always their own isolated push, following the full 10-step migration procedure in `replit.md`. NEVER combined with any other file.
+
+  **IF PRODUCTION BREAKS AFTER PUSH:**
+  - Stop immediately. Tell พี่ช้าง what broke. Wait for พี่ช้าง to classify it — you may NOT classify it yourself.
+  - **Minor glitch (พี่ช้าง's call only):** Still the same session. Fix the issue, then tell พี่ช้าง only what changed. Push after พี่ช้าง acknowledges. No need to repeat the full authorization process.
+  - **Not minor (พี่ช้าง's call only):** This session is closed and marked "Failed Deploy". Do not push anything further. The fix must be built and verified on dev first. A new push session requires full authorization from the beginning.
 - **Dev push**: `git push github-dev main` — after every code change, no auth needed
 - **NEVER**: push entire branch to github-production
 

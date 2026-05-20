@@ -684,6 +684,9 @@ Before modifying ANY file on the protected/review-carefully lists — even small
 If no `-extra` exists → the file is NOT protected and can be pushed normally.
 If an `-extra` exists but the parent is not in this list → add the parent here.
 
+**How a Group 2 file becomes Group 1 permanently:**
+If พี่ช้าง denies a Group 2 file change → you MUST create a `-extra.ts` workaround file instead of modifying the parent. The moment that `-extra.ts` file exists, the parent file is automatically promoted to Group 1 — it can never be touched directly again, on dev or production, for any reason.
+
 **Confirmed NOT protected (removed from list 2026-05-13):**
 - `server/storage.ts` — was believed protected, proven wrong today. No `-extra` bypass exists. Can be pushed normally.
 
