@@ -15,6 +15,7 @@ import {
   CreditCard,
   Eye,
   TrendingUp,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +28,7 @@ const ADMIN_NAV = [
   { icon: MessageCircle, label: "แชทสนับสนุน", href: "/platform/chat" },
   { icon: Globe, label: "จัดการ Landing Page", href: "/settings/landing-cms" },
   { icon: KeyRound, label: "จัดการรหัสผ่าน", href: "/platform/passwords" },
+  { icon: Mail, label: "ตั้งค่า Email", href: "/platform/email-config" },
   { icon: TrendingUp, label: "อัตราแลกเปลี่ยน (BOT)", href: "/settings/exchange-rate" },
 ];
 
