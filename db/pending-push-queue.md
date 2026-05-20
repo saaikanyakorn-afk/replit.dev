@@ -96,7 +96,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 
 | File | Role | Status |
 |------|------|--------|
-| `client/src/pages/purchases/wht-cert-print.tsx` | Blob URL pattern แทน `iframe src` direct URL — เพิ่ม `getAuthHeaders()` ใน fetch ทุกจุด | ⏳ awaiting |
+| `client/src/pages/purchases/wht-cert-print.tsx` | Blob URL pattern แทน `iframe src` direct URL — เพิ่ม `getAuthHeaders()` ใน fetch ทุกจุด | ✅ pushed 2026-05-20 commit `4e6ef45` |
 
 Deploy command (NO schema change — rebuild only):
 ```
