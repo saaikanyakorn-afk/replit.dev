@@ -337,20 +337,25 @@ app.post("/api/settings/smtp/test", requireAuth, requireRole("admin", "super_adm
     const cfg: Record<string, string> = {};
     for (const r of (rows.rows || []) as any[]) cfg[r.config_key] = r.config_value;
     if (!cfg.SYSADMIN_SMTP_HOST || !cfg.SYSADMIN_SMTP_USER || !cfg.SYSADMIN_SMTP_PASS) return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP" });
+    console.log("[SMTP-TEST] cfg:", { host: cfg.SYSADMIN_SMTP_HOST, port: cfg.SYSADMIN_SMTP_PORT, user: cfg.SYSADMIN_SMTP_USER, from: cfg.SYSADMIN_SMTP_FROM, hasPass: !!cfg.SYSADMIN_SMTP_PASS, passLen: cfg.SYSADMIN_SMTP_PASS?.length });
     const nodemailer = await import("nodemailer");
     const transporter = nodemailer.default.createTransport({
       host: cfg.SYSADMIN_SMTP_HOST, port: Number(cfg.SYSADMIN_SMTP_PORT || 587),
       secure: cfg.SYSADMIN_SMTP_SECURE === "true",
       auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
     });
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: cfg.SYSADMIN_SMTP_FROM || cfg.SYSADMIN_SMTP_USER,
       to: toEmail,
       subject: "ทดสอบ SMTP — E-Tax Center",
       html: `<div style="font-family:sans-serif;padding:20px"><p>ทดสอบระบบส่งอีเมลผ่าน SMTP สำเร็จ ✅</p></div>`,
     });
+    console.log("[SMTP-TEST] sendMail result:", JSON.stringify(info));
     res.json({ message: `ส่ง email ทดสอบไปที่ ${toEmail} สำเร็จ` });
-  } catch (err: any) { res.status(500).json({ message: `ส่ง email ล้มเหลว: ${err.message}` }); }
+  } catch (err: any) {
+    console.error("[SMTP-TEST] ERROR:", err.message, err.code, err.response);
+    res.status(500).json({ message: `ส่ง email ล้มเหลว: ${err.message}` });
+  }
 });
 
 app.post("/api/settings/exchange-rate", requireAuth, requireRole("super_admin"), async (req, res) => {
