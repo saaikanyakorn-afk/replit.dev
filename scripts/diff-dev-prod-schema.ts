@@ -3,16 +3,34 @@ import { writeFileSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 
 const DEV_URL = process.env.DATABASE_URL;
-const PROD_URL = process.env.DB_PROD_URL;
 
 if (!DEV_URL) { console.error('❌ DATABASE_URL not set (dev DB)'); process.exit(1); }
-if (!PROD_URL) { console.error('❌ DB_PROD_URL not set (prod DB) — ask พี่ช้าง to set Replit Secret'); process.exit(1); }
+
+// DB_PROD_URL lives in system_config table (config DB), not in Replit Secrets.
+// Read it from dev DB system_config before starting the actual diff.
+async function getProdUrl(): Promise<string> {
+  const c = new Client({ connectionString: DEV_URL!, ssl: { rejectUnauthorized: false } });
+  await c.connect();
+  try {
+    const r = await c.query(`SELECT config_value FROM system_config WHERE config_key = 'DB_PROD_URL' LIMIT 1`);
+    if (r.rows.length === 0 || !r.rows[0].config_value) {
+      throw new Error('DB_PROD_URL not found in system_config — ask พี่ช้าง to set it');
+    }
+    return r.rows[0].config_value as string;
+  } finally {
+    await c.end();
+  }
+}
+
+const PROD_URL = await getProdUrl();
 
 type ColInfo = { column_name: string; data_type: string; is_nullable: string; column_default: string | null };
 type TableMap = Map<string, ColInfo[]>;
 
 async function fetchSchema(url: string, label: string): Promise<{ tables: TableMap; flags: Set<string>; indexes: Map<string, string[]> }> {
-  const c = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+  // Dev (Neon) requires SSL; Prod (deep-main) does not
+  const isProd = url.includes('deep-main') || url.includes('hopto.org') || url.includes('20541');
+  const c = new Client({ connectionString: url, ssl: isProd ? false : { rejectUnauthorized: false } });
   await c.connect();
   try {
     const cols = await c.query(`

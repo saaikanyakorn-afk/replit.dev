@@ -5,7 +5,7 @@ import { eq, desc, asc, and, or, ilike, inArray, count, sum , sql } from "drizzl
 import { products, productBundles, documentImportBatches, stockMovements, promotions, companies, productLots, goodsRequisitions, goodsRequisitionItems, journalEntries, journalLines, stockTransfers, stockTransferItems, warehouses, warehouseStockLevels, branches, insertProductSchema, goodsReceivings, goodsReceivingItems, purchaseOrders, purchaseOrderItems, users, manufacturingOrders, bomHeaders } from "@shared/schema";
 import { requireAuth, requireModule, requireAnyModule, checkDocOwnership } from "../route-middleware";
 // import { runProductSplitMigration } from "@shared/schema-extra"; // ✅ DONE 2026-05-11T13:35:09Z — FLAG PRODUCT_SPLIT_MIGRATION_20260510 set, 2603+778=3381 rows verified
-import { runMaterialIssueMigration, runProductionFinishMigration, runNcrMigration, runLotLowStockThresholdMigration, runWarehouseColumnsForMfgMigration, runBomProcessStepsMigration, runWipWarehouseMigration } from "@shared/schema-extra";
+// Migrations moved to server/migrations-runner.ts (2026-05-20) — see that file for per-migration enable/disable
 import { getNextJournalEntryNo, logActivity, deleteStockMovementsForDoc, deductStockBundleAware, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
 import { activeProducts, inactiveProducts as inactiveProductsTable } from "@shared/schema-extra";
 import { parsePagination, paginatedResponse } from "./pagination";
@@ -43,27 +43,7 @@ export function registerProductsRoutes(app: Express) {
   // runProductSplitMigration(db).catch((err: any) => { // ✅ DONE 2026-05-11T13:35:09Z — commented out after verify
   //   console.error("[migration] ❌ runProductSplitMigration failed — server continues but product split tables may be incomplete:", err.message);
   // });
-  runMaterialIssueMigration(db).catch((err: any) => {
-    console.error("[migration] ❌ runMaterialIssueMigration failed:", err.message);
-  });
-  runProductionFinishMigration(db).catch((err: any) => {
-    console.error("[migration] ❌ runProductionFinishMigration failed:", err.message);
-  });
-  runNcrMigration(db).catch((err: any) => {
-    console.error("[migration] ❌ runNcrMigration failed:", err.message);
-  });
-  runLotLowStockThresholdMigration(db).catch((err: any) => {
-    console.error("[migration] ❌ runLotLowStockThresholdMigration failed:", err.message);
-  });
-  runWarehouseColumnsForMfgMigration(db).catch((err: any) => {
-    console.error("[migration] ❌ runWarehouseColumnsForMfgMigration failed:", err.message);
-  });
-  runBomProcessStepsMigration(db).catch((err: any) => {
-    console.error("[migration] ❌ runBomProcessStepsMigration failed:", err.message);
-  });
-  runWipWarehouseMigration(db).catch((err: any) => {
-    console.error("[migration] ❌ runWipWarehouseMigration failed:", err.message);
-  });
+  // Migrations moved to server/migrations-runner.ts → called from server/index-extra.ts (2026-05-20)
 
 // ==================== Product Categories ====================
 app.get("/api/product-categories", requireAuth, async (req, res) => {

@@ -30,16 +30,20 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 ## ACTIVE QUEUE
 
 ### N3 — Material Issue (เบิกวัตถุดิบ Lot Scan)
-**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+**Status:** 🚀 PUSHING 2026-05-20 — Architecture refactored (option D)
 **Schema change:** YES — `material_issues` + `material_issue_items` tables (ENTRY #009)
 **Push type:** Schema migration push (Rule 2 — 10-step procedure)
 
 | File | Role | Status |
 |------|------|--------|
-| `shared/schema-extra.ts` | Migration function `runMaterialIssueMigration()` | ⏳ awaiting |
-| `server/routes/products-routes.ts` | Caller (line 46) + N3 API routes + N3 SQL (lines 2307+, 2831+, 2973+, 3051+, 3120) | ⏳ awaiting |
+| `shared/schema-extra.ts` | Migration function `runMaterialIssueMigration()` + all other pending migrations | ✅ pushed 2026-05-20 12:xx (Bangkok) commit `585cd33` |
+| `server/migrations-runner.ts` | **NEW FILE** — central migration runner. N3 (`runMaterialIssueMigration`) enabled, all others commented. | ✅ pushed 2026-05-20 12:xx (Bangkok) commit `845583b` |
+| `server/routes/products-routes.ts` | N3 API routes + N3 SQL. Migration calls removed. | ✅ pushed 2026-05-20 12:xx (Bangkok) commit `b4fc9d6` |
+| `server/index-extra.ts` | Added `runPendingMigrations()` call at startup | ✅ pushed 2026-05-20 12:xx (Bangkok) commit `40c80c7` |
 
-⚠️ **Note:** `products-routes.ts` contains BOTH the migration caller AND the API routes — cannot split schema-loop from code-loop per Rule 3. Push together as one atomic deploy. พี่ช้าง decision required.
+⚠️ **All 4 files must be pushed together — atomically.**
+⚠️ **`server/migrations-runner.ts` is new on prod** — first push creates the file.
+⚠️ **Do NOT push `server/migrations-runner.ts` with any migration other than N3 uncommented** — other migrations in that file are pending their own queue entries + approval.
 
 ---
 

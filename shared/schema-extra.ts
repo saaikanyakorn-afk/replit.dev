@@ -1013,6 +1013,7 @@ export async function runMaterialIssueMigration(db: any) {
   try {
     const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
     if ((flag.rows || []).length > 0) return;
+    // CREATE TABLE IF NOT EXISTS — safe even if tables already exist on prod
     await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS material_issues (
       id SERIAL PRIMARY KEY,
       company_id INTEGER NOT NULL REFERENCES companies(id),
@@ -1024,6 +1025,8 @@ export async function runMaterialIssueMigration(db: any) {
       notes TEXT,
       status TEXT NOT NULL DEFAULT 'draft'
     )`));
+    // ADD COLUMN IF NOT EXISTS — handles prod where table existed before from_warehouse_id was added
+    await db.execute(sql.raw(`ALTER TABLE material_issues ADD COLUMN IF NOT EXISTS from_warehouse_id INTEGER`));
     await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS material_issue_items (
       id SERIAL PRIMARY KEY,
       material_issue_id INTEGER NOT NULL REFERENCES material_issues(id) ON DELETE CASCADE,
@@ -1035,7 +1038,7 @@ export async function runMaterialIssueMigration(db: any) {
       unit TEXT NOT NULL DEFAULT 'ชิ้น'
     )`));
     await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
-    console.log("[migration] ✅ material_issues + material_issue_items created");
+    console.log("[migration] ✅ material_issues + material_issue_items ready (created or patched)");
   } catch (e: any) {
     console.error("[migration] ❌ runMaterialIssueMigration FAILED:", e.message);
   }

@@ -11,8 +11,12 @@ import { db } from "./db";
 import { userSubPermissions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { SUB_MODULES } from "@shared/permissions";
+import { runPendingMigrations } from "./migrations-runner";
 
 export function registerIndexExtraRoutes(app: Express) {
+  // Run all approved pending migrations at server startup (fire-and-forget)
+  // To enable/disable individual migrations: edit server/migrations-runner.ts
+  runPendingMigrations();
   /**
    * Override /api/permissions/me — runs BEFORE the protected version in core-routes.ts.
    * Returns modules that include any module the user has explicit sub-permissions for,

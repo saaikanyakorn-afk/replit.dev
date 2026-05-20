@@ -416,10 +416,15 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 
 **Backup location:** No backup required — new tables (no existing data affected)
 
-**Migration code:** `server/schema-extra.ts` → `runMaterialIssueMigration()`
-**Caller:** `server/routes/products-routes.ts` → `registerProductsRoutes()` (top-level call)
+**Migration code:** `shared/schema-extra.ts` → `runMaterialIssueMigration()`
+**Caller (after 2026-05-20 refactor):** `server/migrations-runner.ts` → `runPendingMigrations()` → called from `server/index-extra.ts` startup
 **Flag:** `CREATE_MATERIAL_ISSUE_TABLES_20260517` in `system_config`
+
+**Actual prod state (discovered 2026-05-20 via schema:diff):**
+- Tables `material_issues` + `material_issue_items` already existed on prod (pushed by earlier session — not recorded)
+- Column `from_warehouse_id` was MISSING on prod → patched: migration now includes `ALTER TABLE material_issues ADD COLUMN IF NOT EXISTS from_warehouse_id INTEGER`
+- Flag `CREATE_MATERIAL_ISSUE_TABLES_20260517` was NOT set on prod → will be set on next pm2 restart
 
 **Reason:** Task #35 — เบิกวัตถุดิบล็อตเข้าไลน์ผลิตด้วย QR Scan. New module for issuing raw materials to production lines, with QR scan support for employee cards and product lot labels.
 
-**Status:** Dev only — NOT yet on production. Awaiting พี่ช้าง approval before push.
+**Status:** ✅ Pushed to production 2026-05-20 — commits `585cd33` (schema-extra), `845583b` (migrations-runner NEW), `b4fc9d6` (products-routes), `40c80c7` (index-extra). **Awaiting พี่ช้าง: `pm2 stop etax-center → git pull → npm install → pm2 start etax-center`**
