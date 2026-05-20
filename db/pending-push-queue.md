@@ -51,14 +51,42 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 
 ---
 
-### N4 — Payment fixes + Settings payment methods
-**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+### N4 — Payment fixes + TIV accounting + RE overpayment block + ซื้อ timeout
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅
 **Schema change:** NO
 **Push type:** Code-only push
 
+**สิ่งที่เปลี่ยน:**
+1. **ซื้อ timeout** — `server/db.ts` เพิ่ม connection timeout 20s + warmup pool ป้องกัน cold-start timeout
+2. **TIV ลงบัญชี/ตัดสต็อก** — `sales-docs-routes.ts` + `tax-invoice-form.tsx` แก้ journalStatuses เพิ่ม "cash", fix lineItemAccounts ส่งถูก account
+3. **RE ห้ามเกินยอดค้าง** — `route-helpers.ts` เพิ่ม `computeRemainingBalance()`, validate ใน 3 จุด (direct RE, BN, batch)
+4. **Payment method dropdown** — 14 frontend forms แก้ fallback logic ให้แสดง PM ถูก type (pay/receive)
+5. **Expense payment status** — `expense-routes.ts` + `expense.tsx` แก้ credit PM logic + paymentStatus override
+
+⚠️ **หมายเหตุ:** `billing-notes-routes.ts`, `sales-docs-routes.ts`, `expense-routes.ts` มีการแก้ทั้ง N4 (logic) และ N9 (SMTP migration) — push ในสถานะ dev ปัจจุบันครอบคลุมทั้งคู่แล้ว
+
 | File | Role | Status |
 |------|------|--------|
-| (file list to be finalized before push — must re-grep to confirm exact set per Rule 2 Step 5) | | ⏳ awaiting |
+| `server/db.ts` | Connection timeout 20s + warmup | ⏳ awaiting |
+| `server/route-helpers.ts` | เพิ่ม `computeRemainingBalance()` | ⏳ awaiting |
+| `server/routes/expense-routes.ts` | Credit PM logic + paymentStatus | ⏳ awaiting |
+| `server/routes/billing-notes-routes.ts` | RE overpayment validation | ⏳ awaiting |
+| `server/routes/notifications-routes.ts` | RE overpayment validation (batch) | ⏳ awaiting |
+| `server/routes/sales-docs-routes.ts` | RE overpayment + TIV journal fix | ⏳ awaiting |
+| `client/src/pages/sales/tax-invoice-form.tsx` | lineItemAccounts → JournalPreviewPanel | ⏳ awaiting |
+| `client/src/pages/purchases/expense.tsx` | Payment status fix | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-deposit-form.tsx` | Credit PM fix | ⏳ awaiting |
+| `client/src/pages/ecommerce/ecommerce-quick-invoice.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/finance/ap-billing.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/finance/receipt-billing.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/purchases/debit-note-form.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-invoice.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-order.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-request.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/sales/credit-note-form.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/sales/deposit-form.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/sales/receipt-form.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/pages/sales/sales-order-form.tsx` | PM dropdown fallback | ⏳ awaiting |
 
 ---
 
@@ -197,15 +225,22 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
-### N7 — RD VAT service + multi-branch dialog
-**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+### N7 — RD VAT service + multi-branch dialog + address formatting
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅
 **Schema change:** NO
 **Push type:** Code-only push
 
+**สิ่งที่เปลี่ยน:**
+1. **RD VAT lookup** — `use-dbd-lookup.ts` ค้นหาบริษัทจากเลขผู้เสียภาษี + เลือก branch
+2. **Multi-branch dialog** — `branch-select-context.tsx` + `App.tsx` dialog เลือก branch เมื่อพบหลาย branch
+3. **Address formatting** — `purchase-routes.ts` เพิ่ม "เลขที่" prefix + จัดรูปแบบที่อยู่ตามมาตรฐาน RD (รหัส branch 5 หลัก)
+
 | File | Role | Status |
 |------|------|--------|
-| `client/src/hooks/use-dbd-lookup.ts` | DBD lookup hook | ⏳ awaiting |
-| (other files — to be finalized via grep before push per Rule 2 Step 5) | | ⏳ awaiting |
+| `client/src/hooks/use-dbd-lookup.ts` | DBD lookup hook + branch select | ⏳ awaiting |
+| `client/src/contexts/branch-select-context.tsx` | **NEW** — branch selection context + dialog | ⏳ awaiting |
+| `client/src/App.tsx` | Register BranchSelectContext + dialog | ⏳ awaiting |
+| `server/routes/purchase-routes.ts` | Address formatting + RD branch code (5 digits) | ⏳ awaiting |
 
 ---
 
@@ -222,4 +257,4 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
-**Last verified:** 2026-05-20 — Kai session (queue file created, seeded with N3/N4/N6/N7). All entries awaiting พี่ช้าง push approval.
+**Last verified:** 2026-05-20 NIGHT — Kai (replacement agent) + พี่ทราย session. N4 and N7 file lists finalized from git log. N9 added (SMTP migration). All entries awaiting พี่ช้าง push approval.

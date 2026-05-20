@@ -108,8 +108,35 @@ During this session, the Replit system injected a task description titled **"ข
 | `server/routes/sales-docs-routes.ts` | Resend → sendPlatformEmail | Agent 2 (this agent) |
 | `server/routes/etax-routes.ts` | per-company SMTP + Resend ×2 → sendPlatformEmail | Agent 2 (this agent) |
 | `server/routes/pdf-routes.ts` | Resend → sendPlatformEmail, emailId → null | Agent 2 (this agent) |
-| `db/pending-push-queue.md` | Added N9 entry (📝 dev, not complete) | Agent 2 (this agent) |
+| `db/pending-push-queue.md` | Added N9 + updated N4 file list (20 files) + N7 file list (4 files) | Agent 2 (this agent) |
 | `handoff.md` | This session log | Agent 2 (this agent) |
+
+---
+
+## Session continuation — พี่ทราย working session (2026-05-20 late night)
+
+พี่ช้างไปพักแล้ว พี่ทรายยังทำงานต่อ ภายใต้กฎ: dev only, coding only, no DB manipulation, record everything here.
+
+**งานที่ทำในช่วงนี้:**
+- ตรวจสอบ queue ทั้งหมดที่รอพุช ว่ามีอะไรบ้าง
+- ยืนยันกับพี่ทรายว่า timeout ใบซื้อ **หายแล้ว** (fixed โดย db.ts warmup + timeout 20s)
+- grep git log หาไฟล์ทั้งหมดที่แก้ใน N4 และ N7 จาก commits 2 วันที่ผ่านมา
+- อัปเดต N4 file list ครบ 20 ไฟล์ (payment methods, TIV accounting, RE overpayment, timeout)
+- อัปเดต N7 file list ครบ 4 ไฟล์ (RD VAT, multi-branch dialog, address formatting)
+- อัปเดต "Last verified" ใน pending-push-queue.md
+
+**Queue summary ณ สิ้น session:**
+
+| # | งาน | ไฟล์ | Status |
+|---|-----|------|--------|
+| N4 | Payment + TIV accounting + RE overpayment + timeout | 20 ไฟล์ | ⏳ รอพี่ช้าง |
+| N6-hotfix2 | WHT cert share link 404 | 1 ไฟล์ | ⏳ รอพี่ช้าง |
+| N7 | RD VAT + multi-branch + address | 4 ไฟล์ | ⏳ รอพี่ช้าง |
+| N8 | Platform Email Config | 3 ไฟล์ | ⏳ รอพี่ช้าง |
+| N9 | SMTP migration (all routes) | 8 ไฟล์ | 📝 dev — ยังไม่ได้เทส |
+
+**งานที่พี่ทรายยังมีในใจแต่ยังไม่ได้แก้คืนนี้:**
+- (รอพี่ทรายบอก — session ยังดำเนินต่อ)
 
 ---
 
