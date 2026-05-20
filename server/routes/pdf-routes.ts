@@ -5,6 +5,7 @@ import { invoices, taxInvoices, receipts, quotations, salesOrders, purchaseInvoi
 import { requireAuth, checkDocOwnership } from "../route-middleware";
 import { buildPdfDataById, buildPdfDataByToken } from "../pdf-data-fetcher";
 import { generatePdfMake } from "../pdf-pdfmake-generator";
+import { sendPlatformEmail } from "../utils/platform-email";
 
 export function registerPdfRoutes(app: Express) {
 

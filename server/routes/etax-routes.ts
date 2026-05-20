@@ -10,6 +10,7 @@ import { generatePdfMake } from "../pdf-pdfmake-generator";
 import { buildPdfDataById, buildCreditNotePdfData } from "../pdf-data-fetcher";
 // DATA FIX DONE 2026-05-07 — hook removed after verified. See schema-extra.ts history (ENTRY #004).
 // import { runSalesCreditNoteEtaxMigration } from "../schema-extra";
+import { sendPlatformEmail } from "../utils/platform-email";
 
 function parseDateToBE(dateVal: string | Date | null | undefined): string {
   const s = dateVal ? String(dateVal) : "";

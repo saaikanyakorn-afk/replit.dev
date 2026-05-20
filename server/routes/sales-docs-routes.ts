@@ -10,6 +10,7 @@ import { parsePagination, paginatedResponse } from "./pagination";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import path from "path";
+import { sendPlatformEmail } from "../utils/platform-email";
 import { parse as csvParse } from "csv-parse/sync";
 
 async function fetchInvoiceItems(invoiceId: number): Promise<any[]> {
@@ -740,18 +741,10 @@ app.post("/api/quotations/:id/send-email", requireAuth, requireAnyModule("sales"
     }
     const shareUrl = `${shareBaseUrl}/share/quote/${shareToken}`;
 
-    try {
-      const { Resend } = await import("resend");
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      
-      const configuredFrom = companyFromEmail || process.env.RESEND_FROM_EMAIL || "";
-      const fromAddr = configuredFrom || "onboarding@resend.dev";
-      console.log(`[Email] Sending quotation email from=${fromAddr} to=${recipientEmail}`);
-      const emailResult = await resend.emails.send({
-        from: fromAddr,
-        to: recipientEmail,
-        subject: `ใบเสนอราคา ${(qo as any).quotationNo} จาก ${companyName}`,
-        html: `
+    await sendPlatformEmail({
+      to: recipientEmail,
+      subject: `ใบเสนอราคา ${(qo as any).quotationNo} จาก ${companyName}`,
+      html: `
           <div style="font-family: 'Sarabun', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: #2563eb; padding: 24px; border-radius: 12px 12px 0 0; color: white;">
               <h1 style="margin: 0; font-size: 22px;">ใบเสนอราคา</h1>
@@ -780,22 +773,10 @@ app.post("/api/quotations/:id/send-email", requireAuth, requireAnyModule("sales"
             </div>
           </div>
         `,
-      });
-
-      console.log(`[Email] Resend result:`, JSON.stringify(emailResult));
-      if (emailResult.error) {
-        console.error(`[Email] Resend error:`, emailResult.error);
-        return res.json({ success: false, message: `ส่งอีเมลไม่สำเร็จ: ${emailResult.error.message}` });
-      }
-      await db.update(quotations).set({ status: "sent", updatedAt: new Date() }).where(eq(quotations.id, qo.id));
-      res.json({ success: true, message: `ส่งอีเมลไปยัง ${recipientEmail} สำเร็จ` });
-    } catch (emailErr: any) {
-      console.error(`[Email] Exception:`, emailErr);
-      if (!process.env.RESEND_API_KEY) {
-        return res.json({ success: false, message: "ยังไม่ได้ตั้งค่าระบบส่งอีเมล (Resend API Key)" });
-      }
-      res.json({ success: false, message: `ส่งอีเมลไม่สำเร็จ: ${emailErr.message}` });
-    }
+    });
+    console.log(`[Email] Platform SMTP sent to=${recipientEmail}`);
+    await db.update(quotations).set({ status: "sent", updatedAt: new Date() }).where(eq(quotations.id, qo.id));
+    res.json({ success: true, message: `ส่งอีเมลไปยัง ${recipientEmail} สำเร็จ` });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
