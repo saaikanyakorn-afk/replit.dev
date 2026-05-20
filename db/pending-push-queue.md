@@ -163,6 +163,40 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
+### N9 — SMTP Migration: All email routes → PLATFORM_EMAIL_SMTP_* (sendPlatformEmail)
+**Status:** 📝 dev — ⚠️ NOT COMPLETE — pending-push-queue.md entry created but this queue entry itself is not finalized. พี่ทราย has NOT tested these changes yet. Do NOT push without testing + พี่ช้าง approval.
+**Schema change:** NO
+**Push type:** Code-only push (7 files + 1 new file)
+
+**What changed:**
+- Scanned ALL email-sending locations in codebase
+- Created shared helper `server/utils/platform-email.ts` — reads `PLATFORM_EMAIL_SMTP_*` from `system_config`, nodemailer + `tls:{rejectUnauthorized:false}`
+- Replaced ALL Resend/per-company SMTP blocks with `await sendPlatformEmail(...)` in 6 route files
+- PHP SMTP test script created for พี่ช้าง's Windows/Apache desktop
+
+**Files NOT touched (confirmed correct already):**
+- `server/routes/expense-routes.ts` ✅ (fixed in N8)
+- `server/routes/doc-settings-routes.ts` ✅ (fixed in N8)
+- `server/routes/sysadmin-routes.ts` ❌ NEVER TOUCH (SYSADMIN_SMTP_* = 2FA)
+- `clone-history-central.ts` ❌ NEVER TOUCH (internal Resend)
+
+| File | Role | Status |
+|------|------|--------|
+| `server/utils/platform-email.ts` | **NEW** — shared sendPlatformEmail helper | 📝 dev |
+| `tools/smtp-test.php` | **NEW** — standalone PHP SMTP test script for พี่ช้าง's Windows/Apache | 📝 dev |
+| `server/routes/billing-notes-routes.ts` | Resend → sendPlatformEmail | 📝 dev |
+| `server/routes/etax-hub.ts` | Resend → sendPlatformEmail | 📝 dev |
+| `server/routes/hr-routes.ts` | Resend → sendPlatformEmail | 📝 dev |
+| `server/routes/sales-docs-routes.ts` | Resend → sendPlatformEmail | 📝 dev |
+| `server/routes/etax-routes.ts` | per-company SMTP + Resend if/else (×2 sections) → sendPlatformEmail | 📝 dev |
+| `server/routes/pdf-routes.ts` | Resend → sendPlatformEmail, documentDeliveryLogs emailId → null | 📝 dev |
+
+⚠️ **Note on etaxMessageId:** `etax-routes.ts` previously stored Resend message ID in `etaxMessageId` column. Now stored as `null` — column still exists, data not lost, just no ID from platform SMTP.
+
+⚠️ **Before push:** พี่ทราย must test: send QT email, send e-Tax TIV email, send CN email, send PDF email from document list — all must arrive via mail.etaxcenter.com.
+
+---
+
 ### N7 — RD VAT service + multi-branch dialog
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
 **Schema change:** NO

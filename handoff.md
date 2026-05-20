@@ -1,3 +1,32 @@
+# 📋 SESSION LOG — 2026-05-20 NIGHT (REPLACEMENT AGENT)
+
+## Agent: Kai (replacement — arrived mid-session)
+
+**Context:** The previous agent had already done partial work this session before พี่ช้าง called STOP. This replacement agent was oriented by พี่ช้าง and resumed from that point.
+
+**Work done by previous agent (before this agent arrived):**
+- Created `tools/smtp-test.php` — PHP SMTP test script for พี่ช้าง's Windows/Apache desktop ✅
+- Created `server/utils/platform-email.ts` — shared SMTP helper ✅
+- Fixed `server/routes/billing-notes-routes.ts` — Resend → sendPlatformEmail ✅
+- Fixed `server/routes/etax-hub.ts` — Resend → sendPlatformEmail ✅
+- Fixed `server/routes/hr-routes.ts` — Resend → sendPlatformEmail ✅
+
+**Work done by this agent:**
+- Fixed `server/routes/sales-docs-routes.ts` — Resend → sendPlatformEmail ✅
+- Fixed `server/routes/etax-routes.ts` — per-company SMTP + Resend if/else (×2 sections) → sendPlatformEmail ✅
+- Fixed `server/routes/pdf-routes.ts` — Resend → sendPlatformEmail, emailId → null ✅
+- Added N9 entry to `db/pending-push-queue.md` ✅
+- Updated this handoff document ✅
+
+**Scope limit set by พี่ช้าง:**
+> Task authorized for this agent: complete the SMTP migration + update pending-push-queue.md + update handoff.md. **STOP after that. No other work.**
+>
+> **Reason:** พี่ช้าง spent more than half a day total doing agent orientation — TWICE — because the Replit system keeps injecting new agents mid-session. Each new agent arrives without context and risks breaking the production system. พี่ช้าง does not have energy to do a third full orientation tonight. All other pending work (N4, N6-hotfix2, N7, BOM/Scan Station task, etc.) is **NOT authorized** for any agent tonight without a fresh full orientation from พี่ช้าง.
+
+**For the next agent:** Do NOT touch anything except what พี่ช้าง explicitly authorizes in that session. Read `replit.md` FIRST before doing anything else. The answer to the last-line self-check is: `3. Read \`handoff.md\` next.`
+
+---
+
 # ⛔ RULE ZERO — DO NOT INVENT ANYTHING WHEN DEALING WITH PRODUCTION
 
 **Follow the rule and procedure BY THE LETTER. No room for creative thinking.**

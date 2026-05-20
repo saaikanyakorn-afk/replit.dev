@@ -341,17 +341,7 @@ app.post("/api/documents/:docType/:id/send-email", requireAuth, async (req, res)
       }
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    const defaultFromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
     const isTaxDocument = docType === "tax_invoice" || docType === "credit_note";
-    const fromEmail = defaultFromEmail;
-
-    if (!resendApiKey) {
-      return res.status(400).json({ message: "ยังไม่ได้ตั้งค่าบริการอีเมล (Resend API Key)" });
-    }
-
-    const { Resend } = await import("resend");
-    const resend = new Resend(resendApiKey);
 
     const emailSubject = subject || `${docLabel} ${docNo} จาก ${companyName}`;
     const emailBody = `
@@ -374,8 +364,7 @@ app.post("/api/documents/:docType/:id/send-email", requireAuth, async (req, res)
       </div>
     `;
 
-    const emailResult = await resend.emails.send({
-      from: fromEmail,
+    await sendPlatformEmail({
       to: recipientEmail,
       subject: emailSubject,
       html: emailBody,
@@ -392,7 +381,7 @@ app.post("/api/documents/:docType/:id/send-email", requireAuth, async (req, res)
         recipientEmail,
         status: "sent",
         sentBy: user.id,
-        metadata: JSON.stringify({ emailId: (emailResult as any)?.data?.id }),
+        metadata: JSON.stringify({ emailId: null }),
       });
     }
 
