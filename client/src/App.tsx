@@ -61,7 +61,6 @@ const ChoosePlanPage = lazy(() => import("@/pages/choose-plan"));
 const PlatformDashboard = lazy(() => import("@/pages/platform/dashboard"));
 const PlatformTenants = lazy(() => import("@/pages/platform/tenants"));
 const TenantOverview = lazy(() => import("@/pages/platform/tenant-overview"));
-const PlatformEmailConfig = lazy(() => import("@/pages/platform/email-config"));
 const ChatManagement = lazy(() => import("@/pages/platform/chat-management"));
 const PlatformSubscriptions = lazy(() => import("@/pages/platform/subscriptions"));
 const PlatformPaymentSettings = lazy(() => import("@/pages/platform/payment-settings"));
@@ -614,7 +613,6 @@ function Router() {
       <Route path="/dashboard/ecommerce" component={Dashboard} />
       <Route path="/login" component={Login} />
       <Route path="/platform" component={PlatformDashboard} />
-      <Route path="/platform/email-config" component={PlatformEmailConfig} />
       <Route path="/platform/tenants" component={PlatformTenants} />
       <Route path="/platform/tenant-overview" component={TenantOverview} />
       <Route path="/platform/subscriptions" component={PlatformSubscriptions} />

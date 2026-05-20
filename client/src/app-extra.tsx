@@ -62,6 +62,9 @@ const BomFormPage = lazy(() => import("@/pages/inventory/bom-form"));
 // [process-scan] Process Scan Station — scan employee + MO + log step
 const ProcessScanStation = lazy(() => import("@/pages/manufacturing/process-scan-station"));
 
+// [platform-email-config] SMTP config — platform super_admin only (app-extra bypass)
+const PlatformEmailConfig = lazy(() => import("@/pages/platform/email-config"));
+
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 9999, overflow: "auto" }}>
@@ -183,6 +186,11 @@ function matchProcessScan(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/process-scan";
 }
 
+// [platform-email-config] /platform/email-config — super_admin SMTP settings
+function matchPlatformEmailConfig(location: string): boolean {
+  return location.replace(/\?.*$/, "") === "/platform/email-config";
+}
+
 // [ncr] route matchers
 function matchNcrList(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/ncr";
@@ -261,6 +269,7 @@ export default function AppExtra() {
   const isNcrForm = matchNcrForm(location);
   const ncrFormEditId = matchNcrFormEdit(location);
   const isProcessScan = matchProcessScan(location);
+  const isPlatformEmailConfig = matchPlatformEmailConfig(location);
 
   if (pdfId) {
     return (
@@ -575,6 +584,17 @@ export default function AppExtra() {
           <ManufacturingLayout>
             <NcrForm idProp={ncrFormEditId} urlBase="/manufacturing" />
           </ManufacturingLayout>
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [platform-email-config] SMTP settings page — platform super_admin only
+  if (isPlatformEmailConfig) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <PlatformEmailConfig />
         </Suspense>
       </FullPageOverlay>
     );
