@@ -191,9 +191,9 @@ These files are **not tied to any single feature** — they will be skipped if y
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-20 — Kai session (custom print form template preview scaling + พี่ช้าง session audit). Handoff updated by main agent.
-**Production status:** Last known deploy #75 (2026-05-15) ✅
-**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ + WHT cert PDF signature image ✅ + WHT cert seqNo auto-compute ✅ + LINE card purple/data ✅ + Email PDF stamp+seqNo ✅ + Custom print form preview scaling ✅ — all on dev, awaiting พี่ทราย test + พี่ช้าง approval before push.
+**Last verified:** 2026-05-20 — Kai session (N3 material-issue deploy ✅ + N6 WHT cert PDF/email/LINE deploy ✅ + N6-hotfix iframe auth 401 fix deploy ✅). Handoff updated by main agent.
+**Production status:** N3 ✅ deployed 2026-05-20 12:21 | N6 ✅ deployed 2026-05-20 | N6-hotfix ✅ deployed 2026-05-20 (latest)
+**Dev status:** Payment-side journal fixes (ฝั่งขาย + ฝั่งจ่าย) ✅ + Task #35 material-issue ✅ + Expense timeout fix ✅ + RE overpayment block ✅ + WHT cert dropdown/PDF fix ✅ + PM lock (SO/PR/PO) ✅ + WHT cert PDF signature image ✅ + WHT cert seqNo auto-compute ✅ + LINE card purple/data ✅ + Email PDF stamp+seqNo ✅ + Custom print form preview scaling ✅ — code deployed to production via N3+N6+N6-hotfix. N4/N7 still pending push.
 
 ---
 
@@ -209,17 +209,14 @@ That file is the single source of truth for what is awaiting production push and
 Before she gives you a single task, you MUST brief her. Say something like:
 
 > "สวัสดีครับพี่ทราย ผมเป็น Kai ตัวใหม่ครับ — ความจำรีเซ็ตแล้ว แต่ผมอ่าน handoff เรียบร้อยแล้ว ตอนนี้ระบบอยู่ที่นี่ครับ:
-> - **ฝั่งขาย (Tax Invoice):** แก้ครบแล้ว — journal ลงบัญชีธนาคาร/เงินสดถูกต้องแล้ว ยอดค้างชำระแสดงถูกแล้ว พี่ทรายยืนยันแล้วว่าผ่าน ✅
-> - **ฝั่งจ่าย (Expense/Purchase):** แก้ครบแล้ว — วิธีชำระเงินแยกถูกต้องแล้ว journal ฝั่งจ่ายถูกต้องแล้ว ✅
-> - **Expense บันทึกไม่ได้ (timeout):** แก้แล้ว ✅
-> - **ใบเสร็จรับเงิน (RE) บันทึกเกินยอดค้าง:** แก้แล้ว — ระบบบล็อกทันที ✅
-> - **ใบหัก ณ ที่จ่าย (50 ทวิ) — PDF/LINE/Email เปิดไม่ได้:** แก้แล้ว — static import แทน dynamic require ✅
-> - **ใบหัก ณ ที่จ่าย — ปุ่ม actions + ส่งอีเมล + PDF fix:** ✅ เสร็จ — dropdown + email dialog + checkbox canvas-based + tax ID column fix + share route camelCase fix
-> - **Niramit font system-wide:** ✅ เสร็จ — @fontsource/niramit bundled ใน Vite, ลบ Google CDN แล้ว — ⚠️ ต้อง push `client/src/index.css` + `package.json` + `package-lock.json` ด้วย (ดู CRITICAL PUSH CHECKLIST)
-> - **วิธีชำระเงิน (PM) ใบขอซื้อ/ใบสั่งซื้อ/ใบสั่งขาย:** ซ่อนแล้ว (blank white) — เอกสารเหล่านี้ไม่มีขั้นตอนชำระเงิน ✅
+> - **N3 ใบเบิกวัตถุดิบ + QR Scan:** ✅ Deploy แล้ว production 2026-05-20 — migration `from_warehouse_id` + `material_issues` tables สำเร็จ
+> - **N6 ใบหัก ณ ที่จ่าย (50 ทวิ) — PDF + Email + LINE + Niramit:** ✅ Deploy แล้ว production 2026-05-20 — 11 files รวม font, PDF generation, LINE card, email dialog ครบ
+> - **N6-hotfix WHT cert print page 401:** ✅ Deploy แล้ว production 2026-05-20 — แก้ iframe ใช้ blob URL แทน direct URL (Bearer auth fix)
+> - **ฝั่งขาย (Tax Invoice):** แก้ครบแล้ว — journal ลงบัญชีธนาคาร/เงินสดถูกต้องแล้ว ✅
+> - **ฝั่งจ่าย (Expense/Purchase):** แก้ครบแล้ว — วิธีชำระเงินแยกถูกต้องแล้ว ✅
+> - **Expense บันทึกไม่ได้ (timeout) + RE เกินยอด:** แก้แล้ว ✅
 > - **Related-docs (การอ้างอิงเอกสาร):** ยังไม่ได้แก้ — รอ
-> - **Task #35 ใบเบิกวัตถุดิบ + QR Scan:** เสร็จแล้วบน dev รอพี่ทรายทดสอบ
-> - **ทั้งหมดข้างบน:** ยังอยู่บน dev รอพี่ทรายทดสอบรอบสุดท้ายก่อน push production
+> - **N4 (payment fixes) + N7 (RD VAT):** พี่ทรายทดสอบผ่านแล้ว รอพี่ช้าง push approval
 >
 > พี่ทรายต้องการให้เริ่มที่ไหนก่อนครับ?"
 
@@ -231,11 +228,11 @@ Before she gives you a single task, you MUST brief her. Say something like:
 |---|------|--------|-------------|
 | N1 | **Related-docs navigation** — `related-docs-dialog.tsx` must navigate to `listPath + ?companyId=X&<searchParam>=<docNo>`. พี่ทราย confirmed: "ต้องวิ่งไปหน้ารายการก่อนเสมอ ไม่ให้วิ่งไปหน้าแก้ไข". `docTypeConfig` already has `listPath` + `searchParam` per type. Check current navigate logic at line ~131 — confirm it uses listPath not editPath for all types | ❌ NOT YET DONE | Kai implements |
 | N2 | **เอกสารที่ออกผิดก่อนแก้โค้ด** — RE26051800001 จิรา etc. สองแนวทาง: (1) ยกเลิก+ออกใหม่ หรือ (2) แก้ journal ตรงๆ | ⏳ Waiting | พี่ช้าง decides |
-| N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ✅ พี่ทราย tested 2026-05-20 | พี่ช้าง approves push |
+| N3 | **Task #35 material-issue-lot-scan** — complete on dev, awaiting พี่ทราย test | ✅ **DEPLOYED 2026-05-20** — migration confirmed, `from_warehouse_id` column on prod | ✅ Done |
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block + Settings > วิธีชำระเงิน** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes). **Settings > วิธีชำระเงิน (`client/src/pages/settings/payment-methods.tsx`):** แยก tab รับเงิน/จ่ายเงิน, เพิ่ม/แก้ไข/ลบวิธีชำระเงินแต่ละประเภทได้, ผูกรหัสบัญชี (รับ → assets หมวด 1; จ่าย → assets+liabilities หมวด 1-2), บันทึก bankName/bankAccountNo, กำหนด default/active ได้. ถ้าไม่ผูกรหัสบัญชีระบบบล็อกตอนบันทึกเอกสาร. | ✅ พี่ทราย tested 2026-05-20 | พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
 | N7 | **RD VAT Service — ค้นหาจากสรรพากรแทน DBD + multi-branch dialog + address formatting (2026-05-19):** ลบ DBD (openapi.dbd.go.th) ออกทั้งหมด. `lookupRdVatAll(taxId)` call `rdws.rd.go.th/serviceRD3/vatserviceRD3.asmx` (SOAP, anonymous/anonymous) BranchNumber 0–9 พร้อมกัน. `/api/dbd-lookup/:taxId` คืน `{ ...first, branches: [...], contactId? }` เสมอ. `BranchSelectProvider` (`client/src/contexts/branch-select-context.tsx`) global dialog — `selectBranch(branches)` คืน Promise; ใส่ใน `App.tsx`. `useDbdLookup` เรียก dialog ถ้า `branches.length > 1`. Branch label: 0 → "สำนักงานใหญ่", 1+ → padStart(5,"0"). Address: detect `isBkk = province.includes("กรุงเทพ")` → แขวง/เขต; other → ตำบล/อำเภอ/จังหวัดXXX. ครบทุก field: อาคาร ชั้น ห้อง **เลขที่** หมู่บ้าน หมู่ แยก ซอย ถนน. ทดสอบ: 0105535134278 ✅ 0105561017020 BR0/BR1 ✅ | ✅ พี่ทราย tested 2026-05-20 | พี่ช้าง approves push |
-| N6 | **WHT cert (50 ทวิ) — ปุ่มส่งอีเมล** — ไม่ต้อง ALTER TABLE เลย: email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. มี dialog ยืนยัน/แก้ไข email ก่อนส่ง. ไฟล์ที่แก้: `expense-routes.ts` (2 routes ใหม่ + share route fix), `wht-cert-list.tsx` (dialog + dropdown item), `pdf-wht-cert.ts` (checkbox fix + tax ID column fix). **PDF fix (2026-05-19):** cb() เปลี่ยนเป็น canvas-based (ไม่ขึ้นกับ font ☑/☐ ไม่มีใน Niramit), tax ID column explicit width 210pt (แก้ pdfmake auto-width miscalculate), share route เพิ่ม missing camelCase map (formType, certDate, whtCondition, payerBranch, payeeBranch, seqNo) + items camelCase map. **Niramit font self-hosting (2026-05-19):** ติดตั้ง `@fontsource/niramit` + import ใน `client/src/index.css` (thai subset 300/400/500/600/700 + 400-italic) แทน Google Fonts CDN ที่เคยอยู่ใน `document-renderer.tsx` line 666 — ดู ⚠️ CRITICAL PUSH CHECKLIST ด้านล่าง. **Signature image (2026-05-19):** `loadLocalImageBase64()` helper ใน `pdf-wht-cert.ts` อ่านไฟล์จาก `uploads/` → base64 → embed ใน pdfmake; share route + email route (`expense-routes.ts`) ดึง `user.signatureUrl` → ส่งเป็น `createdBySignatureUrl` → PDF size เพิ่ม 30460→36058 bytes ยืนยัน embed สำเร็จ. **seqNo auto-compute (2026-05-19):** `computeWhtSeqNo(certId, companyId, formType, paidDate)` helper ใน `expense-routes.ts` (~line 1517) — query certs same company+formType+month+year sort by paidDate/id → 1-indexed position; applied ใน authenticated PDF route + share PDF route + email PDF route. ถ้า `seq_no` กรอกไว้เองใช้ค่านั้น ถ้าว่างคำนวณอัตโนมัติ. **LINE card fix (2026-05-19):** `line-send-dialog.tsx` map "ใบ 50 ทวิ" → "wht-cert" ก่อน POST; `line-routes.ts` เพิ่ม wht-cert ใน DOC_LABELS (ใบ 50 ทวิ) + DOC_COLORS (#9333ea, สีม่วง) + data branch (query cert_no/payee_name/tax_withheld by share_token) → การ์ด LINE แสดงสีม่วง + certNo + payeeName + ยอดภาษีที่หัก. **Email PDF parity (2026-05-19):** email route (`/api/wht-certs/:id/send-email`) เพิ่ม stampUrl fetch จาก document_settings + seqNo auto-compute → PDF แนบเมล์มี stamp + ลำดับที่เหมือน share link. | ✅ พี่ทราย tested 2026-05-20 | พี่ช้าง approves push to production |
+| N6 | **WHT cert (50 ทวิ) — PDF + Email + LINE + Niramit** — ✅ **DEPLOYED 2026-05-20** 11 files. email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. PDF: static import แทน dynamic require, checkbox canvas-based, tax ID column 210pt, signature embed, seqNo auto-compute. LINE card: สีม่วง #9333ea + certNo + payeeName + ยอดภาษีที่หัก. Niramit: @fontsource/niramit bundled ใน Vite. **N6-hotfix (2026-05-20):** หลัง deploy พบ print page `/purchases/wht/print/:id` → 401 บน production — root cause: `<iframe src="/api/wht-certs/:id/pdf">` เป็น browser GET request ไม่มี JS interceptor → ส่งแค่ cookies ไม่มี `Authorization: Bearer` → production ใช้ `cookie.secure=true` + Bearer token เป็น auth หลัก (localStorage) → iframe ไม่รู้จัก session. Fix: `wht-cert-print.tsx` เปลี่ยน iframe ให้ fetch blob ด้วย `getSessionToken()` → `URL.createObjectURL(blob)` → `<iframe src={blobUrl}>` — certNo fetch + download button เพิ่ม Bearer auth header ด้วย. commit `4e6ef45`. | ✅ Done (incl. hotfix) |
 
 ### Business knowledge you MUST know before touching any code:
 
@@ -275,6 +272,26 @@ Before she gives you a single task, you MUST brief her. Say something like:
 - **All channels (share link, LINE, Email PDF) route through `/api/share/wht-cert/:token/pdf`** — one fix fixes all channels simultaneously
 - Actions dropdown pattern: WHT cert list was the ONLY document list using individual icon buttons instead of DropdownMenu — fixed to match other docs (แก้ไข, ดูตัวอย่าง/สั่งพิมพ์, ลิงก์สำหรับแชร์, ส่งผ่าน LINE, อนุมัติ, ลบ)
 - **ส่งอีเมล: NOT YET DONE** — `withholdingTaxCerts` table has no `payeeEmail` column, no send-email route exists — see N6 in pending work above
+
+**⚠️ WHT cert print page — iframe auth pattern (lesson learned 2026-05-20):**
+
+Production uses `cookie.secure = true` (auth.ts line 52). The React app stores session ID in `localStorage` as `etax_session_token` and adds `Authorization: Bearer <token>` to every JavaScript `fetch()` call via `queryClient.ts`. This is the PRIMARY auth mechanism on production.
+
+**Critical rule:** Any page that embeds a PDF/API URL in an `<iframe src="...">` or `<img src="...">` will fail on production with 401 because:
+- Browser GET requests (iframe, img, link navigation) do NOT run JS interceptors
+- They send only cookies — no Bearer header
+- If `cookie.secure = true` causes cookie delivery issues (Windows server + proxy), the session is not found
+
+**Correct pattern for ALL authenticated file downloads in iframes:**
+```tsx
+import { getSessionToken } from "@/lib/queryClient";
+const headers = getSessionToken() ? { Authorization: `Bearer ${getSessionToken()}` } : {};
+const res = await fetch("/api/some/file", { credentials: "include", headers });
+const blob = await res.blob();
+const blobUrl = URL.createObjectURL(blob);
+// <iframe src={blobUrl} /> or <a href={blobUrl} download>
+```
+This applies to: WHT cert PDF, any future authenticated PDF, any signed file served by the API.
 
 **WHT cert PDF — Self-Diagnosis Method (proven 2026-05-19, Kai can do this independently up to a level without พี่ทราย):**
 
