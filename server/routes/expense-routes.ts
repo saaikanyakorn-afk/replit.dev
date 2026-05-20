@@ -2061,14 +2061,12 @@ export function registerExpenseRoutes(app: Express) {
       const { toEmail } = req.body;
       if (!toEmail) return res.status(400).json({ message: "กรุณาระบุอีเมลผู้รับ" });
 
-      const cfgRows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_RESEND_API_KEY','SYSADMIN_RESEND_FROM','SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
+      const cfgRows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
       const cfg: Record<string, string> = {};
       for (const r of (cfgRows.rows || []) as any[]) cfg[r.config_key] = r.config_value;
 
-      const hasResend = !!cfg.SYSADMIN_RESEND_API_KEY;
-      const hasSmtp = !!(cfg.SYSADMIN_SMTP_HOST && cfg.SYSADMIN_SMTP_USER && cfg.SYSADMIN_SMTP_PASS);
-      if (!hasResend && !hasSmtp) {
-        return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP — กรุณาไปที่ ตั้งค่า → ตั้งค่าระบบ → ตั้งค่า SMTP สำหรับส่งอีเมล" });
+      if (!cfg.SYSADMIN_SMTP_HOST || !cfg.SYSADMIN_SMTP_USER || !cfg.SYSADMIN_SMTP_PASS) {
+        return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP — กรุณาไปที่ Platform → ตั้งค่า Email" });
       }
 
       const items = await db.select().from(whtCertItems).where(eq(whtCertItems.whtCertId, doc.id));
@@ -2094,45 +2092,25 @@ export function registerExpenseRoutes(app: Express) {
       const pdfBase64 = pdfBuffer.toString("base64");
       const attachmentName = `wht-cert-${doc.certNo || doc.id}.pdf`;
 
-      const senderDomain = cfg.SYSADMIN_RESEND_FROM || "noreply@etaxerp.com";
-      const fromDisplay = `${companyName} <${senderDomain}>`;
+      const fromAddress = cfg.SYSADMIN_SMTP_FROM || "noreply@etaxcenter.com";
+      const fromDisplay = `อีเมลอัตโนมัติจาก E-Tax Center <${fromAddress}>`;
       const replyTo = company?.email || undefined;
 
-      if (hasResend) {
-        const resendBody: Record<string, any> = {
-          from: fromDisplay,
-          to: [toEmail],
-          subject,
-          html: htmlBody,
-          attachments: [{ filename: attachmentName, content: pdfBase64 }],
-        };
-        if (replyTo) resendBody.reply_to = replyTo;
-        const resendRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${cfg.SYSADMIN_RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify(resendBody),
-        });
-        if (!resendRes.ok) {
-          const errBody = await resendRes.json().catch(() => ({})) as any;
-          throw new Error(errBody?.message || `Resend API error ${resendRes.status}`);
-        }
-      } else {
-        const nodemailer = await import("nodemailer");
-        const transporter = nodemailer.default.createTransport({
-          host: cfg.SYSADMIN_SMTP_HOST,
-          port: Number(cfg.SYSADMIN_SMTP_PORT || "587"),
-          secure: cfg.SYSADMIN_SMTP_SECURE === "true",
-          auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
-        });
-        await transporter.sendMail({
-          from: fromDisplay,
-          to: toEmail,
-          replyTo: replyTo,
-          subject,
-          html: htmlBody,
-          attachments: [{ filename: attachmentName, content: pdfBuffer, contentType: "application/pdf" }],
-        });
-      }
+      const nodemailer = await import("nodemailer");
+      const transporter = nodemailer.default.createTransport({
+        host: cfg.SYSADMIN_SMTP_HOST,
+        port: Number(cfg.SYSADMIN_SMTP_PORT || "587"),
+        secure: cfg.SYSADMIN_SMTP_SECURE === "true",
+        auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
+      });
+      await transporter.sendMail({
+        from: fromDisplay,
+        to: toEmail,
+        replyTo: replyTo,
+        subject,
+        html: htmlBody,
+        attachments: [{ filename: attachmentName, content: pdfBuffer, contentType: "application/pdf" }],
+      });
       res.json({ success: true, message: `ส่งอีเมลไปยัง ${toEmail} สำเร็จ` });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });

@@ -122,6 +122,26 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/s
 
 ---
 
+### N8 — Platform Email Config + WHT cert email fix
+**Status:** 📝 dev — รอพี่ทราย test บน dev ก่อน แล้วรอพี่ช้าง approve push
+**Schema change:** NO
+**Push type:** Code-only, 3 files
+
+**สิ่งที่เปลี่ยน:**
+1. `email-config.tsx` — เปลี่ยน preset เป็น etaxcenter.com (Webmail) เป็นตัวแรก + Outlook + ลบ Resend/Mailjet ออก
+2. `expense-routes.ts` — ลบ Resend path ออก, ใช้ SMTP อย่างเดียว, From = `อีเมลอัตโนมัติจาก E-Tax Center <noreply@etaxcenter.com>`, Reply-To = company.email จาก DB
+3. `doc-settings-routes.ts` — test endpoint ใช้ display name เดียวกัน
+
+**วิธีใช้หลัง push:** พี่ทรายไปที่ Platform → ตั้งค่า Email → เลือก etaxcenter.com → กรอก email + password webmail → บันทึก → ส่งทดสอบ
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/platform/email-config.tsx` | UI preset เปลี่ยนเป็น etaxcenter.com webmail | 📝 dev |
+| `server/routes/expense-routes.ts` | WHT cert email — ใช้ SMTP อย่างเดียว + from display name ถูกต้อง | 📝 dev |
+| `server/routes/doc-settings-routes.ts` | Test endpoint — from display name ถูกต้อง | 📝 dev |
+
+---
+
 ### N7 — RD VAT service + multi-branch dialog
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
 **Schema change:** NO

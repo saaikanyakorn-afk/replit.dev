@@ -377,8 +377,10 @@ app.post("/api/settings/smtp/test", requireAuth, requireRole("admin", "super_adm
       secure: cfg.SYSADMIN_SMTP_SECURE === "true",
       auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
     });
+    const fromAddress = cfg.SYSADMIN_SMTP_FROM || "noreply@etaxcenter.com";
+    const fromDisplay = `อีเมลอัตโนมัติจาก E-Tax Center <${fromAddress}>`;
     await transporter.sendMail({
-      from: cfg.SYSADMIN_SMTP_FROM || cfg.SYSADMIN_SMTP_USER,
+      from: fromDisplay,
       to: toEmail,
       subject: "ทดสอบ SMTP — E-Tax Center",
       html: `<div style="font-family:sans-serif;padding:20px"><p>ทดสอบระบบส่งอีเมลผ่าน SMTP สำเร็จ ✅</p></div>`,
