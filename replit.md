@@ -85,7 +85,7 @@ If you cannot recite that from memory — stop what you are doing and keep readi
 
 ## 🔑 MANDATORY PUSH RULE — ENFORCED BY พี่ช้าง — ALL AGENTS MUST FOLLOW
 
-
+See `handoff.md` section "PUSH METHOD (never forget)" for the exact steps to push to production. Read it before every push — the rule never changes.
 
 **Deploy key details** (for reference only — do not regenerate):
 - Name: `2nd Replit Deploy key` on `saaikanyakorn-afk/etaxcenter`
