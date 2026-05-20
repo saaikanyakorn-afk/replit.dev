@@ -946,6 +946,7 @@ VALUES ('vXXX', 'What changed', 'alter_column|add_column|data_migration', 'etaxe
 4. **NEVER cherry-pick to etaxerp**: server/db.ts, server/ecom-db.ts, server/pos-db.ts, server/db-schema-sync.ts (uses encryption — production-specific), server/route-middleware.ts, server/routes.ts, server/storage.ts, server/routes/pos-routes.ts, server/routes/line-routes.ts, client/src/pages/platform/*
 4. **NEVER checkout `client/` as folder** — cherry-pick individual files only
 5. **NEVER `pm2 restart all`** — the ONLY correct command is `pm2 restart etax-center`
+   - **NEVER ask พี่ช้าง to send `pm2 logs`** — remote connection makes it impossible to Ctrl+C. Use `npm run schema:diff` from Replit to verify migration results directly against prod DB instead.
    - ⚠️ Process name is `etax-center` — NOT `etax`, NOT `etaxcenter`, NOT `app`, NOT `server`
    - Before writing any deploy command, verify the name here. Do NOT guess.
    - Wrong name = error on server, deploy fails, new server admin cannot fix it without knowing the correct name
