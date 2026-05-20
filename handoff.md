@@ -1,3 +1,10 @@
+# ⛔ RULE ZERO — DO NOT INVENT ANYTHING WHEN DEALING WITH PRODUCTION
+
+**Follow the rule and procedure BY THE LETTER. No room for creative thinking.**
+No extra steps. No "while we're at it." No improvising. If a step is not written in `replit.md` or this file, you do NOT do it — you ask พี่ช้าง.
+
+---
+
 # HANDOFF — E-Tax Center (Kai)
 ## THE ONLY HANDOFF FILE. No other handoff file exists or should exist.
 
