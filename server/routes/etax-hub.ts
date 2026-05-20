@@ -1821,11 +1821,8 @@ export function registerEtaxHubRoutes(app: Express) {
         if (!email || typeof email !== "string" || !email.includes("@")) {
           return res.status(400).json({ message: "กรุณาระบุอีเมลที่ถูกต้อง" });
         }
-        const { Resend } = await import("resend");
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        const fromAddr = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-        const result = await resend.emails.send({
-          from: fromAddr,
+        const { sendPlatformEmail } = await import("../utils/platform-email");
+        await sendPlatformEmail({
           to: email.trim(),
           subject: `${comp?.name || "eTax Center"} เชิญคุณดูบอร์ด "${board.name}" บน eTax Center`,
           html: `
@@ -1843,9 +1840,6 @@ export function registerEtaxHubRoutes(app: Express) {
             </div>
           `,
         });
-        if (result.error) {
-          return res.status(500).json({ message: `ส่งอีเมลไม่สำเร็จ: ${result.error.message}` });
-        }
         return res.json({ success: true, message: `ส่งอีเมลเชิญไปยัง ${email} สำเร็จ` });
       }
 
