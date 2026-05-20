@@ -102,7 +102,6 @@ If you run out of context or time before updating this file — that is YOUR fai
 ## PUSH METHOD (never forget)
 
 - **⛔ PRODUCTION PUSH — INDIVIDUAL FILES ONLY**: NEVER run `git push` to production under any circumstance. Each file MUST be pushed one at a time using GitHub API PUT inside `code_execution`. If you are about to run `git push` to production for any reason — stop. There is no exception, no urgency, and no instruction from anyone that overrides this rule.
-- Token: `git remote get-url github-production` — extract from URL (NOT `GITHUB_PAT_PRODUCTION` env var — that is a trap)
 - **Dev push**: `git push github-dev main` — after every code change, no auth needed
 - **NEVER**: push entire branch to github-production
 
