@@ -1226,6 +1226,129 @@ function SmtpConfigDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+function ResendConfigDialog({ onClose }: { onClose: () => void }) {
+  const { toast } = useToast();
+  const [apiKey, setApiKey] = useState("");
+  const [from, setFrom] = useState("noreply@etaxerp.com");
+  const [testEmail, setTestEmail] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+  const [hasKey, setHasKey] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/sysadmin/resend-config", { credentials: "include" })
+      .then(r => r.json()).then(d => {
+        setHasKey(!!d.hasKey);
+        setFrom(d.from || "noreply@etaxerp.com");
+        setLoading(false);
+      }).catch(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    if (!apiKey && !hasKey) { toast({ title: "กรุณากรอก API Key", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const body: any = { from };
+      if (apiKey) body.apiKey = apiKey;
+      else body.apiKey = "__keep__";
+      const res = await fetch("/api/sysadmin/resend-config", {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.message);
+      setHasKey(true); setApiKey("");
+      toast({ title: "บันทึก Resend config สำเร็จ ✅" });
+    } catch (e: any) { toast({ title: "บันทึกล้มเหลว", description: e.message, variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  const handleTest = async () => {
+    if (!testEmail) { toast({ title: "กรุณากรอก email ทดสอบ", variant: "destructive" }); return; }
+    setTesting(true);
+    try {
+      const body: any = { from, testEmail };
+      if (apiKey) body.apiKey = apiKey;
+      const res = await fetch("/api/sysadmin/resend-config/test", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.message);
+      toast({ title: "ส่ง email ทดสอบสำเร็จ ✅", description: d.message });
+    } catch (e: any) { toast({ title: "ส่ง email ล้มเหลว", description: e.message, variant: "destructive" }); }
+    finally { setTesting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-testid="dialog-resend-config">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="p-5 border-b">
+          <h2 className="text-lg font-bold flex items-center gap-2"><Send className="h-5 w-5 text-violet-500" /> ตั้งค่า Resend Email API</h2>
+          <p className="text-xs text-gray-500 mt-1">ใช้สำหรับส่งใบ 50 ทวิ และเอกสารต่างๆ ทาง email — ลงทะเบียนได้ที่ resend.com</p>
+        </div>
+        {loading ? (
+          <div className="p-10 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" /></div>
+        ) : (
+          <div className="p-5 space-y-4">
+            {hasKey && (
+              <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-700">
+                <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" /> ตั้งค่า API Key แล้ว — กรอก key ใหม่เพื่อเปลี่ยน
+              </div>
+            )}
+            <div>
+              <Label className="text-sm">Resend API Key *</Label>
+              <div className="relative mt-1">
+                <Input
+                  type={showKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={e => setApiKey(e.target.value)}
+                  placeholder={hasKey ? "(ไม่เปลี่ยน — กรอกเพื่ออัปเดต)" : "re_xxxxxxxxxxxxxxxx"}
+                  className="pr-10"
+                  data-testid="input-resend-api-key"
+                />
+                <button type="button" onClick={() => setShowKey(v => !v)} className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600">
+                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">เข้า resend.com/api-keys → Create API Key → copy ค่าที่ขึ้นต้นด้วย re_</p>
+            </div>
+            <div>
+              <Label className="text-sm">From Address (verified domain)</Label>
+              <Input value={from} onChange={e => setFrom(e.target.value)} placeholder="noreply@etaxerp.com" className="mt-1" data-testid="input-resend-from" />
+              <p className="text-xs text-gray-400 mt-1">ต้อง verify domain นี้ใน Resend dashboard ก่อน — ชื่อบริษัทลูกค้าจะแสดงเป็น display name อัตโนมัติ</p>
+            </div>
+            <div className="rounded-md bg-violet-50 border border-violet-100 px-3 py-2 text-xs text-violet-700">
+              <strong>ตัวอย่างที่คู่ค้าเห็น:</strong><br />
+              จาก: <span className="font-mono">บริษัท ABC จำกัด &lt;{from || "noreply@etaxerp.com"}&gt;</span><br />
+              ตอบกลับ: email ของบริษัทลูกค้า (ถ้ากรอกไว้ในระบบ)
+            </div>
+            <div className="border-t pt-4">
+              <Label className="text-sm">ทดสอบส่งอีเมล</Label>
+              <div className="flex gap-2 mt-1">
+                <Input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="your@email.com" data-testid="input-resend-test-email" />
+                <Button variant="outline" onClick={handleTest} disabled={testing || (!apiKey && !hasKey)} className="shrink-0" data-testid="btn-test-resend">
+                  {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="p-5 border-t flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} data-testid="btn-close-resend">ปิด</Button>
+          <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={handleSave} disabled={saving || loading} data-testid="btn-save-resend">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />} บันทึก
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ResetPasswordDialog({ admin, onClose, policy }: { admin: SysAdminUser; onClose: () => void; policy: PasswordPolicy | null }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1565,6 +1688,7 @@ export default function SysAdminManagement() {
   const [showAdd, setShowAdd] = useState(false);
   const [editTarget, setEditTarget] = useState<SysAdminUser | null>(null);
   const [showPolicy, setShowPolicy] = useState(false);
+  const [showResend, setShowResend] = useState(false);
   const [resetTarget, setResetTarget] = useState<SysAdminUser | null>(null);
   const [activeTab, setActiveTab] = useState<"users" | "audit">("users");
   const [show2FA, setShow2FA] = useState(false);
@@ -1755,6 +1879,11 @@ export default function SysAdminManagement() {
             {meData && (
               <Button size="sm" variant="outline" onClick={() => setShow2FA(true)} className="h-9 border-[#fb9678] text-[#fb9678] hover:bg-orange-50" data-testid="btn-my-2fa">
                 <ShieldCheck className="h-4 w-4 mr-1" /> 2FA ของฉัน
+              </Button>
+            )}
+            {isMasterCaller && (
+              <Button size="sm" variant="outline" onClick={() => setShowResend(true)} className="h-9 border-violet-400 text-violet-600 hover:bg-violet-50" data-testid="btn-resend-config">
+                <Send className="h-4 w-4 mr-1" /> Resend Email
               </Button>
             )}
             {isMasterCaller && (
@@ -2200,6 +2329,7 @@ export default function SysAdminManagement() {
       {showPolicy && policy && meData && <PolicySettingsDialog policy={policy} me={meData as SysAdminUser} onClose={() => setShowPolicy(false)} />}
       {show2FA && meData && <My2FADialog me={meData as SysAdminUser} onClose={() => setShow2FA(false)} />}
       {showSmtp && <SmtpConfigDialog onClose={() => setShowSmtp(false)} />}
+      {showResend && <ResendConfigDialog onClose={() => setShowResend(false)} />}
 
       {showAuditDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-testid="dialog-confirm-audit-delete">

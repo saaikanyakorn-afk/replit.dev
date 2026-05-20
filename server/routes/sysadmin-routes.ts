@@ -1374,6 +1374,57 @@ export function registerSysAdminRoutes(app: Express) {
     }
   });
 
+  // ─── Resend Config (Master only) ────────────────────────────────────────────
+  app.get("/api/sysadmin/resend-config", requireSysAdminAuth, async (req, res) => {
+    try {
+      const session = req.session as any;
+      const [caller] = await db.select().from(sysAdmins).where(eq(sysAdmins.id, session.sysAdminId)).limit(1);
+      if (!caller?.isMaster) return res.status(403).json({ message: "เฉพาะ Master SysAdmin เท่านั้น" });
+      const rows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_RESEND_API_KEY','SYSADMIN_RESEND_FROM')`));
+      const cfg: Record<string, string> = {};
+      for (const r of (rows.rows || []) as any[]) cfg[r.config_key] = r.config_value;
+      res.json({ apiKey: cfg.SYSADMIN_RESEND_API_KEY ? "***" : "", from: cfg.SYSADMIN_RESEND_FROM || "", hasKey: !!cfg.SYSADMIN_RESEND_API_KEY });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.put("/api/sysadmin/resend-config", requireSysAdminAuth, async (req, res) => {
+    try {
+      const session = req.session as any;
+      const [caller] = await db.select().from(sysAdmins).where(eq(sysAdmins.id, session.sysAdminId)).limit(1);
+      if (!caller?.isMaster) return res.status(403).json({ message: "เฉพาะ Master SysAdmin เท่านั้น" });
+      const { apiKey, from } = req.body;
+      const keepKey = !apiKey || apiKey === "__keep__";
+      if (!keepKey && !String(apiKey).startsWith("re_")) return res.status(400).json({ message: "Resend API Key ไม่ถูกต้อง — ต้องขึ้นต้นด้วย re_" });
+      if (!keepKey) {
+        await db.execute(sql.raw(`INSERT INTO system_config(config_key,config_value) VALUES('SYSADMIN_RESEND_API_KEY',${JSON.stringify(String(apiKey))}) ON CONFLICT(config_key) DO UPDATE SET config_value=EXCLUDED.config_value`));
+      }
+      const fromVal = from ? String(from) : "noreply@etaxerp.com";
+      await db.execute(sql.raw(`INSERT INTO system_config(config_key,config_value) VALUES('SYSADMIN_RESEND_FROM',${JSON.stringify(fromVal)}) ON CONFLICT(config_key) DO UPDATE SET config_value=EXCLUDED.config_value`));
+      await logAudit(req, "update_resend_config", "sysadmin", caller.id, caller.username, `from: ${fromVal}`);
+      res.json({ message: "บันทึก Resend config สำเร็จ" });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/sysadmin/resend-config/test", requireSysAdminAuth, async (req, res) => {
+    try {
+      const session = req.session as any;
+      const [caller] = await db.select().from(sysAdmins).where(eq(sysAdmins.id, session.sysAdminId)).limit(1);
+      if (!caller?.isMaster) return res.status(403).json({ message: "เฉพาะ Master SysAdmin เท่านั้น" });
+      const { apiKey, from, testEmail } = req.body;
+      const toEmail = testEmail || caller.email;
+      if (!toEmail) return res.status(400).json({ message: "กรุณากรอก email ทดสอบ" });
+      if (!apiKey || !String(apiKey).startsWith("re_")) return res.status(400).json({ message: "Resend API Key ไม่ถูกต้อง" });
+      const fromAddr = `E-Tax Center <${from || "noreply@etaxerp.com"}>`;
+      const testRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: fromAddr, to: [toEmail], subject: "ทดสอบ Resend — E-Tax Center SysAdmin", html: `<div style="font-family:sans-serif;padding:20px"><p>ทดสอบระบบส่งอีเมลผ่าน Resend สำเร็จ ✅</p><p>จาก E-Tax Center SysAdmin</p></div>` }),
+      });
+      if (!testRes.ok) { const e = await testRes.json().catch(() => ({})) as any; throw new Error(e?.message || `Resend error ${testRes.status}`); }
+      res.json({ message: `ส่ง email ทดสอบไปที่ ${toEmail} สำเร็จ` });
+    } catch (err: any) { res.status(500).json({ message: `ส่ง email ล้มเหลว: ${err.message}` }); }
+  });
+
   // ─────────────────────────────────────────────────────────────
   // INFRASTRUCTURE — Locations  (/api/sysadmin/infra/locations)
   // Independent from platform routes — sysadmin domain only

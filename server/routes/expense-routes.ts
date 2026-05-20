@@ -2094,18 +2094,23 @@ export function registerExpenseRoutes(app: Express) {
       const pdfBase64 = pdfBuffer.toString("base64");
       const attachmentName = `wht-cert-${doc.certNo || doc.id}.pdf`;
 
+      const senderDomain = cfg.SYSADMIN_RESEND_FROM || "noreply@etaxerp.com";
+      const fromDisplay = `${companyName} <${senderDomain}>`;
+      const replyTo = company?.email || undefined;
+
       if (hasResend) {
-        const fromAddr = cfg.SYSADMIN_RESEND_FROM || "noreply@etaxerp.com";
+        const resendBody: Record<string, any> = {
+          from: fromDisplay,
+          to: [toEmail],
+          subject,
+          html: htmlBody,
+          attachments: [{ filename: attachmentName, content: pdfBase64 }],
+        };
+        if (replyTo) resendBody.reply_to = replyTo;
         const resendRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { "Authorization": `Bearer ${cfg.SYSADMIN_RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: fromAddr,
-            to: [toEmail],
-            subject,
-            html: htmlBody,
-            attachments: [{ filename: attachmentName, content: pdfBase64 }],
-          }),
+          body: JSON.stringify(resendBody),
         });
         if (!resendRes.ok) {
           const errBody = await resendRes.json().catch(() => ({})) as any;
@@ -2120,8 +2125,9 @@ export function registerExpenseRoutes(app: Express) {
           auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
         });
         await transporter.sendMail({
-          from: cfg.SYSADMIN_SMTP_FROM || cfg.SYSADMIN_SMTP_USER,
+          from: fromDisplay,
           to: toEmail,
+          replyTo: replyTo,
           subject,
           html: htmlBody,
           attachments: [{ filename: attachmentName, content: pdfBuffer, contentType: "application/pdf" }],
