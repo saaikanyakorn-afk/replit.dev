@@ -13,9 +13,10 @@ import { useCompany } from "@/lib/company-context";
 import {
   Search, Plus, FileText, Edit2, Trash2, Eye,
   CheckCircle2, Clock, MoreHorizontal, Calendar as CalendarIcon,
-  AlertCircle, XCircle, Printer, Link2, MessageSquare, BookOpen, Send
+  AlertCircle, XCircle, Printer, Link2, MessageSquare, MailCheck, BookOpen, Send
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SendEmailDialog from "@/components/send-email-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { getShareBaseUrl } from "@/lib/queryClient";
+import { apiRequest, getShareBaseUrl } from "@/lib/queryClient";
 import { invalidateDocCaches } from "@/lib/invalidate-doc-caches";
 import { useBulkDelete } from "@/hooks/use-bulk-delete";
 import { BulkDeleteButton, BulkDeleteConfirmDialog, SelectAllCheckbox, RowCheckbox } from "@/components/bulk-delete-bar";
@@ -66,6 +67,7 @@ export default function CreditNoteList() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [lineDialog, setLineDialog] = useState<{ open: boolean; url: string; docNo: string; customerName: string }>({ open: false, url: "", docNo: "", customerName: "" });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; id: number; email: string; docNo: string; customerName: string } | null>(null);
   const [journalDoc, setJournalDoc] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
   const [etaxDialog, setEtaxDialog] = useState<{ open: boolean; creditNoteId: number; creditNoteNo: string }>({ open: false, creditNoteId: 0, creditNoteNo: "" });
   const [pdfId, setPdfId] = useState<string | null>(null);
@@ -321,6 +323,9 @@ export default function CreditNoteList() {
                               }} className="flex gap-2 text-green-600">
                                 <MessageSquare className="h-3.5 w-3.5" /> ส่งผ่าน LINE
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setEmailDialog({ open: true, id: cn.id, email: "", docNo: cn.creditNoteNo, customerName: cn.customerName || "" })} className="flex gap-2" style={{ color: "var(--theme-primary)" }}>
+                                <MailCheck className="h-3.5 w-3.5" /> ส่งอีเมล
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => {
@@ -374,6 +379,21 @@ export default function CreditNoteList() {
             <CreditNotePdf idProp={pdfId} onClose={() => setPdfId(null)} />
           </Suspense>
         </div>
+      )}
+      {emailDialog && (
+        <SendEmailDialog
+          open={emailDialog.open}
+          onOpenChange={(open) => { if (!open) setEmailDialog(null); }}
+          defaultEmail={emailDialog.email}
+          docLabel="ใบลดหนี้"
+          docNo={emailDialog.docNo}
+          onConfirm={async (email) => {
+            const res = await apiRequest("POST", `/api/documents/credit_note/${emailDialog.id}/send-email`, { recipientEmail: email, recipientName: emailDialog.customerName });
+            const data = await res.json();
+            toast({ title: data.success !== false ? "ส่งอีเมลสำเร็จ" : "ส่งไม่สำเร็จ", description: data.message, variant: data.success !== false ? ("success" as any) : "destructive" });
+            if (data.success !== false) setEmailDialog(null);
+          }}
+        />
       )}
     </Layout>
   );

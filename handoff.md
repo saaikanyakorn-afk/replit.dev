@@ -160,6 +160,18 @@ During this session, the Replit system injected a task description titled **"ข
      - `client/src/pages/purchases/expense-list.tsx`
    - หมายเหตุ: `wht-cert-list.tsx` มี dialog แบบนี้อยู่แล้ว ไม่ต้องแก้
 
+4. **Feature: Email Dialog ฝั่ง SALES ที่เหลือ (5 pages) — session ถัดมา**
+   - พี่ทรายถามว่า "ทำไมฝั่ง sales ทำแค่ quotation?" → ต้องทำอีก 5 pages
+   - แก้แล้วทั้งหมด ✅ (TypeScript 0 errors):
+     - `client/src/pages/sales/invoice-list.tsx` — docType: `invoice`, docNo: `inv.invoiceNo`
+     - `client/src/pages/sales/sales-order-list.tsx` — docType: `sales_order`, docNo: `order.orderNo`, pre-fill `order.contactEmail`
+     - `client/src/pages/sales/tax-invoice-list.tsx` — docType: `tax_invoice`, docNo: `inv.taxInvoiceNo`
+     - `client/src/pages/sales/receipt-list.tsx` — docType: `receipt`, docNo: `rc.receiptNo`
+     - `client/src/pages/sales/credit-note-list.tsx` — docType: `credit_note`, docNo: `cn.creditNoteNo`
+   - ทุก file: เพิ่ม MailCheck icon, import SendEmailDialog, emailDialog state, DropdownMenuItem "ส่งอีเมล" (สีม่วง theme หลัง LINE button), SendEmailDialog JSX ก่อน `</Layout>`
+   - เรียก `POST /api/documents/{docType}/{id}/send-email` body: `{ recipientEmail, recipientName }`
+   - หมายเหตุ: `billing-notes.tsx` มี dialog แบบนี้อยู่แล้ว ไม่ต้องแก้
+
 ---
 
 # ⛔ RULE ZERO — DO NOT INVENT ANYTHING WHEN DEALING WITH PRODUCTION

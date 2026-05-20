@@ -13,10 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, Plus, FileText, Edit2, Trash2, Eye, ChevronRight, Download,
   CheckCircle2, Clock, AlertCircle, XCircle, Minus, Copy, FileOutput, FileMinus, MoreHorizontal, Link2, MessageSquare, Printer,
-  BookOpen, ExternalLink, Calendar as CalendarIcon, CreditCard, DollarSign, FileCheck, Send, Mail, Loader2, Paperclip, FileDown
+  BookOpen, ExternalLink, Calendar as CalendarIcon, CreditCard, DollarSign, FileCheck, Send, Mail, MailCheck, Loader2, Paperclip, FileDown
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LineSendDialog from "@/components/line-send-dialog";
+import SendEmailDialog from "@/components/send-email-dialog";
 import JournalViewDialog from "@/components/journal-view-dialog";
 import RelatedDocsDialog from "@/components/related-docs-dialog";
 import AttachmentViewDialog from "@/components/attachment-view-dialog";
@@ -103,6 +104,7 @@ export default function TaxInvoiceList() {
   const [attachDoc, setAttachDoc] = useState<{ open: boolean; attachedUrl: string; docNo: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [lineDialog, setLineDialog] = useState<{ open: boolean; url: string; docNo: string; customerName: string }>({ open: false, url: "", docNo: "", customerName: "" });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; id: number; email: string; docNo: string; customerName: string } | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterBranch, setFilterBranch] = useState("all");
   const now = new Date();
@@ -611,6 +613,9 @@ export default function TaxInvoiceList() {
                                 }} className="flex gap-2 text-green-600">
                                   <MessageSquare className="h-3.5 w-3.5" /> ส่งผ่าน LINE
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setEmailDialog({ open: true, id: inv.id, email: "", docNo: inv.taxInvoiceNo, customerName: inv.customerName || "" })} className="flex gap-2" style={{ color: "var(--theme-primary)" }}>
+                                  <MailCheck className="h-3.5 w-3.5" /> ส่งอีเมล
+                                </DropdownMenuItem>
                                 {etaxEnabled && !inv.etaxSentAt && (
                                   <DropdownMenuItem
                                     data-testid={`button-etax-send-${inv.id}`}
@@ -754,6 +759,21 @@ export default function TaxInvoiceList() {
         taxInvoiceId={etaxDialog.invId}
         taxInvoiceNo={etaxDialog.invNo}
       />
+      {emailDialog && (
+        <SendEmailDialog
+          open={emailDialog.open}
+          onOpenChange={(open) => { if (!open) setEmailDialog(null); }}
+          defaultEmail={emailDialog.email}
+          docLabel="ใบกำกับภาษี"
+          docNo={emailDialog.docNo}
+          onConfirm={async (email) => {
+            const res = await apiRequest("POST", `/api/documents/tax_invoice/${emailDialog.id}/send-email`, { recipientEmail: email, recipientName: emailDialog.customerName });
+            const data = await res.json();
+            toast({ title: data.success !== false ? "ส่งอีเมลสำเร็จ" : "ส่งไม่สำเร็จ", description: data.message, variant: data.success !== false ? ("success" as any) : "destructive" });
+            if (data.success !== false) setEmailDialog(null);
+          }}
+        />
+      )}
     </Layout>
   );
 }
