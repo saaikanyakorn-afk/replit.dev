@@ -289,21 +289,24 @@ app.post("/api/settings/recompute-payment-status", requireAuth, requireRole("adm
   }
 });
 
-// ─── SMTP Config (admin/super_admin) ────────────────────────────────────────
+// ─── SMTP Config for platform document emails (admin/super_admin) ────────────
+// NOTE: Uses PLATFORM_EMAIL_SMTP_* keys — NOT SYSADMIN_SMTP_* which is reserved
+// for sysAdmin 2FA login (login page at /sys-k7x9). NEVER read/write SYSADMIN_SMTP_*
+// here. These are two completely separate SMTP configs.
 app.get("/api/settings/smtp", requireAuth, requireRole("admin", "super_admin"), async (_req, res) => {
   try {
     const { sql } = await import("drizzle-orm");
-    const rows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
+    const rows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('PLATFORM_EMAIL_SMTP_HOST','PLATFORM_EMAIL_SMTP_PORT','PLATFORM_EMAIL_SMTP_USER','PLATFORM_EMAIL_SMTP_PASS','PLATFORM_EMAIL_SMTP_FROM','PLATFORM_EMAIL_SMTP_SECURE')`));
     const cfg: Record<string, string> = {};
     for (const r of (rows.rows || []) as any[]) cfg[r.config_key] = r.config_value;
     res.json({
-      host: cfg.SYSADMIN_SMTP_HOST || "",
-      port: cfg.SYSADMIN_SMTP_PORT || "587",
-      user: cfg.SYSADMIN_SMTP_USER || "",
-      pass: cfg.SYSADMIN_SMTP_PASS ? "***" : "",
-      from: cfg.SYSADMIN_SMTP_FROM || "",
-      secure: cfg.SYSADMIN_SMTP_SECURE === "true",
-      hasPass: !!cfg.SYSADMIN_SMTP_PASS,
+      host: cfg.PLATFORM_EMAIL_SMTP_HOST || "",
+      port: cfg.PLATFORM_EMAIL_SMTP_PORT || "587",
+      user: cfg.PLATFORM_EMAIL_SMTP_USER || "",
+      pass: cfg.PLATFORM_EMAIL_SMTP_PASS ? "***" : "",
+      from: cfg.PLATFORM_EMAIL_SMTP_FROM || "",
+      secure: cfg.PLATFORM_EMAIL_SMTP_SECURE === "true",
+      hasPass: !!cfg.PLATFORM_EMAIL_SMTP_PASS,
     });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
@@ -316,12 +319,12 @@ app.put("/api/settings/smtp", requireAuth, requireRole("admin", "super_admin"), 
     const upsert = async (key: string, val: string) => {
       await db.execute(sql.raw(`INSERT INTO system_config(config_key,config_value) VALUES(${JSON.stringify(key)},${JSON.stringify(val)}) ON CONFLICT(config_key) DO UPDATE SET config_value=EXCLUDED.config_value`));
     };
-    await upsert("SYSADMIN_SMTP_HOST", String(host));
-    await upsert("SYSADMIN_SMTP_PORT", String(port || 587));
-    await upsert("SYSADMIN_SMTP_USER", String(user));
-    if (pass && pass !== "***") await upsert("SYSADMIN_SMTP_PASS", String(pass));
-    await upsert("SYSADMIN_SMTP_FROM", String(from || user));
-    await upsert("SYSADMIN_SMTP_SECURE", secure ? "true" : "false");
+    await upsert("PLATFORM_EMAIL_SMTP_HOST", String(host));
+    await upsert("PLATFORM_EMAIL_SMTP_PORT", String(port || 587));
+    await upsert("PLATFORM_EMAIL_SMTP_USER", String(user));
+    if (pass && pass !== "***") await upsert("PLATFORM_EMAIL_SMTP_PASS", String(pass));
+    await upsert("PLATFORM_EMAIL_SMTP_FROM", String(from || user));
+    await upsert("PLATFORM_EMAIL_SMTP_SECURE", secure ? "true" : "false");
     res.json({ message: "บันทึก SMTP config สำเร็จ" });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
@@ -354,30 +357,17 @@ app.post("/api/settings/smtp/test", requireAuth, requireRole("admin", "super_adm
     const user = req.user as any;
     const toEmail = testEmail || user.email;
     if (!toEmail) return res.status(400).json({ message: "กรุณากรอก email ทดสอบ" });
-    const rows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
+    const rows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('PLATFORM_EMAIL_SMTP_HOST','PLATFORM_EMAIL_SMTP_PORT','PLATFORM_EMAIL_SMTP_USER','PLATFORM_EMAIL_SMTP_PASS','PLATFORM_EMAIL_SMTP_FROM','PLATFORM_EMAIL_SMTP_SECURE')`));
     const cfg: Record<string, string> = {};
     for (const r of (rows.rows || []) as any[]) cfg[r.config_key] = r.config_value;
-    if (!cfg.SYSADMIN_SMTP_HOST || !cfg.SYSADMIN_SMTP_USER || !cfg.SYSADMIN_SMTP_PASS) return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP" });
-    const isResend = cfg.SYSADMIN_SMTP_HOST?.includes("resend.com");
-    if (isResend) {
-      const apiKey = cfg.SYSADMIN_SMTP_PASS.trim();
-      const fromAddr = "onboarding@resend.dev";
-      const resp = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: fromAddr, to: [toEmail], subject: "ทดสอบ Email — E-Tax Center", html: `<div style="font-family:sans-serif;padding:20px"><p>ทดสอบระบบส่งอีเมลสำเร็จ ✅</p><p>ส่งจาก: E-Tax Center Platform</p></div>` }),
-      });
-      const data = await resp.json() as any;
-      if (!resp.ok) return res.status(500).json({ message: `Resend API error: ${data.message || JSON.stringify(data)}` });
-      return res.json({ message: `ส่ง email ทดสอบไปที่ ${toEmail} สำเร็จ (Resend API)` });
-    }
+    if (!cfg.PLATFORM_EMAIL_SMTP_HOST || !cfg.PLATFORM_EMAIL_SMTP_USER || !cfg.PLATFORM_EMAIL_SMTP_PASS) return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP" });
     const nodemailer = await import("nodemailer");
     const transporter = nodemailer.default.createTransport({
-      host: cfg.SYSADMIN_SMTP_HOST, port: Number(cfg.SYSADMIN_SMTP_PORT || 587),
-      secure: cfg.SYSADMIN_SMTP_SECURE === "true",
-      auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
+      host: cfg.PLATFORM_EMAIL_SMTP_HOST, port: Number(cfg.PLATFORM_EMAIL_SMTP_PORT || 587),
+      secure: cfg.PLATFORM_EMAIL_SMTP_SECURE === "true",
+      auth: { user: cfg.PLATFORM_EMAIL_SMTP_USER, pass: cfg.PLATFORM_EMAIL_SMTP_PASS.trim() },
     });
-    const fromAddress = cfg.SYSADMIN_SMTP_FROM || "noreply@etaxcenter.com";
+    const fromAddress = cfg.PLATFORM_EMAIL_SMTP_FROM || "noreply@etaxcenter.com";
     const fromDisplay = `อีเมลอัตโนมัติจาก E-Tax Center <${fromAddress}>`;
     await transporter.sendMail({
       from: fromDisplay,

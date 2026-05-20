@@ -2061,11 +2061,11 @@ export function registerExpenseRoutes(app: Express) {
       const { toEmail } = req.body;
       if (!toEmail) return res.status(400).json({ message: "กรุณาระบุอีเมลผู้รับ" });
 
-      const cfgRows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('SYSADMIN_SMTP_HOST','SYSADMIN_SMTP_PORT','SYSADMIN_SMTP_USER','SYSADMIN_SMTP_PASS','SYSADMIN_SMTP_FROM','SYSADMIN_SMTP_SECURE')`));
+      const cfgRows = await db.execute(sql.raw(`SELECT config_key, config_value FROM system_config WHERE config_key IN ('PLATFORM_EMAIL_SMTP_HOST','PLATFORM_EMAIL_SMTP_PORT','PLATFORM_EMAIL_SMTP_USER','PLATFORM_EMAIL_SMTP_PASS','PLATFORM_EMAIL_SMTP_FROM','PLATFORM_EMAIL_SMTP_SECURE')`));
       const cfg: Record<string, string> = {};
       for (const r of (cfgRows.rows || []) as any[]) cfg[r.config_key] = r.config_value;
 
-      if (!cfg.SYSADMIN_SMTP_HOST || !cfg.SYSADMIN_SMTP_USER || !cfg.SYSADMIN_SMTP_PASS) {
+      if (!cfg.PLATFORM_EMAIL_SMTP_HOST || !cfg.PLATFORM_EMAIL_SMTP_USER || !cfg.PLATFORM_EMAIL_SMTP_PASS) {
         return res.status(400).json({ message: "ยังไม่ได้ตั้งค่า SMTP — กรุณาไปที่ Platform → ตั้งค่า Email" });
       }
 
@@ -2092,15 +2092,15 @@ export function registerExpenseRoutes(app: Express) {
       const pdfBase64 = pdfBuffer.toString("base64");
       const attachmentName = `wht-cert-${doc.certNo || doc.id}.pdf`;
 
-      const fromAddress = cfg.SYSADMIN_SMTP_FROM || "noreply@etaxcenter.com";
+      const fromAddress = cfg.PLATFORM_EMAIL_SMTP_FROM || "noreply@etaxcenter.com";
       const fromDisplay = `อีเมลอัตโนมัติจาก E-Tax Center <${fromAddress}>`;
 
       const nodemailer = await import("nodemailer");
       const transporter = nodemailer.default.createTransport({
-        host: cfg.SYSADMIN_SMTP_HOST,
-        port: Number(cfg.SYSADMIN_SMTP_PORT || "587"),
-        secure: cfg.SYSADMIN_SMTP_SECURE === "true",
-        auth: { user: cfg.SYSADMIN_SMTP_USER, pass: cfg.SYSADMIN_SMTP_PASS.trim() },
+        host: cfg.PLATFORM_EMAIL_SMTP_HOST,
+        port: Number(cfg.PLATFORM_EMAIL_SMTP_PORT || "587"),
+        secure: cfg.PLATFORM_EMAIL_SMTP_SECURE === "true",
+        auth: { user: cfg.PLATFORM_EMAIL_SMTP_USER, pass: cfg.PLATFORM_EMAIL_SMTP_PASS.trim() },
       });
       await transporter.sendMail({
         from: fromDisplay,

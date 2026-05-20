@@ -5,16 +5,29 @@ No extra steps. No "while we're at it." No improvising. If a step is not written
 
 ---
 
-# ⛔ RULE ZERO #3 — BREVO SMTP IN system_config IS UNTOUCHABLE
+# ⛔ RULE ZERO #3 — TWO SEPARATE SMTP CONFIGS — NEVER MIX THEM
 
-**SYSADMIN_SMTP_* keys in the `system_config` table = Brevo SMTP = 2FA email delivery for sysAdmin login.**
+There are **two completely separate SMTP configurations** in `system_config`. They must NEVER be merged or confused:
 
-- Removing or changing these credentials = **sysAdmin cannot receive 2FA code = cannot login to production = system locked out**
-- **NEVER** advise พี่ทราย or anyone to overwrite the current platform SMTP credentials
-- **NEVER** run any UPDATE on SYSADMIN_SMTP_* keys
-- N8 added a webmail preset to the UI as preparation for a future migration ONLY — it does NOT mean the switch happens now
-- Any migration off Brevo requires a **separate, explicit plan approved by พี่ช้าง** with a tested replacement 2FA flow first
-- The `email-config.tsx` UI page shows current platform SMTP — **do not instruct anyone to save new credentials there until migration is planned**
+| Key prefix | Purpose | Login path | Touch? |
+|---|---|---|---|
+| `SYSADMIN_SMTP_*` | sysAdmin **2FA email** | `/sys-k7x9` | ❌ NEVER |
+| `PLATFORM_EMAIL_SMTP_*` | Platform document email (WHT cert, etc.) | Platform → ตั้งค่า Email | ✅ OK |
+
+**`SYSADMIN_SMTP_*` rules:**
+- Currently holds Brevo credentials
+- Used to send 2FA codes to sysAdmin class users (totally separate from business users)
+- sysAdmin login page is at `/sys-k7x9` (security through obscurity)
+- **NOT on production yet** but will be — touching these credentials now = sysAdmin locked out on go-live
+- **NEVER** read, write, advise anyone to change, or reference these keys in any email-sending code
+- **NEVER** run any UPDATE/INSERT on SYSADMIN_SMTP_* keys
+
+**`PLATFORM_EMAIL_SMTP_*` rules:**
+- Used for all platform-outbound document emails (WHT cert attachments, etc.)
+- Read/written by `/api/settings/smtp` GET+PUT endpoints
+- UI: Platform → ตั้งค่า Email (`email-config.tsx`)
+- Currently `info@etaxcenter.com` via `mail.etaxcenter.com` on dev (saved by พี่ทราย 2026-05-20)
+- **This is the correct place** for any email-sending configuration changes
 
 ---
 
