@@ -219,7 +219,7 @@ These files are **not tied to any single feature** — they will be skipped if y
 
 **Last verified:** 2026-05-20 18:00 — Kai session. Handoff updated by main agent.
 **Production status:** N3 ✅ | N6 ✅ | N6-hotfix ✅ | **N6-hotfix2 ⏳ awaiting พี่ช้าง push** (share link 404 fix — `server/static.ts`)
-**Dev status:** N8 SMTP Email config page working ✅ (Ethereal dev test confirmed) | Resend domain DNS pending (FreeDNS) | N4/N7 still pending push
+**Dev status:** N8 SMTP Email config ✅ **FULLY TESTED** — บันทึกสำเร็จ + ส่งทดสอบ email ได้รับจริง (2026-05-20) | N4/N7 still pending push | N8 awaiting พี่ช้าง push approval
 
 **N6-hotfix2 summary (2026-05-20):** WHT cert share link ส่ง LINE แล้วเปิดบนมือถือ 404 — root cause: `server/static.ts` ไม่เคยถูก push → route `/share/wht-cert/:token` ไม่มีบน production. Fix: push `server/static.ts` 1 ไฟล์ (deploy command อยู่ใน `db/pending-push-queue.md` entry N6-hotfix2). รอพี่ช้าง approve.
 

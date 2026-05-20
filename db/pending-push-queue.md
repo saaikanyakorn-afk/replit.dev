@@ -123,7 +123,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/s
 ---
 
 ### N8 — Platform Email Config + WHT cert email fix
-**Status:** 📝 dev — รอพี่ทราย test บน dev ก่อน แล้วรอพี่ช้าง approve push
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ 2026-05-20 (บันทึก + ส่งทดสอบ email ได้รับจริง)
 **Schema change:** NO (no new columns) — but requires **production DB data migration** (INSERT rows)
 **Push type:** Code push (3 files) + **production DB INSERT — must be first step at deploy time**
 
@@ -157,9 +157,9 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 | File | Role | Status |
 |------|------|--------|
-| `client/src/pages/platform/email-config.tsx` | UI preset etaxcenter.com webmail เป็นตัวแรก | 📝 dev |
-| `server/routes/expense-routes.ts` | WHT cert email — SMTP only, PLATFORM_EMAIL_SMTP_* | 📝 dev |
-| `server/routes/doc-settings-routes.ts` | GET/PUT/test — PLATFORM_EMAIL_SMTP_* only | 📝 dev |
+| `client/src/pages/platform/email-config.tsx` | UI preset etaxcenter.com webmail เป็นตัวแรก | ⏳ awaiting |
+| `server/routes/expense-routes.ts` | WHT cert email — SMTP only, PLATFORM_EMAIL_SMTP_* + `tls:{rejectUnauthorized:false}` | ⏳ awaiting |
+| `server/routes/doc-settings-routes.ts` | GET/PUT/test — PLATFORM_EMAIL_SMTP_* only + `tls:{rejectUnauthorized:false}` | ⏳ awaiting |
 
 ---
 
