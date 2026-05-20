@@ -68,6 +68,7 @@ export default function EmailConfig() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingEthereal, setTestingEthereal] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -114,6 +115,31 @@ export default function EmailConfig() {
       toast({ title: "เกิดข้อผิดพลาด", description: e.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEtherealTest = async () => {
+    setTestingEthereal(true);
+    try {
+      const res = await fetch("/api/settings/smtp/test-ethereal", { method: "POST", credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      toast({
+        title: "✅ Dev Test สำเร็จ",
+        description: (
+          <span>
+            คลิกเพื่อดูเมล:{" "}
+            <a href={data.previewUrl} target="_blank" rel="noreferrer" className="underline text-blue-600">
+              เปิด Ethereal Preview
+            </a>
+          </span>
+        ) as any,
+        duration: 15000,
+      });
+    } catch (e: any) {
+      toast({ title: "Ethereal test ล้มเหลว", description: e.message, variant: "destructive" });
+    } finally {
+      setTestingEthereal(false);
     }
   };
 
@@ -292,25 +318,42 @@ export default function EmailConfig() {
               <CardHeader>
                 <CardTitle className="text-base">ทดสอบการส่ง Email</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500 mb-3">กรอก email ของพี่ทราย แล้วกด "ส่งทดสอบ" — ถ้าได้รับเมล แปลว่าตั้งค่าถูกต้อง ✅</p>
-                <div className="flex gap-2">
-                  <Input
-                    type="email"
-                    value={testEmail}
-                    onChange={e => setTestEmail(e.target.value)}
-                    placeholder="yourmail@gmail.com"
-                    className="flex-1"
-                    data-testid="input-test-email"
-                  />
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">ทดสอบด้วย email จริง — กรอก email ปลายทาง แล้วกด "ส่งทดสอบ"</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      value={testEmail}
+                      onChange={e => setTestEmail(e.target.value)}
+                      placeholder="yourmail@gmail.com"
+                      className="flex-1"
+                      data-testid="input-test-email"
+                    />
+                    <Button
+                      onClick={handleTest}
+                      disabled={testing || !testEmail}
+                      data-testid="btn-test-smtp"
+                      className="bg-amber-500 hover:bg-amber-600 text-white"
+                    >
+                      {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      <span className="ml-1">ส่งทดสอบ</span>
+                    </Button>
+                  </div>
+                </div>
+                <div className="border-t pt-3">
+                  <p className="text-sm text-gray-500 mb-2">
+                    <span className="font-medium text-gray-700">Dev Test (Ethereal)</span> — ทดสอบว่า server ส่งเมลได้จริง โดยไม่ต้องใช้ email จริง ดูผลจาก URL ที่ได้
+                  </p>
                   <Button
-                    onClick={handleTest}
-                    disabled={testing || !testEmail}
-                    data-testid="btn-test-smtp"
-                    className="bg-amber-500 hover:bg-amber-600 text-white"
+                    onClick={handleEtherealTest}
+                    disabled={testingEthereal}
+                    variant="outline"
+                    data-testid="btn-test-ethereal"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
                   >
-                    {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    <span className="ml-1">ส่งทดสอบ</span>
+                    {testingEthereal ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+                    ทดสอบด้วย Ethereal (Dev)
                   </Button>
                 </div>
               </CardContent>

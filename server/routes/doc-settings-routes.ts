@@ -326,6 +326,27 @@ app.put("/api/settings/smtp", requireAuth, requireRole("admin", "super_admin"), 
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
+app.post("/api/settings/smtp/test-ethereal", requireAuth, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const nodemailer = await import("nodemailer");
+    const account = await nodemailer.default.createTestAccount();
+    const transporter = nodemailer.default.createTransport({
+      host: "smtp.ethereal.email", port: 587, secure: false,
+      auth: { user: account.user, pass: account.pass },
+    });
+    const info = await transporter.sendMail({
+      from: `"E-Tax Center [Dev Test]" <${account.user}>`,
+      to: account.user,
+      subject: "ทดสอบ Email Dev — E-Tax Center",
+      html: `<div style="font-family:sans-serif;padding:20px"><h2>✅ Email ทดงานปกติ</h2><p>นี่คือการทดสอบระบบ Email ของ E-Tax Center</p><p><small>สร้างด้วย Ethereal (dev only)</small></p></div>`,
+    });
+    const previewUrl = nodemailer.default.getTestMessageUrl(info);
+    res.json({ previewUrl, message: "สร้าง dev test email สำเร็จ — คลิก URL เพื่อดูผล" });
+  } catch (err: any) {
+    res.status(500).json({ message: `Ethereal test ล้มเหลว: ${err.message}` });
+  }
+});
+
 app.post("/api/settings/smtp/test", requireAuth, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { sql } = await import("drizzle-orm");
