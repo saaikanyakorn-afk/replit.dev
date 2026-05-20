@@ -63,22 +63,22 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 ---
 
 ### N6 — WHT cert email + PDF + Niramit font + LINE card
-**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+**Status:** 🚀 PUSHING 2026-05-20 — all 10 files pushed to prod repo ✅
 **Schema change:** NO
 **Push type:** Code-only push (multiple files, must push together — code-dependent)
 
 | File | Role | Status |
 |------|------|--------|
-| `server/pdf-wht-cert.ts` | PDF generation + signature image embed | ⏳ awaiting |
-| `server/routes/expense-routes.ts` | Share/Email/LINE routes — dynamic require → static import | ⏳ awaiting |
-| `server/routes/line-routes.ts` | LINE card purple/data fix (Group 2 — extra permission) | ⏳ awaiting |
-| `client/src/pages/purchases/wht-cert-list.tsx` | DropdownMenu actions | ⏳ awaiting |
-| `client/src/pages/purchases/wht-cert-print.tsx` | Print page | ⏳ awaiting |
-| `client/src/components/line-send-dialog.tsx` | LINE dialog | ⏳ awaiting |
-| `client/src/components/document-renderer.tsx` | Removed CDN @import (Niramit now bundled) | ⏳ awaiting |
-| `client/src/index.css` | Added `@fontsource/niramit` import | ⏳ awaiting |
-| `package.json` | Added `@fontsource/niramit` dep | ⏳ awaiting |
-| `package-lock.json` | Lock for `@fontsource/niramit` | ⏳ awaiting |
+| `server/pdf-wht-cert.ts` | PDF generation + signature image embed | ✅ pushed commit `00de1d7` |
+| `server/routes/expense-routes.ts` | Share/Email/LINE routes — dynamic require → static import | ✅ pushed commit `86e5ebb` |
+| `server/routes/line-routes.ts` | LINE card purple/data fix (Group 2 — extra permission) | ✅ pushed commit `28d611c` |
+| `client/src/pages/purchases/wht-cert-list.tsx` | DropdownMenu actions | ✅ pushed commit `473fb4f` |
+| `client/src/pages/purchases/wht-cert-print.tsx` | Print page | ✅ pushed commit `f64ccc1` |
+| `client/src/components/line-send-dialog.tsx` | LINE dialog | ✅ pushed commit `35aacad` |
+| `client/src/components/document-renderer.tsx` | Removed CDN @import (Niramit now bundled) | ✅ pushed commit `d4011b8` |
+| `client/src/index.css` | Added `@fontsource/niramit` import | ✅ pushed commit `599adb7` |
+| `package.json` | Added `@fontsource/niramit` dep | ✅ pushed commit `3c7fc28` |
+| `package-lock.json` | Lock for `@fontsource/niramit` | ✅ pushed commit `1a1b171` |
 
 ⚠️ **All 10 files must be pushed together — removing any breaks Niramit font on production.**
 
