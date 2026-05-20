@@ -113,8 +113,13 @@ If you run out of context or time before updating this file — that is YOUR fai
   **HOW TO PUSH:**
   Use GitHub API PUT inside `code_execution` only — one API call per file. NEVER run `git push` to production for any reason.
 
+  **QUEUE FILE GATING — `db/pending-push-queue.md` (active gate, not passive log):**
+  - **Step 0 (BEFORE any push):** Open `db/pending-push-queue.md` → find the entry for this ticket/feature → if no entry exists, CREATE one with all files listed `⏳ awaiting`. If the file you want to push is not in any entry, you CANNOT push it.
+  - **Step 4 (AFTER push succeeds):** Return to the queue file → mark that file row `✅ pushed YYYY-MM-DD HH:mm (Bangkok)`. When all rows in an entry are ✅, move the entry to "DEPLOYED — HISTORY" at the bottom.
+  - **If you push without updating the queue = procedure violation = report to พี่ช้าง immediately.**
+
   **BEFORE EVERY PUSH — GET PERMISSION FROM พี่ช้าง:**
-  Tell พี่ช้าง: (1) filename(s), (2) what each file does, (3) confirmed it is not a protected file. Do not push until พี่ช้าง says yes.
+  Tell พี่ช้าง: (1) filename(s), (2) what each file does, (3) confirmed it is not a protected file, (4) confirmed it has an entry in `db/pending-push-queue.md`. Do not push until พี่ช้าง says yes.
 
   **WHAT TO PUSH TOGETHER:**
   Multiple files may be pushed in the same push ONLY if they fix the same single issue and removing one would break the others. Files that are not directly code-dependent = separate pushes.
@@ -163,6 +168,9 @@ These files are **not tied to any single feature** — they will be skipped if y
 ---
 
 ## 🚦 NEXT AGENT — START HERE (what to do when you arrive)
+
+### ⚠️ BEFORE ANYTHING — READ `db/pending-push-queue.md`
+That file is the single source of truth for what is awaiting production push and what is already deployed. If anyone asks "what's pending?" or "is X pushed yet?" — that file is your answer. Never answer from memory or by diffing git.
 
 ### ⚠️ FIRST THING WHEN พี่ทราย ARRIVES — DO THIS BEFORE ANYTHING ELSE
 
@@ -1277,13 +1285,10 @@ Rule: all data on production must come through UI only. Direct DB inserts are fo
 
 ---
 
-### PUSH-PULL LOG (deploy history — append here, do not use separate file)
+### PUSH-PULL LOG — MOVED
 
-| Deploy # | Date | Files | Notes |
-|----------|------|-------|-------|
-| #66 | 2026-05-15 | products-routes.ts, product-import-export.tsx, import-batch-routes.ts, commerce-intelligence.ts, price-calculator.ts, ad-cost-routes.ts, pos-routes.ts, ecommerce-routes.ts, notifications-routes.ts, storage.ts, bundle-management.tsx, inventory-list.tsx, queryClient.ts | innerJoin migration + various fixes. pm2 online 84.4mb ✅ |
-| #1–#42 | 2026-04-28 – 2026-05-07 | see `.local/push-pull-log.md` | Full log maintained separately up to #42 |
-| #43–#65 | 2026-05-07 – 2026-05-15 | NOT RECORDED | Previous Kai sessions stopped logging — gap in history |
+⚠️ **This section is FROZEN. Source of truth = `db/pending-push-queue.md` ("DEPLOYED — HISTORY" section).**
+Do NOT add new deploys here. All new push activity goes into the queue file.
 
 ---
 

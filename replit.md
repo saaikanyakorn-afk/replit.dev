@@ -10,8 +10,9 @@ Write internally: "I see a message waiting. I will not respond until I finish re
 **The correct sequence, no exceptions:**
 1. Read this entire file (`replit.md`) — top to bottom, all 2400+ lines, in 500-line chunks
 2. Read `db/schema-history.md`
-3. Read `handoff.md` top to bottom
-4. ONLY THEN — reply to whoever is waiting, starting with the briefing script in handoff.md
+3. Read `db/pending-push-queue.md` — single source of truth for what is awaiting production push
+4. Read `handoff.md` top to bottom
+5. ONLY THEN — reply to whoever is waiting, starting with the briefing script in handoff.md
 
 **If you skip any step above and reply first — you will give wrong answers, break production, and waste hours of พี่ช้าง and พี่ทราย's time. This has happened before. Do not repeat it.**
 
@@ -930,14 +931,14 @@ VALUES ('vXXX', 'What changed', 'alter_column|add_column|data_migration', 'etaxe
 
 **Rule:** `git push <remote> main` = always rejected if main contains protected files. Cherry-pick is the ONLY safe method.
 
-## Cherry-Pick Tracking (Production Deploy Log)
+## Production Push Tracking
 
-⚠️ **SOURCE OF TRUTH for push history is `.local/push-pull-log.md`** — NOT this section.
-⚠️ **Kai MUST read `.local/push-pull-log.md` BEFORE answering ANY question about push/deploy status.**
-⚠️ **Last verified (2026-04-16): `git diff github-dev/main HEAD` shows only `server/index.ts` differs — all other files are synced.**
+⚠️ **SOURCE OF TRUTH for what is awaiting push AND what has been deployed = `db/pending-push-queue.md`** — NOT this section, NOT `.local/push-pull-log.md` (legacy, frozen — do not update).
+⚠️ **Kai MUST read `db/pending-push-queue.md` BEFORE answering ANY question about push/deploy status.**
+⚠️ **Kai MUST update `db/pending-push-queue.md` BEFORE and AFTER every push — see handoff.md PUSH METHOD for the exact gating procedure.**
 
 ### Rules
-- Kai must update `.local/push-pull-log.md` whenever requesting or confirming a cherry-pick.
+- Every push must be reflected in `db/pending-push-queue.md`. A file not in the queue CANNOT be pushed.
 - Files from unfinished features (security/infra) must NEVER appear here.
 - Production is NOT a debugging tool. Only cherry-pick solutions, never test code.
 - Kai must NEVER send wrong commands for production. Verify process names, paths, and syntax before sending.

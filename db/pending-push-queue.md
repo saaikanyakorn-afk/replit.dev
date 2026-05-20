@@ -1,0 +1,104 @@
+# PENDING PUSH QUEUE — Single Source of Truth
+
+**This file is the ONLY place that tracks what is awaiting push to production.**
+
+Every push to production MUST be reflected in this file. If a file is not in this queue, it CANNOT be pushed. Every push session updates this file BEFORE and AFTER.
+
+---
+
+## How to use this file
+
+### Before pushing a file
+1. Find the entry for the ticket/feature this file belongs to
+2. If no entry exists → CREATE one before doing anything else
+3. Confirm พี่ช้าง permission per `handoff.md` PUSH METHOD
+4. Only then call GitHub API PUT
+
+### After pushing a file
+1. Update the entry's file row: change status from `⏳ awaiting` to `✅ pushed YYYY-MM-DD HH:mm (Bangkok)`
+2. When ALL files in an entry are ✅ → move the entry to "## DEPLOYED — HISTORY" section at the bottom
+3. NEVER delete an entry — only move it down
+
+### Statuses
+- 📝 **dev** — code on dev, not yet tested by พี่ทราย
+- ⏳ **awaiting** — พี่ทรายtested, awaiting พี่ช้าง push approval
+- 🚀 **pushing** — currently in push session
+- ✅ **pushed YYYY-MM-DD HH:mm** — confirmed on production
+
+---
+
+## ACTIVE QUEUE
+
+### N3 — Material Issue (เบิกวัตถุดิบ Lot Scan)
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+**Schema change:** YES — `material_issues` + `material_issue_items` tables (ENTRY #009)
+**Push type:** Schema migration push (Rule 2 — 10-step procedure)
+
+| File | Role | Status |
+|------|------|--------|
+| `shared/schema-extra.ts` | Migration function `runMaterialIssueMigration()` | ⏳ awaiting |
+| `server/routes/products-routes.ts` | Caller (line 46) + N3 API routes + N3 SQL (lines 2307+, 2831+, 2973+, 3051+, 3120) | ⏳ awaiting |
+
+⚠️ **Note:** `products-routes.ts` contains BOTH the migration caller AND the API routes — cannot split schema-loop from code-loop per Rule 3. Push together as one atomic deploy. พี่ช้าง decision required.
+
+---
+
+### N4 — Payment fixes + Settings payment methods
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+**Schema change:** NO
+**Push type:** Code-only push
+
+| File | Role | Status |
+|------|------|--------|
+| (file list to be finalized before push — must re-grep to confirm exact set per Rule 2 Step 5) | | ⏳ awaiting |
+
+---
+
+### N6 — WHT cert email + PDF + Niramit font + LINE card
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+**Schema change:** NO
+**Push type:** Code-only push (multiple files, must push together — code-dependent)
+
+| File | Role | Status |
+|------|------|--------|
+| `server/pdf-wht-cert.ts` | PDF generation + signature image embed | ⏳ awaiting |
+| `server/routes/expense-routes.ts` | Share/Email/LINE routes — dynamic require → static import | ⏳ awaiting |
+| `server/routes/line-routes.ts` | LINE card purple/data fix (Group 2 — extra permission) | ⏳ awaiting |
+| `client/src/pages/purchases/wht-cert-list.tsx` | DropdownMenu actions | ⏳ awaiting |
+| `client/src/pages/purchases/wht-cert-print.tsx` | Print page | ⏳ awaiting |
+| `client/src/components/line-send-dialog.tsx` | LINE dialog | ⏳ awaiting |
+| `client/src/components/document-renderer.tsx` | Removed CDN @import (Niramit now bundled) | ⏳ awaiting |
+| `client/src/index.css` | Added `@fontsource/niramit` import | ⏳ awaiting |
+| `package.json` | Added `@fontsource/niramit` dep | ⏳ awaiting |
+| `package-lock.json` | Lock for `@fontsource/niramit` | ⏳ awaiting |
+
+⚠️ **All 10 files must be pushed together — removing any breaks Niramit font on production.**
+
+---
+
+### N7 — RD VAT service + multi-branch dialog
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
+**Schema change:** NO
+**Push type:** Code-only push
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/hooks/use-dbd-lookup.ts` | DBD lookup hook | ⏳ awaiting |
+| (other files — to be finalized via grep before push per Rule 2 Step 5) | | ⏳ awaiting |
+
+---
+
+## DEPLOYED — HISTORY
+
+| Deploy # | Date | Entry | Files |
+|----------|------|-------|-------|
+| #66 | 2026-05-15 | innerJoin migration + 6 other fixes | products-routes.ts, product-import-export.tsx, import-batch-routes.ts, commerce-intelligence.ts, price-calculator.ts, ad-cost-routes.ts, pos-routes.ts, ecommerce-routes.ts, notifications-routes.ts, storage.ts, bundle-management.tsx, inventory-list.tsx, queryClient.ts |
+| #73 | 2026-05-15 | TIV paymentMethod cash/credit toggle fix | (files not recorded — historical gap) |
+| #74 | 2026-05-15 | Revert related-docs navigate กลับ listPath เสมอ | (files not recorded — historical gap) |
+| #75 | 2026-05-15 | related-docs dialog แสดง QO↔SO↔TIV ครบ chain | (files not recorded — historical gap) |
+| #43–#65 | 2026-05-07 – 2026-05-15 | NOT RECORDED — historical gap, previous Kai sessions stopped logging | — |
+| #1–#42 | 2026-04-28 – 2026-05-07 | See `.local/push-pull-log.md` (legacy file — frozen, do not update) | — |
+
+---
+
+**Last verified:** 2026-05-20 — Kai session (queue file created, seeded with N3/N4/N6/N7). All entries awaiting พี่ช้าง push approval.
