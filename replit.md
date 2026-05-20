@@ -792,28 +792,35 @@ If the SQL will **modify or delete existing data** (e.g. ALTER column type, bulk
 
 **⚠️ DEPLOYMENT CHECKLIST — create this BEFORE every batch push, track it throughout:**
 
+**Purpose:** working memory for ONE session. Without it, after finishing a long 10-step migration you forget WHY you did it and which deployment was originally waiting. Can be in-chat (in-memory) or a temporary file — discard after batch closes.
+
 When a batch is started, Kai must write and maintain a checklist. If interrupted (bug fix, side-road), return to this list to know what's left. Never consider a batch "done" until every box is ticked.
 
 ```
-BATCH: <name> — <date>
-Files to pull (<N> total):
-  [ ] client/src/...
-  [ ] client/src/...
+BATCH: <name (e.g. N3 — Material Issue)> — <date>
+Why: <one-line reason — what feature, what ticket, who tested>
+Schema change: <YES (which tables) / NO>
+
+Files to push (<N> total) — each = separate GitHub API PUT call:
+  [ ] shared/schema-extra.ts            ← if migration batch
   [ ] server/routes/...
-  [ ] server/one-time-schema-migration.ts  ← if migration batch
+  [ ] client/src/pages/...
+  [ ] client/src/...
 
 STEPS:
-  [ ] 1. All files pushed to push-batch branch on github-production
-  [ ] 2. พี่ช้าง approval obtained (if migration → 2 restarts)
-  [ ] 3. พี่ช้าง: git fetch + git checkout ALL files above + npm run build
-  [ ] 4. Restart #1 — pm2 restart etax-center
-  [ ] 5. Kai: query production DB BY EYES — confirm columns exist (Kai has credentials to look)
-  [ ] 6. Kai: comment out migration block in schema-extra.ts AND remove/comment the hook call in every file that was modified to invoke it (e.g. server/index.ts) → push ALL clean files
-  [ ] 7. พี่ช้าง: pull ALL clean files (schema-extra.ts + every hook file) + npm run build
-  [ ] 8. Restart #2 — pm2 restart etax-center (clean build)
+  [ ] 1. Queue file (`db/pending-push-queue.md`) has entry for this batch with all files listed `⏳ awaiting`
+  [ ] 2. พี่ช้าง approval obtained — per-file list confirmed not protected
+  [ ] 3. Kai: API PUT each file one-by-one to github-production main (cherry-pick equivalent — one call per file, never a branch/folder push)
+  [ ] 4. Kai: confirm each PUT response 200/201 → mark file `✅ pushed YYYY-MM-DD HH:mm` in queue file
+  [ ] 5. พี่ช้าง: pulls on production server + restart (downtime ~1-3 min, Apache shows maintenance page automatically)
+  [ ] 6. Kai (migration batch only): query production DB BY EYES — `SELECT * FROM <new_table> LIMIT 1;` — confirm structure, NOT just COUNT (Rule 4 LOOK INSIDE)
+  [ ] 7. Kai (migration batch only): comment out migration block in `shared/schema-extra.ts` with date/reason → API PUT clean file
+  [ ] 8. พี่ช้าง: pulls clean file + restart #2 (migration batch only)
   [ ] 9. พี่ช้าง: verify ALL features work (not just migration)
-  [ ] 10. Loop closed ✅
+  [ ] 10. Move queue entry from "ACTIVE QUEUE" → "DEPLOYED — HISTORY" in queue file → batch closed ✅
 ```
+
+**For non-migration batches:** skip steps 6, 7, 8 (no DB to verify, no clean-push round).
 
 **RULE: If interrupted mid-checklist, note which step you're on. Resume from that step — do NOT assume earlier steps are complete unless explicitly verified.**
 
