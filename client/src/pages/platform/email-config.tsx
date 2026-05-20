@@ -124,18 +124,12 @@ export default function EmailConfig() {
       const res = await fetch("/api/settings/smtp/test-ethereal", { method: "POST", credentials: "include" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      toast({
-        title: "✅ Dev Test สำเร็จ",
-        description: (
-          <span>
-            คลิกเพื่อดูเมล:{" "}
-            <a href={data.previewUrl} target="_blank" rel="noreferrer" className="underline text-blue-600">
-              เปิด Ethereal Preview
-            </a>
-          </span>
-        ) as any,
-        duration: 15000,
-      });
+      if (data.previewUrl && data.previewUrl !== false) {
+        window.open(data.previewUrl, "_blank", "noopener,noreferrer");
+        toast({ title: "✅ Dev Test สำเร็จ", description: "เปิด Ethereal Preview ใน tab ใหม่แล้วครับ", duration: 8000 });
+      } else {
+        toast({ title: "✅ ส่งเมลสำเร็จ", description: data.message || "แต่ไม่มี preview URL (Ethereal อาจ block อยู่)", duration: 8000 });
+      }
     } catch (e: any) {
       toast({ title: "Ethereal test ล้มเหลว", description: e.message, variant: "destructive" });
     } finally {
