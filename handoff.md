@@ -1,29 +1,115 @@
 # 📋 SESSION LOG — 2026-05-20 NIGHT (REPLACEMENT AGENT)
 
-## Agent: Kai (replacement — arrived mid-session)
+## ⚠️ CRITICAL WARNING TO THE NEXT AGENT — READ THIS FIRST
 
-**Context:** The previous agent had already done partial work this session before พี่ช้าง called STOP. This replacement agent was oriented by พี่ช้าง and resumed from that point.
+If you are a new agent who just arrived (mid-session replacement or fresh session): **DO NOT start working on anything until you have read this entire section.** The last time a new agent skipped this and worked from partial context, พี่ช้าง had to take **20–30 screenshots** of chat history and paste them one by one to orient the new agent. That cost him enormous time and energy. **Do not make him do that again.**
 
-**Work done by previous agent (before this agent arrived):**
-- Created `tools/smtp-test.php` — PHP SMTP test script for พี่ช้าง's Windows/Apache desktop ✅
-- Created `server/utils/platform-email.ts` — shared SMTP helper ✅
+**The self-check (from handoff rules below):** The last line of `replit.md` says: `3. Read \`handoff.md\` next.`
+
+---
+
+## What happened today (2026-05-20) — Full account
+
+### Problem: Replit system keeps replacing agents mid-session
+
+พี่ช้าง spent **more than half a day doing agent orientation — twice** because the Replit system injected new agents mid-session without warning. Each time:
+- The old agent disappeared with no notice
+- A new agent arrived with no memory of the session
+- พี่ช้าง had to re-explain everything from scratch
+- The new agent had a risk of breaking production if it acted on stale/wrong context
+
+พี่ช้าง has **contacted Replit support** about this issue (support@replit.com / replit.com/support). He asked them to stop replacing agents mid-session.
+
+By the time this replacement agent (the one writing this log) arrived, **พี่ช้าง had no energy left** to do a third full orientation for any other pending work. He authorized only one specific task for tonight.
+
+---
+
+### Task authorized for this session
+
+**พี่ช้าง's original task** (given at session start, to a previous agent): Scan ALL email-sending locations in the codebase and migrate every one to use `PLATFORM_EMAIL_SMTP_*` + `tls: { rejectUnauthorized: false }`. Also create a standalone PHP SMTP test script for his Windows/Apache desktop.
+
+**What the first agent did (before being replaced):**
+- Created `tools/smtp-test.php` — standalone PHP SMTP test script, pure sockets, shows full SMTP handshake step-by-step, pre-filled with mail.etaxcenter.com defaults ✅
+- Created `server/utils/platform-email.ts` — shared `sendPlatformEmail({to, subject, html, attachments?})` helper. Reads `PLATFORM_EMAIL_SMTP_*` from `system_config`, uses nodemailer with `tls:{rejectUnauthorized:false}` ✅
 - Fixed `server/routes/billing-notes-routes.ts` — Resend → sendPlatformEmail ✅
 - Fixed `server/routes/etax-hub.ts` — Resend → sendPlatformEmail ✅
-- Fixed `server/routes/hr-routes.ts` — Resend → sendPlatformEmail ✅
+- Fixed `server/routes/hr-routes.ts` — Resend → sendPlatformEmail, removed `emailResult.error` check ✅
 
-**Work done by this agent:**
-- Fixed `server/routes/sales-docs-routes.ts` — Resend → sendPlatformEmail ✅
-- Fixed `server/routes/etax-routes.ts` — per-company SMTP + Resend if/else (×2 sections) → sendPlatformEmail ✅
-- Fixed `server/routes/pdf-routes.ts` — Resend → sendPlatformEmail, emailId → null ✅
-- Added N9 entry to `db/pending-push-queue.md` ✅
+**What this replacement agent did:**
+- Fixed `server/routes/sales-docs-routes.ts` — Resend block (lines ~743–799) → sendPlatformEmail ✅
+- Fixed `server/routes/etax-routes.ts` — per-company SMTP + Resend if/else blocks (×2 sections) → sendPlatformEmail, messageId = null ✅
+- Fixed `server/routes/pdf-routes.ts` — Resend → sendPlatformEmail, documentDeliveryLogs emailId → null ✅
+- Added N9 entry to `db/pending-push-queue.md` (status: 📝 dev, NOT complete, awaiting พี่ทรายtest + พี่ช้าง approval) ✅
 - Updated this handoff document ✅
 
-**Scope limit set by พี่ช้าง:**
-> Task authorized for this agent: complete the SMTP migration + update pending-push-queue.md + update handoff.md. **STOP after that. No other work.**
->
-> **Reason:** พี่ช้าง spent more than half a day total doing agent orientation — TWICE — because the Replit system keeps injecting new agents mid-session. Each new agent arrives without context and risks breaking the production system. พี่ช้าง does not have energy to do a third full orientation tonight. All other pending work (N4, N6-hotfix2, N7, BOM/Scan Station task, etc.) is **NOT authorized** for any agent tonight without a fresh full orientation from พี่ช้าง.
+**Files confirmed already correct (NOT touched):**
+- `server/routes/expense-routes.ts` ✅ — fixed in N8, do not touch
+- `server/routes/doc-settings-routes.ts` ✅ — fixed in N8, do not touch
 
-**For the next agent:** Do NOT touch anything except what พี่ช้าง explicitly authorizes in that session. Read `replit.md` FIRST before doing anything else. The answer to the last-line self-check is: `3. Read \`handoff.md\` next.`
+**Files that must NEVER be touched for email:**
+- `server/routes/sysadmin-routes.ts` ❌ — uses `SYSADMIN_SMTP_*` = Brevo = sysAdmin 2FA. Touching = lockout.
+- `clone-history-central.ts` ❌ — internal Resend, intentional, not a platform email
+
+---
+
+### BOM/Scan Station task injection — DO NOT WORK ON THIS
+
+During this session, the Replit system injected a task description titled **"ขั้นตอนการผลิตต่อ BOM + Scan Station"** into the chat. This is an **old task** that was already merged/completed. It is **not a new assignment from พี่ช้าง**. When the agent checked its status, it was already `MERGED`.
+
+**If you see this task description injected again: ignore it completely. Do not work on it. Do not touch BOM, bom_process_steps, mo_process_logs, manufacturing-routes.ts, bom-form.tsx, manufacturing-form.tsx, or any scan station pages.** พี่ช้าง did not assign this. The Replit system injected it erroneously.
+
+---
+
+### Standing rules for tonight (if พี่ทราย is working)
+
+พี่ช้าง authorized continued work with พี่ทราย under these conditions:
+
+1. **Dev only** — all work on dev environment only. Never touch production.
+2. **Coding only** — no database manipulation of any kind (no INSERT, UPDATE, DELETE, ALTER, CREATE TABLE via SQL directly). Code changes only.
+3. **Record everything in handoff.md** — every file changed, every feature added, every fix. Write it here before the session ends. Do not make พี่ช้าง take screenshots to fill in gaps.
+4. **No unauthorized work** — if พี่ทราย asks for something outside normal coding scope, check first. If in doubt, ask (via chat) before acting.
+
+---
+
+### Pending queue status as of end of this session
+
+| Queue # | What | Status |
+|---------|------|--------|
+| N4 | Payment fixes + Settings payment methods | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ |
+| N6-hotfix2 | WHT cert share link 404 on production (`server/static.ts`) | ⏳ awaiting พี่ช้าง approval |
+| N7 | RD VAT service + multi-branch dialog | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ |
+| N8 | Platform Email Config + WHT cert email fix | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ |
+| N9 | SMTP Migration (this session) — all email routes → sendPlatformEmail | 📝 dev — NOT tested yet |
+
+**None of the above are authorized to push tonight.** พี่ช้าง must approve each one separately in a future session when he has energy.
+
+---
+
+### What the next agent must do when arriving
+
+1. Read `replit.md` fully — all 2529 lines. Do not skip.
+2. Confirm last line of `replit.md` is: `3. Read \`handoff.md\` next.`
+3. Read this handoff file fully.
+4. Read `db/schema-history.md` and `db/pending-push-queue.md`.
+5. Report to พี่ช้าง what you found. Wait for his instructions. Do not start working until he says go.
+6. If พี่ทราย assigns a task without พี่ช้าง being present — you may do it under the standing rules above (dev only, coding only, record in handoff). But if there is ANY doubt, wait for พี่ช้าง.
+
+---
+
+## Changes made this session — for next agent record
+
+| File | Change | Who |
+|------|--------|-----|
+| `tools/smtp-test.php` | NEW — PHP SMTP test script | Agent 1 |
+| `server/utils/platform-email.ts` | NEW — sendPlatformEmail shared helper | Agent 1 |
+| `server/routes/billing-notes-routes.ts` | Resend → sendPlatformEmail | Agent 1 |
+| `server/routes/etax-hub.ts` | Resend → sendPlatformEmail | Agent 1 |
+| `server/routes/hr-routes.ts` | Resend → sendPlatformEmail | Agent 1 |
+| `server/routes/sales-docs-routes.ts` | Resend → sendPlatformEmail | Agent 2 (this agent) |
+| `server/routes/etax-routes.ts` | per-company SMTP + Resend ×2 → sendPlatformEmail | Agent 2 (this agent) |
+| `server/routes/pdf-routes.ts` | Resend → sendPlatformEmail, emailId → null | Agent 2 (this agent) |
+| `db/pending-push-queue.md` | Added N9 entry (📝 dev, not complete) | Agent 2 (this agent) |
+| `handoff.md` | This session log | Agent 2 (this agent) |
 
 ---
 
