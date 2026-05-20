@@ -51,7 +51,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 
 ---
 
-### N4 — Payment fixes + TIV accounting + RE overpayment block + ซื้อ timeout
+### N4 — Payment fixes + TIV accounting + RE overpayment block + ซื้อ timeout + Related docs navigation
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅
 **Schema change:** NO
 **Push type:** Code-only push
@@ -62,6 +62,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 3. **RE ห้ามเกินยอดค้าง** — `route-helpers.ts` เพิ่ม `computeRemainingBalance()`, validate ใน 3 จุด (direct RE, BN, batch)
 4. **Payment method dropdown** — 14 frontend forms แก้ fallback logic ให้แสดง PM ถูก type (pay/receive)
 5. **Expense payment status** — `expense-routes.ts` + `expense.tsx` แก้ credit PM logic + paymentStatus override
+6. **Related docs navigation** — `related-docs-dialog.tsx` ลบ navigate-to-editPath → ใช้ navigate-to-listPath?docNo=xxx แทน (คลิกเอกสารเกี่ยวข้องแล้วกรองใน list)
 
 ⚠️ **หมายเหตุ:** `billing-notes-routes.ts`, `sales-docs-routes.ts`, `expense-routes.ts` มีการแก้ทั้ง N4 (logic) และ N9 (SMTP migration) — push ในสถานะ dev ปัจจุบันครอบคลุมทั้งคู่แล้ว
 
@@ -87,6 +88,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 | `client/src/pages/sales/deposit-form.tsx` | PM dropdown fallback | ⏳ awaiting |
 | `client/src/pages/sales/receipt-form.tsx` | PM dropdown fallback | ⏳ awaiting |
 | `client/src/pages/sales/sales-order-form.tsx` | PM dropdown fallback | ⏳ awaiting |
+| `client/src/components/related-docs-dialog.tsx` | Navigate → listPath?docNo=xxx (ลบ editPath) | ⏳ awaiting |
 
 ---
 
@@ -286,4 +288,4 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
-**Last verified:** 2026-05-20 NIGHT — Kai (replacement agent) + พี่ทราย session. N4 and N7 file lists finalized from git log. N9 added (SMTP migration). All entries awaiting พี่ช้าง push approval.
+**Last verified:** 2026-05-20 — พี่ทราย session. N4 file list confirmed from git log — เพิ่ม `related-docs-dialog.tsx` (af307627 18 พ.ค.) เข้า N4 (21 files). N7, N8 awaiting พี่ช้าง. N9, N10 dev ยังไม่ได้เทส. N3 + N6 + N6-hotfix deployed ✅.
