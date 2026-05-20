@@ -65,6 +65,15 @@ const ProcessScanStation = lazy(() => import("@/pages/manufacturing/process-scan
 // [platform-email-config] SMTP config — platform super_admin only (app-extra bypass)
 const PlatformEmailConfig = lazy(() => import("@/pages/platform/email-config"));
 
+// [doc-import] Document import pages — sales & purchase (cannot be added to App.tsx)
+const QuotationImport = lazy(() => import("@/pages/sales/quotation-import"));
+const SalesOrderImport = lazy(() => import("@/pages/sales/sales-order-import"));
+const TaxInvoiceImport = lazy(() => import("@/pages/sales/tax-invoice-import"));
+const ReceiptImport = lazy(() => import("@/pages/sales/receipt-import"));
+const CreditNoteImport = lazy(() => import("@/pages/sales/credit-note-import"));
+const PurchaseOrderImport = lazy(() => import("@/pages/purchases/purchase-order-import"));
+const PurchaseRequestImport = lazy(() => import("@/pages/purchases/purchase-request-import"));
+
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "white", zIndex: 9999, overflow: "auto" }}>
@@ -191,6 +200,15 @@ function matchPlatformEmailConfig(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/platform/email-config";
 }
 
+// [doc-import] exact path matchers for 7 document import pages
+function matchQuotationImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/quote/import"; }
+function matchSalesOrderImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/order/import"; }
+function matchTaxInvoiceImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/tax-invoice/import"; }
+function matchReceiptImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/receipt/import"; }
+function matchCreditNoteImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/credit-note/import"; }
+function matchPurchaseOrderImport(l: string) { return l.replace(/\?.*$/, "") === "/purchases/po/import"; }
+function matchPurchaseRequestImport(l: string) { return l.replace(/\?.*$/, "") === "/purchases/pr/import"; }
+
 // [ncr] route matchers
 function matchNcrList(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/manufacturing/ncr";
@@ -270,6 +288,13 @@ export default function AppExtra() {
   const ncrFormEditId = matchNcrFormEdit(location);
   const isProcessScan = matchProcessScan(location);
   const isPlatformEmailConfig = matchPlatformEmailConfig(location);
+  const isQuotationImport = matchQuotationImport(location);
+  const isSalesOrderImport = matchSalesOrderImport(location);
+  const isTaxInvoiceImport = matchTaxInvoiceImport(location);
+  const isReceiptImport = matchReceiptImport(location);
+  const isCreditNoteImport = matchCreditNoteImport(location);
+  const isPurchaseOrderImport = matchPurchaseOrderImport(location);
+  const isPurchaseRequestImport = matchPurchaseRequestImport(location);
 
   if (pdfId) {
     return (
@@ -606,6 +631,73 @@ export default function AppExtra() {
       <FullPageOverlay>
         <Suspense fallback={null}>
           <ProcessScanStation />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [doc-import] Sales document import pages
+  if (isQuotationImport) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <QuotationImport />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (isSalesOrderImport) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <SalesOrderImport />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (isTaxInvoiceImport) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <TaxInvoiceImport />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (isReceiptImport) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <ReceiptImport />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (isCreditNoteImport) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <CreditNoteImport />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+
+  // [doc-import] Purchase document import pages
+  if (isPurchaseOrderImport) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <PurchaseOrderImport />
+        </Suspense>
+      </FullPageOverlay>
+    );
+  }
+  if (isPurchaseRequestImport) {
+    return (
+      <FullPageOverlay>
+        <Suspense fallback={null}>
+          <PurchaseRequestImport />
         </Suspense>
       </FullPageOverlay>
     );
