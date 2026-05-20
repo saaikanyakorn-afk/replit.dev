@@ -822,6 +822,11 @@ STEPS:
 
 **For non-migration batches:** skip steps 6, 7, 8 (no DB to verify, no clean-push round).
 
+**⚠️ `pm2 restart` vs `pm2 stop … pm2 start` — pick the right one:**
+- **`pm2 restart etax-center`** — only for SHORT changes Node.js can hot-load (e.g. tiny config tweak, no rebuild, no migration, no browser refresh needed).
+- **`pm2 stop etax-center && … && pm2 start etax-center`** — for ANY long deployment: DB migration batch, multi-file batch, anything that needs `npm run build`. Stop FIRST so server never runs half-updated code mid-deploy. Start LAST after every step completes.
+- N3-style migration batch = always `stop … start`, never `restart`.
+
 **RULE: If interrupted mid-checklist, note which step you're on. Resume from that step — do NOT assume earlier steps are complete unless explicitly verified.**
 
 ---
