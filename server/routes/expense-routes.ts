@@ -2094,7 +2094,6 @@ export function registerExpenseRoutes(app: Express) {
 
       const fromAddress = cfg.SYSADMIN_SMTP_FROM || "noreply@etaxcenter.com";
       const fromDisplay = `อีเมลอัตโนมัติจาก E-Tax Center <${fromAddress}>`;
-      const replyTo = company?.email || undefined;
 
       const nodemailer = await import("nodemailer");
       const transporter = nodemailer.default.createTransport({
@@ -2106,7 +2105,6 @@ export function registerExpenseRoutes(app: Express) {
       await transporter.sendMail({
         from: fromDisplay,
         to: toEmail,
-        replyTo: replyTo,
         subject,
         html: htmlBody,
         attachments: [{ filename: attachmentName, content: pdfBuffer, contentType: "application/pdf" }],
