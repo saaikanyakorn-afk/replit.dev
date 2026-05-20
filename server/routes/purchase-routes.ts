@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import * as XLSX from "xlsx";
+import path from "path";
+import { parse as csvParse } from "csv-parse/sync";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, and, desc, or, sql, count, not, ilike, inArray } from "drizzle-orm";
@@ -4399,6 +4401,248 @@ export function registerPurchaseRoutes(app: Express) {
       console.error("[DXP] Delete error:", err);
       res.status(500).json({ message: err.message });
     }
+  });
+
+  // ===================== SHARED PURCHASE IMPORT HELPERS =====================
+  function _pimpParseDateBE(val: string): string | null {
+    if (!val) return null;
+    const str = String(val).trim();
+    const parts = str.split("/");
+    if (parts.length === 3) {
+      const dd = parts[0].padStart(2, "0"), mm = parts[1].padStart(2, "0");
+      let yyyy = Number(parts[2]);
+      if (yyyy > 2400) yyyy -= 543;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    if (/^\d{5}$/.test(str)) {
+      const d = new Date((Number(str) - 25569) * 86400000);
+      if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+    }
+    const d = new Date(str);
+    return !isNaN(d.getTime()) ? d.toISOString().split("T")[0] : null;
+  }
+
+  function _pimpParseFile(buf: Buffer, name: string): any[] {
+    const ext = path.extname(name).toLowerCase();
+    if (ext === ".csv") {
+      let content = buf.toString("utf-8");
+      if (!/[\u0E00-\u0E7F]/.test(content) && buf.some((b: number) => b >= 0xA1 && b <= 0xFB)) {
+        try { content = new TextDecoder("tis-620").decode(buf); } catch { content = buf.toString("latin1"); }
+      }
+      const delim = content.split(/\r?\n/)[0].includes("\t") ? "\t" : ",";
+      return csvParse(content, { columns: true, skip_empty_lines: true, trim: true, bom: true, delimiter: delim, relax_quotes: true, relax_column_count: true });
+    }
+    if (ext === ".xlsx" || ext === ".xls") {
+      const wb = XLSX.read(buf, { type: "buffer" });
+      return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+    }
+    throw new Error("รองรับเฉพาะไฟล์ .csv, .xlsx, .xls");
+  }
+
+  function _pimpBuildItems(rows: any[], productCodeMap: Map<string, any>): { items: any[]; subtotal: number } {
+    const items: any[] = [];
+    let subtotal = 0;
+    for (const row of rows) {
+      const qty = parseFloat(row.qty) || 0, unitPrice = parseFloat(row.unitPrice) || 0, discount = parseFloat(row.discount) || 0;
+      const total = Math.round((qty * unitPrice - discount) * 100) / 100;
+      const errs: string[] = [];
+      if (!row.productName) errs.push("ไม่มีชื่อสินค้า/บริการ");
+      if (qty <= 0) errs.push("จำนวนต้องมากกว่า 0");
+      if (unitPrice <= 0) errs.push("ราคาต่อหน่วยต้องมากกว่า 0");
+      const mp = row.productCode ? productCodeMap.get(row.productCode) : null;
+      subtotal += total;
+      items.push({ rowNum: row._rowNum, productCode: row.productCode, productName: mp ? (mp.name || row.productName) : row.productName, description: row.description, qty, unit: row.unit || "ชิ้น", unitPrice, discount, total, vatType: row.vatType || "vat7", productId: mp?.id || null, productMatched: !!mp, errors: errs });
+    }
+    return { items, subtotal };
+  }
+
+  function _pimpComputeVat(items: any[], rawSubtotal: number, priceMode: string, wht: number): { vatAmount: number; subtotal: number; totalAmount: number } {
+    let vatAmount = 0;
+    for (const item of items) {
+      if (priceMode === "excluded") vatAmount += item.vatType === "vat7" ? item.total * 0.07 : 0;
+      else vatAmount += item.vatType === "vat7" ? (item.total * 7 / 107) : 0;
+    }
+    vatAmount = Math.round(vatAmount * 100) / 100;
+    const subtotal = priceMode === "included" ? Math.round((rawSubtotal - vatAmount) * 100) / 100 : Math.round(rawSubtotal * 100) / 100;
+    return { vatAmount, subtotal, totalAmount: Math.round((subtotal + vatAmount - wht) * 100) / 100 };
+  }
+
+  function _pimpMatchVendor(first: any, contactList: any[]) {
+    if (first.vendorCode) { const m = contactList.find((c: any) => c.code === first.vendorCode); if (m) return m; }
+    if (first.vendorTaxId) { const m = contactList.find((c: any) => c.taxId === first.vendorTaxId); if (m) return m; }
+    if (first.vendorName) { const m = contactList.find((c: any) => (c.name || "").toLowerCase() === first.vendorName.toLowerCase() || (c.orgName || "").toLowerCase() === first.vendorName.toLowerCase()); if (m) return m; }
+    return null;
+  }
+
+  const _pimpUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+  // ===================== PURCHASE ORDER IMPORT =====================
+  app.get("/api/purchase-orders/import/template", (_req, res) => {
+    const headers = ["เลขที่เอกสาร","วันที่เอกสาร","วันส่งของ","รหัสผู้ขาย","ชื่อผู้ขาย","เลขประจำตัวผู้เสียภาษี","ที่อยู่ผู้ขาย","สาขา","ผู้ติดต่อ","โทรศัพท์","อีเมล","เครดิต(วัน)","รหัสสินค้า","ชื่อสินค้า/บริการ","รายละเอียด","จำนวน","หน่วย","ราคาต่อหน่วย","ส่วนลด","ประเภท VAT","ภาษีหัก ณ ที่จ่าย","โหมดราคา","หมายเหตุ","อ้างอิง"];
+    const sample1 = ["PO6801001","01/01/2568","15/01/2568","V0001","บจ. ซัพพลายเออร์ จำกัด","0105600000001","456 ถ.พระราม 4 กรุงเทพฯ","สำนักงานใหญ่","คุณสมหมาย","02-987-6543","vendor@example.com","30","P001","วัตถุดิบ A","","100","กิโลกรัม","500","0","vat7","0","excluded","",""];
+    const sample2 = ["PO6801001","","","","","","","","","","","","P002","วัตถุดิบ B","","50","กิโลกรัม","300","0","vat7","","","",""];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, sample1, sample2]);
+    ws["!cols"] = headers.map(() => ({ wch: 16 }));
+    XLSX.utils.book_append_sheet(wb, ws, "ใบสั่งซื้อ");
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    res.setHeader("Content-Disposition", 'attachment; filename="template_purchase_orders.xlsx"');
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+  });
+
+  app.post("/api/purchase-orders/import/preview", requireAuth, requireModule("purchases"), _pimpUpload.single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
+      const companyId = Number(req.body.companyId);
+      if (!companyId) return res.status(400).json({ message: "กรุณาเลือกบริษัท" });
+      const rawRows = _pimpParseFile(req.file.buffer, req.file.originalname);
+      if (!rawRows.length) return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+      if (rawRows.length > 10000) return res.status(400).json({ message: "รองรับสูงสุด 10,000 แถวต่อครั้ง" });
+      const [companyProducts, companyContacts, existingRows] = await Promise.all([
+        db.select().from(products).where(eq(products.companyId, companyId)),
+        db.select().from(contacts).where(eq(contacts.companyId, companyId)),
+        db.select({ n: purchaseOrders.poNo }).from(purchaseOrders).where(eq(purchaseOrders.companyId, companyId)),
+      ]);
+      const productCodeMap = new Map(companyProducts.filter(p => p.code).map(p => [p.code!, p]));
+      const existingNos = new Set(existingRows.map(e => e.n));
+      const COL_MAP: Record<string,string> = { "เลขที่เอกสาร":"poNo","วันที่เอกสาร":"poDate","วันส่งของ":"deliveryDate","รหัสผู้ขาย":"vendorCode","ชื่อผู้ขาย":"vendorName","เลขประจำตัวผู้เสียภาษี":"vendorTaxId","ที่อยู่ผู้ขาย":"vendorAddress","สาขา":"branch","ผู้ติดต่อ":"contactPerson","โทรศัพท์":"contactPhone","อีเมล":"contactEmail","เครดิต(วัน)":"creditDays","รหัสสินค้า":"productCode","ชื่อสินค้า/บริการ":"productName","รายละเอียด":"description","จำนวน":"qty","หน่วย":"unit","ราคาต่อหน่วย":"unitPrice","ส่วนลด":"discount","ประเภท VAT":"vatType","ภาษีหัก ณ ที่จ่าย":"withholdingTax","โหมดราคา":"priceMode","หมายเหตุ":"notes","อ้างอิง":"refDoc" };
+      const mapped = rawRows.map((row, idx) => { const r: any = { _rowNum: idx + 2 }; for (const [k, v] of Object.entries(COL_MAP)) r[v] = row[k] !== undefined ? String(row[k]).trim() : ""; return r; });
+      const grouped = new Map<string, any[]>(); let ai = 0;
+      for (const row of mapped) { const k = row.poNo || `__auto_${++ai}`; if (!row.poNo) row.poNo = ""; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k)!.push(row); }
+      const documents: any[] = [];
+      for (const [key, rows] of Array.from(grouped.entries())) {
+        const first = rows[0];
+        const poDate = _pimpParseDateBE(first.poDate), deliveryDate = _pimpParseDateBE(first.deliveryDate);
+        const errors: string[] = [];
+        if (!poDate) errors.push("วันที่เอกสารไม่ถูกต้อง");
+        if (!first.vendorName) errors.push("ไม่มีชื่อผู้ขาย");
+        const isDuplicate = !!(first.poNo && existingNos.has(first.poNo));
+        if (isDuplicate) errors.push("เลขที่เอกสารซ้ำในระบบ");
+        const vm = _pimpMatchVendor(first, companyContacts);
+        const { items, subtotal: rawSub } = _pimpBuildItems(rows, productCodeMap);
+        const priceMode = first.priceMode || "excluded", wht = parseFloat(first.withholdingTax) || 0;
+        const { vatAmount, subtotal, totalAmount } = _pimpComputeVat(items, rawSub, priceMode, wht);
+        documents.push({ key, poNo: first.poNo || "(สร้างอัตโนมัติ)", poDate: poDate || "", deliveryDate: deliveryDate || "", vendorCode: first.vendorCode, vendorName: first.vendorName, vendorTaxId: first.vendorTaxId, vendorAddress: first.vendorAddress, branch: first.branch, contactPerson: first.contactPerson, contactPhone: first.contactPhone, contactEmail: first.contactEmail, creditDays: parseInt(first.creditDays) || null, notes: first.notes, refDoc: first.refDoc, priceMode, withholdingTax: wht, subtotal, vatAmount, totalAmount, vendorId: vm?.id || null, vendorMatchName: vm ? (vm.name || vm.orgName) : null, items, errors, hasErrors: errors.length > 0 || items.some((i: any) => i.errors.length > 0), isDuplicate });
+      }
+      res.json({ totalRows: rawRows.length, totalDocuments: documents.length, validDocuments: documents.filter(d => !d.hasErrors).length, invalidDocuments: documents.filter(d => d.hasErrors).length, documents });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/purchase-orders/import/create", requireAuth, requireModule("purchases"), async (req, res) => {
+    try {
+      if (!(await checkDocumentLimit(req, res))) return;
+      const user = req.user as any;
+      const { companyId, documents } = req.body;
+      if (!companyId || !Array.isArray(documents)) return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+      const created: any[] = [], skipped: any[] = [], errors: any[] = [];
+      for (const doc of documents) {
+        try {
+          if (doc.poNo && doc.poNo !== "(สร้างอัตโนมัติ)") {
+            const dup = await db.select({ id: purchaseOrders.id }).from(purchaseOrders).where(and(eq(purchaseOrders.companyId, companyId), eq(purchaseOrders.poNo, doc.poNo)));
+            if (dup.length > 0) { skipped.push({ poNo: doc.poNo, reason: "เลขที่เอกสารซ้ำ" }); continue; }
+          }
+          let poNo = doc.poNo;
+          if (!poNo || poNo === "(สร้างอัตโนมัติ)") poNo = await getNextDocNo(companyId, "PO", purchaseOrders, purchaseOrders.poNo, purchaseOrders.companyId, doc.poDate);
+          const validItems = (doc.items || []).filter((i: any) => i.productName && (parseFloat(i.qty) || 0) > 0 && (parseFloat(i.unitPrice) || 0) > 0);
+          if (!validItems.length) { errors.push({ poNo, error: "ไม่มีรายการที่ถูกต้อง" }); continue; }
+          const result = await db.transaction(async (tx) => {
+            const [nd] = await tx.insert(purchaseOrders).values({ companyId, poNo, poDate: doc.poDate, deliveryDate: doc.deliveryDate || null, vendorId: doc.vendorId ? Number(doc.vendorId) : null, vendorCode: doc.vendorCode || null, vendorName: doc.vendorName, vendorAddress: doc.vendorAddress || null, vendorTaxId: doc.vendorTaxId || null, branch: doc.branch || null, contactPerson: doc.contactPerson || null, contactPhone: doc.contactPhone || null, contactEmail: doc.contactEmail || null, creditDays: doc.creditDays ? Number(doc.creditDays) : null, subtotal: String(doc.subtotal || "0"), discountAmount: "0", vatAmount: String(doc.vatAmount || "0"), totalAmount: String(doc.totalAmount || "0"), withholdingTax: String(doc.withholdingTax || "0"), status: "draft", priceMode: doc.priceMode || "excluded", docPrefix: "PO", notes: doc.notes || null, refDoc: doc.refDoc || null, createdBy: user.id }).returning();
+            for (const item of validItems) await tx.insert(purchaseOrderItems).values({ purchaseOrderId: nd.id, productId: item.productId ? Number(item.productId) : null, productCode: item.productCode || null, productName: item.productName, description: item.description || null, qty: String(item.qty || "1"), unit: item.unit || "ชิ้น", unitPrice: String(item.unitPrice || "0"), discount: String(item.discount || "0"), discountType: "amount", total: String(item.total || "0"), vatType: item.vatType || "vat7" });
+            return nd;
+          });
+          logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "purchase_order", entityId: String(result.id), entityName: poNo }).catch(() => {});
+          created.push({ poNo, id: result.id });
+        } catch (e: any) { errors.push({ poNo: doc.poNo || "(auto)", error: e.message }); }
+      }
+      const createdIds = created.map((c: any) => c.id);
+      if (createdIds.length > 0) { const [b] = await db.insert(documentImportBatches).values({ companyId, docType: "purchase_order", totalCreated: createdIds.length, totalSkipped: skipped.length, totalErrors: errors.length, createdDocIds: JSON.stringify(createdIds), createdBy: user.id }).returning(); return res.json({ created, skipped, errors, total: documents.length, batchId: b.id }); }
+      res.json({ created, skipped, errors, total: documents.length });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ===================== PURCHASE REQUEST IMPORT =====================
+  app.get("/api/purchase-requests/import/template", (_req, res) => {
+    const headers = ["เลขที่เอกสาร","วันที่เอกสาร","วันส่งของ","รหัสผู้ขาย","ชื่อผู้ขาย","เลขประจำตัวผู้เสียภาษี","ที่อยู่ผู้ขาย","สาขา","ผู้ติดต่อ","โทรศัพท์","อีเมล","เครดิต(วัน)","รหัสสินค้า","ชื่อสินค้า/บริการ","รายละเอียด","จำนวน","หน่วย","ราคาต่อหน่วย","ส่วนลด","ประเภท VAT","ภาษีหัก ณ ที่จ่าย","โหมดราคา","หมายเหตุ","อ้างอิง"];
+    const sample1 = ["PR6801001","01/01/2568","15/01/2568","V0001","บจ. ซัพพลายเออร์ จำกัด","0105600000001","456 ถ.พระราม 4 กรุงเทพฯ","สำนักงานใหญ่","คุณสมหมาย","02-987-6543","vendor@example.com","30","P001","วัตถุดิบ A","","100","กิโลกรัม","500","0","vat7","0","excluded","",""];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, sample1]);
+    ws["!cols"] = headers.map(() => ({ wch: 16 }));
+    XLSX.utils.book_append_sheet(wb, ws, "ใบขอซื้อ");
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    res.setHeader("Content-Disposition", 'attachment; filename="template_purchase_requests.xlsx"');
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+  });
+
+  app.post("/api/purchase-requests/import/preview", requireAuth, requireModule("purchases"), _pimpUpload.single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
+      const companyId = Number(req.body.companyId);
+      if (!companyId) return res.status(400).json({ message: "กรุณาเลือกบริษัท" });
+      const rawRows = _pimpParseFile(req.file.buffer, req.file.originalname);
+      if (!rawRows.length) return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+      if (rawRows.length > 10000) return res.status(400).json({ message: "รองรับสูงสุด 10,000 แถวต่อครั้ง" });
+      const [companyProducts, companyContacts, existingRows] = await Promise.all([
+        db.select().from(products).where(eq(products.companyId, companyId)),
+        db.select().from(contacts).where(eq(contacts.companyId, companyId)),
+        db.select({ n: purchaseRequests.prNo }).from(purchaseRequests).where(eq(purchaseRequests.companyId, companyId)),
+      ]);
+      const productCodeMap = new Map(companyProducts.filter(p => p.code).map(p => [p.code!, p]));
+      const existingNos = new Set(existingRows.map(e => e.n));
+      const COL_MAP: Record<string,string> = { "เลขที่เอกสาร":"prNo","วันที่เอกสาร":"prDate","วันส่งของ":"deliveryDate","รหัสผู้ขาย":"vendorCode","ชื่อผู้ขาย":"vendorName","เลขประจำตัวผู้เสียภาษี":"vendorTaxId","ที่อยู่ผู้ขาย":"vendorAddress","สาขา":"branch","ผู้ติดต่อ":"contactPerson","โทรศัพท์":"contactPhone","อีเมล":"contactEmail","เครดิต(วัน)":"creditDays","รหัสสินค้า":"productCode","ชื่อสินค้า/บริการ":"productName","รายละเอียด":"description","จำนวน":"qty","หน่วย":"unit","ราคาต่อหน่วย":"unitPrice","ส่วนลด":"discount","ประเภท VAT":"vatType","ภาษีหัก ณ ที่จ่าย":"withholdingTax","โหมดราคา":"priceMode","หมายเหตุ":"notes","อ้างอิง":"refDoc" };
+      const mapped = rawRows.map((row, idx) => { const r: any = { _rowNum: idx + 2 }; for (const [k, v] of Object.entries(COL_MAP)) r[v] = row[k] !== undefined ? String(row[k]).trim() : ""; return r; });
+      const grouped = new Map<string, any[]>(); let ai = 0;
+      for (const row of mapped) { const k = row.prNo || `__auto_${++ai}`; if (!row.prNo) row.prNo = ""; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k)!.push(row); }
+      const documents: any[] = [];
+      for (const [key, rows] of Array.from(grouped.entries())) {
+        const first = rows[0];
+        const prDate = _pimpParseDateBE(first.prDate), deliveryDate = _pimpParseDateBE(first.deliveryDate);
+        const errors: string[] = [];
+        if (!prDate) errors.push("วันที่เอกสารไม่ถูกต้อง");
+        if (!first.vendorName) errors.push("ไม่มีชื่อผู้ขาย");
+        const isDuplicate = !!(first.prNo && existingNos.has(first.prNo));
+        if (isDuplicate) errors.push("เลขที่เอกสารซ้ำในระบบ");
+        const vm = _pimpMatchVendor(first, companyContacts);
+        const { items, subtotal: rawSub } = _pimpBuildItems(rows, productCodeMap);
+        const priceMode = first.priceMode || "excluded", wht = parseFloat(first.withholdingTax) || 0;
+        const { vatAmount, subtotal, totalAmount } = _pimpComputeVat(items, rawSub, priceMode, wht);
+        documents.push({ key, prNo: first.prNo || "(สร้างอัตโนมัติ)", prDate: prDate || "", deliveryDate: deliveryDate || "", vendorCode: first.vendorCode, vendorName: first.vendorName, vendorTaxId: first.vendorTaxId, vendorAddress: first.vendorAddress, branch: first.branch, contactPerson: first.contactPerson, contactPhone: first.contactPhone, contactEmail: first.contactEmail, creditDays: parseInt(first.creditDays) || null, notes: first.notes, refDoc: first.refDoc, priceMode, withholdingTax: wht, subtotal, vatAmount, totalAmount, vendorId: vm?.id || null, vendorMatchName: vm ? (vm.name || vm.orgName) : null, items, errors, hasErrors: errors.length > 0 || items.some((i: any) => i.errors.length > 0), isDuplicate });
+      }
+      res.json({ totalRows: rawRows.length, totalDocuments: documents.length, validDocuments: documents.filter(d => !d.hasErrors).length, invalidDocuments: documents.filter(d => d.hasErrors).length, documents });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/purchase-requests/import/create", requireAuth, requireModule("purchases"), async (req, res) => {
+    try {
+      if (!(await checkDocumentLimit(req, res))) return;
+      const user = req.user as any;
+      const { companyId, documents } = req.body;
+      if (!companyId || !Array.isArray(documents)) return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+      const created: any[] = [], skipped: any[] = [], errors: any[] = [];
+      for (const doc of documents) {
+        try {
+          if (doc.prNo && doc.prNo !== "(สร้างอัตโนมัติ)") {
+            const dup = await db.select({ id: purchaseRequests.id }).from(purchaseRequests).where(and(eq(purchaseRequests.companyId, companyId), eq(purchaseRequests.prNo, doc.prNo)));
+            if (dup.length > 0) { skipped.push({ prNo: doc.prNo, reason: "เลขที่เอกสารซ้ำ" }); continue; }
+          }
+          let prNo = doc.prNo;
+          if (!prNo || prNo === "(สร้างอัตโนมัติ)") prNo = await getNextDocNo(companyId, "PR", purchaseRequests, purchaseRequests.prNo, purchaseRequests.companyId, doc.prDate);
+          const validItems = (doc.items || []).filter((i: any) => i.productName && (parseFloat(i.qty) || 0) > 0 && (parseFloat(i.unitPrice) || 0) > 0);
+          if (!validItems.length) { errors.push({ prNo, error: "ไม่มีรายการที่ถูกต้อง" }); continue; }
+          const result = await db.transaction(async (tx) => {
+            const [nd] = await tx.insert(purchaseRequests).values({ companyId, prNo, prDate: doc.prDate, deliveryDate: doc.deliveryDate || null, vendorId: doc.vendorId ? Number(doc.vendorId) : null, vendorCode: doc.vendorCode || null, vendorName: doc.vendorName, vendorAddress: doc.vendorAddress || null, vendorTaxId: doc.vendorTaxId || null, branch: doc.branch || null, contactPerson: doc.contactPerson || null, contactPhone: doc.contactPhone || null, contactEmail: doc.contactEmail || null, creditDays: doc.creditDays ? Number(doc.creditDays) : null, subtotal: String(doc.subtotal || "0"), discountAmount: "0", vatAmount: String(doc.vatAmount || "0"), totalAmount: String(doc.totalAmount || "0"), withholdingTax: String(doc.withholdingTax || "0"), status: "draft", priceMode: doc.priceMode || "excluded", docPrefix: "PR", notes: doc.notes || null, refDoc: doc.refDoc || null, createdBy: user.id }).returning();
+            for (const item of validItems) await tx.insert(purchaseRequestItems).values({ purchaseRequestId: nd.id, productId: item.productId ? Number(item.productId) : null, productCode: item.productCode || null, productName: item.productName, description: item.description || null, qty: String(item.qty || "1"), unit: item.unit || "ชิ้น", unitPrice: String(item.unitPrice || "0"), discount: String(item.discount || "0"), discountType: "amount", total: String(item.total || "0"), vatType: item.vatType || "vat7" });
+            return nd;
+          });
+          logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "purchase_request", entityId: String(result.id), entityName: prNo }).catch(() => {});
+          created.push({ prNo, id: result.id });
+        } catch (e: any) { errors.push({ prNo: doc.prNo || "(auto)", error: e.message }); }
+      }
+      const createdIds = created.map((c: any) => c.id);
+      if (createdIds.length > 0) { const [b] = await db.insert(documentImportBatches).values({ companyId, docType: "purchase_request", totalCreated: createdIds.length, totalSkipped: skipped.length, totalErrors: errors.length, createdDocIds: JSON.stringify(createdIds), createdBy: user.id }).returning(); return res.json({ created, skipped, errors, total: documents.length, batchId: b.id }); }
+      res.json({ created, skipped, errors, total: documents.length });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
 }

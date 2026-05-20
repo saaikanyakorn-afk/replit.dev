@@ -357,4 +357,58 @@ ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
 
 ---
 
-**Last verified:** 2026-05-20 — พี่ทราย session. N4 (21 files) confirmed from git log. N11 เพิ่มใหม่ — Manufacturing Features Batch (Tasks #35–#94, 27 files, 6 schema migrations). N7, N8 awaiting พี่ช้าง. N9, N10, N11 dev ยังไม่ได้เทสทั้งหมด. N3 + N6 + N6-hotfix deployed ✅.
+## BACKLOG — ฟีเจอร์ที่ตกลงจะทำ (ยังไม่ได้เริ่ม code)
+
+> รายการนี้บันทึกงานที่พี่ทรายฝากไว้ เมื่อเริ่ม code แล้วให้ย้ายเป็น ACTIVE QUEUE entry (N12, N13, ...)
+
+---
+
+### BL-1 — MES Phase 3: Dispatch + Rework + BMS/Screen Serial
+**ฝากโดย:** พี่ทราย 2026-05-20
+**ที่มา:** Battery Traceability System Requirement (Phase 2 gap + Phase 3)
+
+**สิ่งที่ต้องทำ:**
+1. **BMS serial scan** (แยก field) — scan QR บน BMS → เก็บใน `mes_part_assignments` table (part_type: BMS/Screen/etc.) แยกจาก `mes_cell_assignments`
+2. **Screen serial scan** — เช่นเดียวกับ BMS
+3. **Replace/Rework** — ปุ่ม Replace → scan Master QR → scan part ใหม่ → overwrite + log เก่าไว้เป็น history
+4. **Brand field** ใน `mes_work_orders` table (ตาม requirement: Brand, Model, SN format)
+5. **Phase 3 — Dispatch & Logistics (Zone G):** ยังไม่มีเลย
+   - Scan FG battery → assign customer → `dispatch_logs` table
+   - Shipping Batch (รถ 1 คัน หลายลูกค้า) → `shipping_batches` table
+   - Print Shipping Tag (PDF) — ชื่อลูกค้า / SN / ลูกที่ N/M
+
+**Schema changes ใหม่ที่ต้องสร้าง:**
+- `mes_part_assignments` (part_type, part_serial, unit_id, employee_qr, replaced_at)
+- `dispatch_logs` (master_qr_id, customer_id, shipping_batch_id, dispatched_at)
+- `shipping_batches` (batch_no, truck_id, dispatched_at)
+- ALTER `mes_work_orders` ADD COLUMN brand VARCHAR(100)
+
+---
+
+### BL-2 — Document Import ครบทุกประเภท (7 เอกสาร)
+**ฝากโดย:** พี่ทราย 2026-05-20
+**ที่มา:** ต้องการย้ายข้อมูลจากโปรแกรมอื่น (ERP migration)
+
+**Pattern:** เหมือน `invoice-import.tsx` + `purchase-import.tsx` ที่มีอยู่แล้ว
+(upload Excel/CSV → preview rows → select/deselect → import)
+
+**เอกสารที่ยังขาด import:**
+
+| เอกสาร | Route | หมายเหตุ |
+|--------|-------|---------|
+| ใบเสนอราคา (Quotation) | `/sales/quotations/import` | — |
+| ใบกำกับภาษี (Tax Invoice) | `/sales/tax-invoices/import` | — |
+| ใบรับเงิน (Receipt) | `/sales/receipts/import` | — |
+| ใบสั่งขาย (Sales Order) | `/sales/sales-orders/import` | — |
+| ใบลดหนี้ (Credit Note) | `/sales/credit-notes/import` | — |
+| ใบสั่งซื้อ (Purchase Order) | `/purchases/purchase-orders/import` | — |
+| ใบขอซื้อ (Purchase Request) | `/purchases/purchase-requests/import` | — |
+
+**Files ที่ต้องสร้าง (per เอกสาร):**
+- 1 frontend page (pattern จาก `invoice-import.tsx`)
+- 1 backend POST endpoint (pattern จาก `import-batch-routes.ts`)
+- 1 Excel template (.xlsx) สำหรับ download
+
+---
+
+**Last verified:** 2026-05-20 — พี่ทราย session. N4 (21 files) confirmed from git log. N11 เพิ่มใหม่ — Manufacturing Features Batch (Tasks #35–#94, 27 files, 6 schema migrations). BL-1 (MES Phase 3 + Rework) + BL-2 (Document Import 7 types) เพิ่มใน Backlog. N7, N8 awaiting พี่ช้าง. N9, N10, N11 dev ยังไม่ได้เทสทั้งหมด. N3 + N6 + N6-hotfix deployed ✅.

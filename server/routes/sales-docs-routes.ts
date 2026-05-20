@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, desc, and, inArray, count, sql, isNull } from "drizzle-orm";
-import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements, warehouses, warehouseStockLevels, paymentVouchers, paymentVoucherLinkedDocs } from "@shared/schema";
+import { salesOrders, invoices, salesOrderItems, quotations, companies, documentSettings, quotationItems, users, invoiceItems, journalEntries, journalLines, accounts, products, contacts, documentImportBatches, taxInvoices, taxInvoiceItems, receipts, receiptItems, receiptLinkedDocs, purchaseInvoices, expenses, commissionRules, commissionRecords, employees, liveCfOrders, salesCreditNotes, salesCreditNoteItems, billingNotes, billingNoteLinkedDocs, purchaseRequests, bidComparisons, purchaseOrders, productBundles, purchaseDebitNotes, approvalRequests, stockMovements, warehouses, warehouseStockLevels, paymentVouchers, paymentVoucherLinkedDocs } from "@shared/schema";
 import { gte, lte, or } from "drizzle-orm";
 import { requireAuth, requireRole, requireAnyModule, getCompanyTenantId, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo, validateDocNo, getNextJournalEntryNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, logActivity, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, recomputePaymentStatus, deductStockBundleAware, upsertWarehouseStockLevel, upsertWarehouseReservedQty, reverseWarehouseStockBundleAware, getInventoryTriggers, computeRemainingBalance } from "../route-helpers";
@@ -3829,6 +3829,516 @@ app.get("/api/invoices/:id/issued-tiv-amount", requireAuth, async (req, res) => 
     console.error("[issued-tiv-amount]", err);
     res.status(500).json({ message: err.message });
   }
+});
+
+// ===================== SHARED IMPORT HELPERS =====================
+function _impParseDateBE(val: string): string | null {
+  if (!val) return null;
+  const str = String(val).trim();
+  const parts = str.split("/");
+  if (parts.length === 3) {
+    const dd = parts[0].padStart(2, "0"), mm = parts[1].padStart(2, "0");
+    let yyyy = Number(parts[2]);
+    if (yyyy > 2400) yyyy -= 543;
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  if (/^\d{5}$/.test(str)) {
+    const d = new Date((Number(str) - 25569) * 86400000);
+    if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+  }
+  const d = new Date(str);
+  return !isNaN(d.getTime()) ? d.toISOString().split("T")[0] : null;
+}
+
+function _impParseFile(buf: Buffer, name: string): any[] {
+  const ext = path.extname(name).toLowerCase();
+  if (ext === ".csv") {
+    let content = buf.toString("utf-8");
+    if (!/[\u0E00-\u0E7F]/.test(content) && buf.some((b: number) => b >= 0xA1 && b <= 0xFB)) {
+      try { content = new TextDecoder("tis-620").decode(buf); } catch { content = buf.toString("latin1"); }
+    }
+    const delim = content.split(/\r?\n/)[0].includes("\t") ? "\t" : ",";
+    return csvParse(content, { columns: true, skip_empty_lines: true, trim: true, bom: true, delimiter: delim, relax_quotes: true, relax_column_count: true });
+  }
+  if (ext === ".xlsx" || ext === ".xls") {
+    const wb = XLSX.read(buf, { type: "buffer" });
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+  }
+  throw new Error("รองรับเฉพาะไฟล์ .csv, .xlsx, .xls");
+}
+
+function _impBuildItems(rows: any[], productCodeMap: Map<string, any>): { items: any[]; subtotal: number } {
+  const items: any[] = [];
+  let subtotal = 0;
+  for (const row of rows) {
+    const qty = parseFloat(row.qty) || 0, unitPrice = parseFloat(row.unitPrice) || 0, discount = parseFloat(row.discount) || 0;
+    const total = Math.round((qty * unitPrice - discount) * 100) / 100;
+    const errs: string[] = [];
+    if (!row.productName) errs.push("ไม่มีชื่อสินค้า/บริการ");
+    if (qty <= 0) errs.push("จำนวนต้องมากกว่า 0");
+    if (unitPrice <= 0) errs.push("ราคาต่อหน่วยต้องมากกว่า 0");
+    const mp = row.productCode ? productCodeMap.get(row.productCode) : null;
+    subtotal += total;
+    items.push({ rowNum: row._rowNum, productCode: row.productCode, productName: mp ? (mp.name || row.productName) : row.productName, description: row.description, qty, unit: row.unit || "ชิ้น", unitPrice, discount, total, vatType: row.vatType || "vat7", productId: mp?.id || null, productMatched: !!mp, errors: errs });
+  }
+  return { items, subtotal };
+}
+
+function _impComputeVat(items: any[], rawSubtotal: number, priceMode: string, wht: number): { vatAmount: number; subtotal: number; totalAmount: number } {
+  let vatAmount = 0;
+  for (const item of items) {
+    if (priceMode === "excluded") vatAmount += item.vatType === "vat7" ? item.total * 0.07 : 0;
+    else vatAmount += item.vatType === "vat7" ? (item.total * 7 / 107) : 0;
+  }
+  vatAmount = Math.round(vatAmount * 100) / 100;
+  const subtotal = priceMode === "included" ? Math.round((rawSubtotal - vatAmount) * 100) / 100 : Math.round(rawSubtotal * 100) / 100;
+  return { vatAmount, subtotal, totalAmount: Math.round((subtotal + vatAmount - wht) * 100) / 100 };
+}
+
+function _impMatchCustomer(first: any, contacts: any[]) {
+  if (first.customerCode) { const m = contacts.find((c: any) => c.code === first.customerCode); if (m) return m; }
+  if (first.customerTaxId) { const m = contacts.find((c: any) => c.taxId === first.customerTaxId); if (m) return m; }
+  if (first.customerName) { const m = contacts.find((c: any) => (c.name || "").toLowerCase() === first.customerName.toLowerCase() || (c.orgName || "").toLowerCase() === first.customerName.toLowerCase()); if (m) return m; }
+  return null;
+}
+
+const _impUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// ===================== QUOTATION IMPORT =====================
+app.get("/api/quotations/import/template", (_req, res) => {
+  const headers = ["เลขที่เอกสาร","วันที่เอกสาร","วันหมดอายุ","รหัสลูกค้า","ชื่อลูกค้า","เลขประจำตัวผู้เสียภาษี","ที่อยู่ลูกค้า","สาขา","ผู้ติดต่อ","โทรศัพท์","อีเมล","เครดิต(วัน)","รหัสสินค้า","ชื่อสินค้า/บริการ","รายละเอียด","จำนวน","หน่วย","ราคาต่อหน่วย","ส่วนลด","ประเภท VAT","โหมดราคา","หมายเหตุ","อ้างอิง"];
+  const sample1 = ["QO6801001","01/01/2568","31/01/2568","C0001","บจ. ตัวอย่าง จำกัด","0105500000001","123 ถ.สุขุมวิท กรุงเทพฯ","สำนักงานใหญ่","คุณสมชาย","02-123-4567","info@example.com","30","P001","บริการทำบัญชี","ค่าบริการรายเดือน","1","เดือน","5000","0","vat7","excluded","",""];
+  const sample2 = ["QO6801001","","","","","","","","","","","","P002","ค่าจัดทำงบ","จัดทำงบการเงิน","1","ชุด","15000","500","vat7","","",""];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample1, sample2]);
+  ws["!cols"] = headers.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, "ใบเสนอราคา");
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Disposition", 'attachment; filename="template_quotations.xlsx"');
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.send(buf);
+});
+
+app.post("/api/quotations/import/preview", requireAuth, requireAnyModule("sales", "ecommerce"), _impUpload.single("file"), async (req: any, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "กรุณาเลือกบริษัท" });
+    const rawRows = _impParseFile(req.file.buffer, req.file.originalname);
+    if (!rawRows.length) return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+    if (rawRows.length > 10000) return res.status(400).json({ message: "รองรับสูงสุด 10,000 แถวต่อครั้ง" });
+    const [companyProducts, companyContacts, existingRows] = await Promise.all([
+      db.select().from(products).where(eq(products.companyId, companyId)),
+      db.select().from(contacts).where(eq(contacts.companyId, companyId)),
+      db.select({ n: quotations.quotationNo }).from(quotations).where(eq(quotations.companyId, companyId)),
+    ]);
+    const productCodeMap = new Map(companyProducts.filter(p => p.code).map(p => [p.code!, p]));
+    const existingNos = new Set(existingRows.map(e => e.n));
+    const COL_MAP: Record<string,string> = { "เลขที่เอกสาร":"quotationNo","วันที่เอกสาร":"quotationDate","วันหมดอายุ":"validUntil","รหัสลูกค้า":"customerCode","ชื่อลูกค้า":"customerName","เลขประจำตัวผู้เสียภาษี":"customerTaxId","ที่อยู่ลูกค้า":"customerAddress","สาขา":"branch","ผู้ติดต่อ":"contactPerson","โทรศัพท์":"contactPhone","อีเมล":"contactEmail","เครดิต(วัน)":"creditDays","รหัสสินค้า":"productCode","ชื่อสินค้า/บริการ":"productName","รายละเอียด":"description","จำนวน":"qty","หน่วย":"unit","ราคาต่อหน่วย":"unitPrice","ส่วนลด":"discount","ประเภท VAT":"vatType","โหมดราคา":"priceMode","หมายเหตุ":"notes","อ้างอิง":"refDoc" };
+    const mapped = rawRows.map((row, idx) => { const r: any = { _rowNum: idx + 2 }; for (const [k, v] of Object.entries(COL_MAP)) r[v] = row[k] !== undefined ? String(row[k]).trim() : ""; return r; });
+    const grouped = new Map<string, any[]>(); let ai = 0;
+    for (const row of mapped) { const k = row.quotationNo || `__auto_${++ai}`; if (!row.quotationNo) row.quotationNo = ""; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k)!.push(row); }
+    const documents: any[] = [];
+    for (const [key, rows] of Array.from(grouped.entries())) {
+      const first = rows[0];
+      const quotationDate = _impParseDateBE(first.quotationDate), validUntil = _impParseDateBE(first.validUntil);
+      const errors: string[] = [];
+      if (!quotationDate) errors.push("วันที่เอกสารไม่ถูกต้อง");
+      if (!first.customerName) errors.push("ไม่มีชื่อลูกค้า");
+      const isDuplicate = !!(first.quotationNo && existingNos.has(first.quotationNo));
+      if (isDuplicate) errors.push("เลขที่เอกสารซ้ำในระบบ");
+      const cm = _impMatchCustomer(first, companyContacts);
+      const { items, subtotal: rawSub } = _impBuildItems(rows, productCodeMap);
+      const priceMode = first.priceMode || "excluded", wht = 0;
+      const { vatAmount, subtotal, totalAmount } = _impComputeVat(items, rawSub, priceMode, wht);
+      documents.push({ key, quotationNo: first.quotationNo || "(สร้างอัตโนมัติ)", quotationDate: quotationDate || "", validUntil: validUntil || "", customerCode: first.customerCode, customerName: first.customerName, customerTaxId: first.customerTaxId, customerAddress: first.customerAddress, branch: first.branch, contactPerson: first.contactPerson, contactPhone: first.contactPhone, contactEmail: first.contactEmail, creditDays: parseInt(first.creditDays) || null, notes: first.notes, refDoc: first.refDoc, priceMode, withholdingTax: wht, subtotal, vatAmount, totalAmount, customerId: cm?.id || null, customerMatchName: cm ? (cm.name || cm.orgName) : null, items, errors, hasErrors: errors.length > 0 || items.some((i: any) => i.errors.length > 0), isDuplicate });
+    }
+    res.json({ totalRows: rawRows.length, totalDocuments: documents.length, validDocuments: documents.filter(d => !d.hasErrors).length, invalidDocuments: documents.filter(d => d.hasErrors).length, documents });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+app.post("/api/quotations/import/create", requireAuth, requireAnyModule("sales", "ecommerce"), async (req, res) => {
+  try {
+    if (!(await checkDocumentLimit(req, res))) return;
+    const user = req.user as any;
+    const { companyId, documents } = req.body;
+    if (!companyId || !Array.isArray(documents)) return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+    const created: any[] = [], skipped: any[] = [], errors: any[] = [];
+    for (const doc of documents) {
+      try {
+        if (doc.quotationNo && doc.quotationNo !== "(สร้างอัตโนมัติ)") {
+          const dup = await db.select({ id: quotations.id }).from(quotations).where(and(eq(quotations.companyId, companyId), eq(quotations.quotationNo, doc.quotationNo)));
+          if (dup.length > 0) { skipped.push({ quotationNo: doc.quotationNo, reason: "เลขที่เอกสารซ้ำ" }); continue; }
+        }
+        let quotationNo = doc.quotationNo;
+        if (!quotationNo || quotationNo === "(สร้างอัตโนมัติ)") quotationNo = await getNextDocNo(companyId, "QO", quotations, quotations.quotationNo, quotations.companyId, doc.quotationDate);
+        const validItems = (doc.items || []).filter((i: any) => i.productName && (parseFloat(i.qty) || 0) > 0 && (parseFloat(i.unitPrice) || 0) > 0);
+        if (!validItems.length) { errors.push({ quotationNo, error: "ไม่มีรายการที่ถูกต้อง" }); continue; }
+        const result = await db.transaction(async (tx) => {
+          const [nd] = await tx.insert(quotations).values({ companyId, quotationNo, quotationDate: doc.quotationDate, validUntil: doc.validUntil || null, customerId: doc.customerId ? Number(doc.customerId) : null, customerCode: doc.customerCode || null, customerName: doc.customerName, customerAddress: doc.customerAddress || null, customerTaxId: doc.customerTaxId || null, branch: doc.branch || null, contactPerson: doc.contactPerson || null, contactPhone: doc.contactPhone || null, contactEmail: doc.contactEmail || null, creditDays: doc.creditDays ? Number(doc.creditDays) : null, subtotal: String(doc.subtotal || "0"), discountAmount: "0", vatAmount: String(doc.vatAmount || "0"), totalAmount: String(doc.totalAmount || "0"), withholdingTax: String(doc.withholdingTax || "0"), status: "draft", priceMode: doc.priceMode || "excluded", docPrefix: "QO", notes: doc.notes || null, refDoc: doc.refDoc || null, createdBy: user.id }).returning();
+          for (const item of validItems) await tx.insert(quotationItems).values({ quotationId: nd.id, productId: item.productId ? Number(item.productId) : null, productCode: item.productCode || null, productName: item.productName, description: item.description || null, qty: String(item.qty || "1"), unit: item.unit || "ชิ้น", unitPrice: String(item.unitPrice || "0"), discount: String(item.discount || "0"), discountType: "amount", total: String(item.total || "0"), vatType: item.vatType || "vat7" });
+          return nd;
+        });
+        logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "quotation", entityId: String(result.id), entityName: quotationNo }).catch(() => {});
+        created.push({ quotationNo, id: result.id });
+      } catch (e: any) { errors.push({ quotationNo: doc.quotationNo || "(auto)", error: e.message }); }
+    }
+    const createdIds = created.map((c: any) => c.id);
+    if (createdIds.length > 0) { const [b] = await db.insert(documentImportBatches).values({ companyId, docType: "quotation", totalCreated: createdIds.length, totalSkipped: skipped.length, totalErrors: errors.length, createdDocIds: JSON.stringify(createdIds), createdBy: user.id }).returning(); return res.json({ created, skipped, errors, total: documents.length, batchId: b.id }); }
+    res.json({ created, skipped, errors, total: documents.length });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+// ===================== TAX INVOICE IMPORT =====================
+app.get("/api/tax-invoices/import/template", (_req, res) => {
+  const headers = ["เลขที่เอกสาร","วันที่เอกสาร","วันครบกำหนด","รหัสลูกค้า","ชื่อลูกค้า","เลขประจำตัวผู้เสียภาษี","ที่อยู่ลูกค้า","สาขา","ผู้ติดต่อ","โทรศัพท์","อีเมล","เครดิต(วัน)","รหัสสินค้า","ชื่อสินค้า/บริการ","รายละเอียด","จำนวน","หน่วย","ราคาต่อหน่วย","ส่วนลด","ประเภท VAT","ภาษีหัก ณ ที่จ่าย","โหมดราคา","หมายเหตุ","อ้างอิง"];
+  const sample1 = ["TIV6801001","01/01/2568","31/01/2568","C0001","บจ. ตัวอย่าง จำกัด","0105500000001","123 ถ.สุขุมวิท กรุงเทพฯ","สำนักงานใหญ่","คุณสมชาย","02-123-4567","info@example.com","30","P001","บริการทำบัญชี","ค่าบริการรายเดือน","1","เดือน","5000","0","vat7","0","excluded","",""];
+  const sample2 = ["TIV6801001","","","","","","","","","","","","P002","ค่าจัดทำงบ","จัดทำงบการเงิน","1","ชุด","15000","500","vat7","","","",""];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample1, sample2]);
+  ws["!cols"] = headers.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, "ใบกำกับภาษี");
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Disposition", 'attachment; filename="template_tax_invoices.xlsx"');
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.send(buf);
+});
+
+app.post("/api/tax-invoices/import/preview", requireAuth, requireAnyModule("sales", "ecommerce"), _impUpload.single("file"), async (req: any, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "กรุณาเลือกบริษัท" });
+    const rawRows = _impParseFile(req.file.buffer, req.file.originalname);
+    if (!rawRows.length) return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+    if (rawRows.length > 10000) return res.status(400).json({ message: "รองรับสูงสุด 10,000 แถวต่อครั้ง" });
+    const [companyProducts, companyContacts, existingRows] = await Promise.all([
+      db.select().from(products).where(eq(products.companyId, companyId)),
+      db.select().from(contacts).where(eq(contacts.companyId, companyId)),
+      db.select({ n: taxInvoices.taxInvoiceNo }).from(taxInvoices).where(eq(taxInvoices.companyId, companyId)),
+    ]);
+    const productCodeMap = new Map(companyProducts.filter(p => p.code).map(p => [p.code!, p]));
+    const existingNos = new Set(existingRows.map(e => e.n));
+    const COL_MAP: Record<string,string> = { "เลขที่เอกสาร":"taxInvoiceNo","วันที่เอกสาร":"taxInvoiceDate","วันครบกำหนด":"dueDate","รหัสลูกค้า":"customerCode","ชื่อลูกค้า":"customerName","เลขประจำตัวผู้เสียภาษี":"customerTaxId","ที่อยู่ลูกค้า":"customerAddress","สาขา":"branch","ผู้ติดต่อ":"contactPerson","โทรศัพท์":"contactPhone","อีเมล":"contactEmail","เครดิต(วัน)":"creditDays","รหัสสินค้า":"productCode","ชื่อสินค้า/บริการ":"productName","รายละเอียด":"description","จำนวน":"qty","หน่วย":"unit","ราคาต่อหน่วย":"unitPrice","ส่วนลด":"discount","ประเภท VAT":"vatType","ภาษีหัก ณ ที่จ่าย":"withholdingTax","โหมดราคา":"priceMode","หมายเหตุ":"notes","อ้างอิง":"refDoc" };
+    const mapped = rawRows.map((row, idx) => { const r: any = { _rowNum: idx + 2 }; for (const [k, v] of Object.entries(COL_MAP)) r[v] = row[k] !== undefined ? String(row[k]).trim() : ""; return r; });
+    const grouped = new Map<string, any[]>(); let ai = 0;
+    for (const row of mapped) { const k = row.taxInvoiceNo || `__auto_${++ai}`; if (!row.taxInvoiceNo) row.taxInvoiceNo = ""; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k)!.push(row); }
+    const documents: any[] = [];
+    for (const [key, rows] of Array.from(grouped.entries())) {
+      const first = rows[0];
+      const taxInvoiceDate = _impParseDateBE(first.taxInvoiceDate), dueDate = _impParseDateBE(first.dueDate);
+      const errors: string[] = [];
+      if (!taxInvoiceDate) errors.push("วันที่เอกสารไม่ถูกต้อง");
+      if (!first.customerName) errors.push("ไม่มีชื่อลูกค้า");
+      const isDuplicate = !!(first.taxInvoiceNo && existingNos.has(first.taxInvoiceNo));
+      if (isDuplicate) errors.push("เลขที่เอกสารซ้ำในระบบ");
+      const cm = _impMatchCustomer(first, companyContacts);
+      const { items, subtotal: rawSub } = _impBuildItems(rows, productCodeMap);
+      const priceMode = first.priceMode || "excluded", wht = parseFloat(first.withholdingTax) || 0;
+      const { vatAmount, subtotal, totalAmount } = _impComputeVat(items, rawSub, priceMode, wht);
+      documents.push({ key, taxInvoiceNo: first.taxInvoiceNo || "(สร้างอัตโนมัติ)", taxInvoiceDate: taxInvoiceDate || "", dueDate: dueDate || "", customerCode: first.customerCode, customerName: first.customerName, customerTaxId: first.customerTaxId, customerAddress: first.customerAddress, branch: first.branch, contactPerson: first.contactPerson, contactPhone: first.contactPhone, contactEmail: first.contactEmail, creditDays: parseInt(first.creditDays) || null, notes: first.notes, refDoc: first.refDoc, priceMode, withholdingTax: wht, subtotal, vatAmount, totalAmount, customerId: cm?.id || null, customerMatchName: cm ? (cm.name || cm.orgName) : null, items, errors, hasErrors: errors.length > 0 || items.some((i: any) => i.errors.length > 0), isDuplicate });
+    }
+    res.json({ totalRows: rawRows.length, totalDocuments: documents.length, validDocuments: documents.filter(d => !d.hasErrors).length, invalidDocuments: documents.filter(d => d.hasErrors).length, documents });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+app.post("/api/tax-invoices/import/create", requireAuth, requireAnyModule("sales", "ecommerce"), async (req, res) => {
+  try {
+    if (!(await checkDocumentLimit(req, res))) return;
+    const user = req.user as any;
+    const { companyId, documents, autoJournal } = req.body;
+    if (!companyId || !Array.isArray(documents)) return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+    const created: any[] = [], skipped: any[] = [], errors: any[] = [];
+    for (const doc of documents) {
+      try {
+        if (doc.taxInvoiceNo && doc.taxInvoiceNo !== "(สร้างอัตโนมัติ)") {
+          const dup = await db.select({ id: taxInvoices.id }).from(taxInvoices).where(and(eq(taxInvoices.companyId, companyId), eq(taxInvoices.taxInvoiceNo, doc.taxInvoiceNo)));
+          if (dup.length > 0) { skipped.push({ taxInvoiceNo: doc.taxInvoiceNo, reason: "เลขที่เอกสารซ้ำ" }); continue; }
+        }
+        let taxInvoiceNo = doc.taxInvoiceNo;
+        if (!taxInvoiceNo || taxInvoiceNo === "(สร้างอัตโนมัติ)") taxInvoiceNo = await getNextDocNo(companyId, "TIV", taxInvoices, taxInvoices.taxInvoiceNo, taxInvoices.companyId, doc.taxInvoiceDate);
+        const validItems = (doc.items || []).filter((i: any) => i.productName && (parseFloat(i.qty) || 0) > 0 && (parseFloat(i.unitPrice) || 0) > 0);
+        if (!validItems.length) { errors.push({ taxInvoiceNo, error: "ไม่มีรายการที่ถูกต้อง" }); continue; }
+        const result = await db.transaction(async (tx) => {
+          const [nd] = await tx.insert(taxInvoices).values({ companyId, taxInvoiceNo, taxInvoiceDate: doc.taxInvoiceDate, dueDate: doc.dueDate || null, customerId: doc.customerId ? Number(doc.customerId) : null, customerCode: doc.customerCode || null, customerName: doc.customerName, customerAddress: doc.customerAddress || null, customerTaxId: doc.customerTaxId || null, branch: doc.branch || null, contactPerson: doc.contactPerson || null, contactPhone: doc.contactPhone || null, contactEmail: doc.contactEmail || null, creditDays: doc.creditDays ? Number(doc.creditDays) : null, subtotal: String(doc.subtotal || "0"), discountAmount: "0", vatAmount: String(doc.vatAmount || "0"), totalAmount: String(doc.totalAmount || "0"), withholdingTax: String(doc.withholdingTax || "0"), status: "approved", paymentStatus: "unpaid", priceMode: doc.priceMode || "excluded", docPrefix: "TIV", notes: doc.notes || null, refDoc: doc.refDoc || null, linkJournal: autoJournal ? true : false, createdBy: user.id }).returning();
+          for (const item of validItems) await tx.insert(taxInvoiceItems).values({ taxInvoiceId: nd.id, productId: item.productId ? Number(item.productId) : null, productCode: item.productCode || null, productName: item.productName, description: item.description || null, qty: String(item.qty || "1"), unit: item.unit || "ชิ้น", unitPrice: String(item.unitPrice || "0"), discount: String(item.discount || "0"), discountType: "amount", total: String(item.total || "0"), vatType: item.vatType || "vat7" });
+          return nd;
+        });
+        if (autoJournal) {
+          try {
+            await createAutoJournalEntry({ companyId: result.companyId, documentType: "tax_invoice", sourceDocType: "tax_invoice", sourceDocId: result.id, docDate: result.taxInvoiceDate, docNo: result.taxInvoiceNo, subtotal: String(result.subtotal), vatAmount: String(result.vatAmount), totalAmount: String(result.totalAmount), withholdingTax: String(result.withholdingTax || "0"), userId: user.id, customerName: result.customerName });
+          } catch (e: any) { console.error("[TIV Import] autoJournal:", e.message); }
+        }
+        logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "tax_invoice", entityId: String(result.id), entityName: taxInvoiceNo }).catch(() => {});
+        created.push({ taxInvoiceNo, id: result.id });
+      } catch (e: any) { errors.push({ taxInvoiceNo: doc.taxInvoiceNo || "(auto)", error: e.message }); }
+    }
+    const createdIds = created.map((c: any) => c.id);
+    if (createdIds.length > 0) { const [b] = await db.insert(documentImportBatches).values({ companyId, docType: "tax_invoice", totalCreated: createdIds.length, totalSkipped: skipped.length, totalErrors: errors.length, createdDocIds: JSON.stringify(createdIds), createdBy: user.id }).returning(); return res.json({ created, skipped, errors, total: documents.length, batchId: b.id }); }
+    res.json({ created, skipped, errors, total: documents.length });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+// ===================== RECEIPT IMPORT =====================
+app.get("/api/receipts/import/template", (_req, res) => {
+  const headers = ["เลขที่เอกสาร","วันที่เอกสาร","รหัสลูกค้า","ชื่อลูกค้า","เลขประจำตัวผู้เสียภาษี","ที่อยู่ลูกค้า","สาขา","ผู้ติดต่อ","โทรศัพท์","อีเมล","วิธีชำระเงิน","รหัสสินค้า","ชื่อสินค้า/บริการ","รายละเอียด","จำนวน","หน่วย","ราคาต่อหน่วย","ส่วนลด","ประเภท VAT","ภาษีหัก ณ ที่จ่าย","โหมดราคา","หมายเหตุ","อ้างอิง"];
+  const sample1 = ["RC6801001","01/01/2568","C0001","บจ. ตัวอย่าง จำกัด","0105500000001","123 ถ.สุขุมวิท กรุงเทพฯ","สำนักงานใหญ่","คุณสมชาย","02-123-4567","info@example.com","โอนเงิน","P001","บริการทำบัญชี","","1","เดือน","5000","0","vat7","0","excluded","",""];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample1]);
+  ws["!cols"] = headers.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, "ใบรับเงิน");
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Disposition", 'attachment; filename="template_receipts.xlsx"');
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.send(buf);
+});
+
+app.post("/api/receipts/import/preview", requireAuth, requireAnyModule("sales", "ecommerce"), _impUpload.single("file"), async (req: any, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "กรุณาเลือกบริษัท" });
+    const rawRows = _impParseFile(req.file.buffer, req.file.originalname);
+    if (!rawRows.length) return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+    if (rawRows.length > 10000) return res.status(400).json({ message: "รองรับสูงสุด 10,000 แถวต่อครั้ง" });
+    const [companyProducts, companyContacts, existingRows] = await Promise.all([
+      db.select().from(products).where(eq(products.companyId, companyId)),
+      db.select().from(contacts).where(eq(contacts.companyId, companyId)),
+      db.select({ n: receipts.receiptNo }).from(receipts).where(eq(receipts.companyId, companyId)),
+    ]);
+    const productCodeMap = new Map(companyProducts.filter(p => p.code).map(p => [p.code!, p]));
+    const existingNos = new Set(existingRows.map(e => e.n));
+    const COL_MAP: Record<string,string> = { "เลขที่เอกสาร":"receiptNo","วันที่เอกสาร":"receiptDate","รหัสลูกค้า":"customerCode","ชื่อลูกค้า":"customerName","เลขประจำตัวผู้เสียภาษี":"customerTaxId","ที่อยู่ลูกค้า":"customerAddress","สาขา":"branch","ผู้ติดต่อ":"contactPerson","โทรศัพท์":"contactPhone","อีเมล":"contactEmail","วิธีชำระเงิน":"paymentMethod","รหัสสินค้า":"productCode","ชื่อสินค้า/บริการ":"productName","รายละเอียด":"description","จำนวน":"qty","หน่วย":"unit","ราคาต่อหน่วย":"unitPrice","ส่วนลด":"discount","ประเภท VAT":"vatType","ภาษีหัก ณ ที่จ่าย":"withholdingTax","โหมดราคา":"priceMode","หมายเหตุ":"notes","อ้างอิง":"refDoc" };
+    const mapped = rawRows.map((row, idx) => { const r: any = { _rowNum: idx + 2 }; for (const [k, v] of Object.entries(COL_MAP)) r[v] = row[k] !== undefined ? String(row[k]).trim() : ""; return r; });
+    const grouped = new Map<string, any[]>(); let ai = 0;
+    for (const row of mapped) { const k = row.receiptNo || `__auto_${++ai}`; if (!row.receiptNo) row.receiptNo = ""; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k)!.push(row); }
+    const documents: any[] = [];
+    for (const [key, rows] of Array.from(grouped.entries())) {
+      const first = rows[0];
+      const receiptDate = _impParseDateBE(first.receiptDate);
+      const errors: string[] = [];
+      if (!receiptDate) errors.push("วันที่เอกสารไม่ถูกต้อง");
+      if (!first.customerName) errors.push("ไม่มีชื่อลูกค้า");
+      const isDuplicate = !!(first.receiptNo && existingNos.has(first.receiptNo));
+      if (isDuplicate) errors.push("เลขที่เอกสารซ้ำในระบบ");
+      const cm = _impMatchCustomer(first, companyContacts);
+      const { items, subtotal: rawSub } = _impBuildItems(rows, productCodeMap);
+      const priceMode = first.priceMode || "excluded", wht = parseFloat(first.withholdingTax) || 0;
+      const { vatAmount, subtotal, totalAmount } = _impComputeVat(items, rawSub, priceMode, wht);
+      documents.push({ key, receiptNo: first.receiptNo || "(สร้างอัตโนมัติ)", receiptDate: receiptDate || "", customerCode: first.customerCode, customerName: first.customerName, customerTaxId: first.customerTaxId, customerAddress: first.customerAddress, branch: first.branch, contactPerson: first.contactPerson, contactPhone: first.contactPhone, contactEmail: first.contactEmail, paymentMethod: first.paymentMethod, notes: first.notes, refDoc: first.refDoc, priceMode, withholdingTax: wht, subtotal, vatAmount, totalAmount, customerId: cm?.id || null, customerMatchName: cm ? (cm.name || cm.orgName) : null, items, errors, hasErrors: errors.length > 0 || items.some((i: any) => i.errors.length > 0), isDuplicate });
+    }
+    res.json({ totalRows: rawRows.length, totalDocuments: documents.length, validDocuments: documents.filter(d => !d.hasErrors).length, invalidDocuments: documents.filter(d => d.hasErrors).length, documents });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+app.post("/api/receipts/import/create", requireAuth, requireAnyModule("sales", "ecommerce"), async (req, res) => {
+  try {
+    if (!(await checkDocumentLimit(req, res))) return;
+    const user = req.user as any;
+    const { companyId, documents, autoJournal } = req.body;
+    if (!companyId || !Array.isArray(documents)) return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+    const created: any[] = [], skipped: any[] = [], errors: any[] = [];
+    for (const doc of documents) {
+      try {
+        if (doc.receiptNo && doc.receiptNo !== "(สร้างอัตโนมัติ)") {
+          const dup = await db.select({ id: receipts.id }).from(receipts).where(and(eq(receipts.companyId, companyId), eq(receipts.receiptNo, doc.receiptNo)));
+          if (dup.length > 0) { skipped.push({ receiptNo: doc.receiptNo, reason: "เลขที่เอกสารซ้ำ" }); continue; }
+        }
+        let receiptNo = doc.receiptNo;
+        if (!receiptNo || receiptNo === "(สร้างอัตโนมัติ)") receiptNo = await getNextDocNo(companyId, "RC", receipts, receipts.receiptNo, receipts.companyId, doc.receiptDate);
+        const validItems = (doc.items || []).filter((i: any) => i.productName && (parseFloat(i.qty) || 0) > 0 && (parseFloat(i.unitPrice) || 0) > 0);
+        if (!validItems.length) { errors.push({ receiptNo, error: "ไม่มีรายการที่ถูกต้อง" }); continue; }
+        const result = await db.transaction(async (tx) => {
+          const [nd] = await tx.insert(receipts).values({ companyId, receiptNo, receiptDate: doc.receiptDate, customerId: doc.customerId ? Number(doc.customerId) : null, customerCode: doc.customerCode || null, customerName: doc.customerName, customerAddress: doc.customerAddress || null, customerTaxId: doc.customerTaxId || null, branch: doc.branch || null, contactPerson: doc.contactPerson || null, contactPhone: doc.contactPhone || null, contactEmail: doc.contactEmail || null, paymentMethod: doc.paymentMethod || null, subtotal: String(doc.subtotal || "0"), discountAmount: "0", vatAmount: String(doc.vatAmount || "0"), totalAmount: String(doc.totalAmount || "0"), withholdingTax: String(doc.withholdingTax || "0"), status: "approved", priceMode: doc.priceMode || "excluded", docPrefix: "RC", notes: doc.notes || null, refDoc: doc.refDoc || null, linkJournal: autoJournal ? true : false, createdBy: user.id }).returning();
+          for (const item of validItems) await tx.insert(receiptItems).values({ receiptId: nd.id, productId: item.productId ? Number(item.productId) : null, productCode: item.productCode || null, productName: item.productName, description: item.description || null, qty: String(item.qty || "1"), unit: item.unit || "ชิ้น", unitPrice: String(item.unitPrice || "0"), discount: String(item.discount || "0"), discountType: "amount", total: String(item.total || "0"), vatType: item.vatType || "vat7" });
+          return nd;
+        });
+        if (autoJournal) {
+          try {
+            await createAutoJournalEntry({ companyId: result.companyId, documentType: "receipt", sourceDocType: "receipt", sourceDocId: result.id, docDate: result.receiptDate, docNo: result.receiptNo, subtotal: String(result.subtotal), vatAmount: String(result.vatAmount), totalAmount: String(result.totalAmount), withholdingTax: String(result.withholdingTax || "0"), userId: user.id, customerName: result.customerName });
+          } catch (e: any) { console.error("[RC Import] autoJournal:", e.message); }
+        }
+        logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "receipt", entityId: String(result.id), entityName: receiptNo }).catch(() => {});
+        created.push({ receiptNo, id: result.id });
+      } catch (e: any) { errors.push({ receiptNo: doc.receiptNo || "(auto)", error: e.message }); }
+    }
+    const createdIds = created.map((c: any) => c.id);
+    if (createdIds.length > 0) { const [b] = await db.insert(documentImportBatches).values({ companyId, docType: "receipt", totalCreated: createdIds.length, totalSkipped: skipped.length, totalErrors: errors.length, createdDocIds: JSON.stringify(createdIds), createdBy: user.id }).returning(); return res.json({ created, skipped, errors, total: documents.length, batchId: b.id }); }
+    res.json({ created, skipped, errors, total: documents.length });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+// ===================== SALES ORDER IMPORT =====================
+app.get("/api/sales-orders/import/template", (_req, res) => {
+  const headers = ["เลขที่เอกสาร","วันที่เอกสาร","รหัสลูกค้า","ชื่อลูกค้า","เลขประจำตัวผู้เสียภาษี","ที่อยู่ลูกค้า","สาขา","ผู้ติดต่อ","โทรศัพท์","อีเมล","เครดิต(วัน)","รหัสสินค้า","ชื่อสินค้า/บริการ","รายละเอียด","จำนวน","หน่วย","ราคาต่อหน่วย","ส่วนลด","ประเภท VAT","โหมดราคา","หมายเหตุ","อ้างอิง"];
+  const sample1 = ["SO6801001","01/01/2568","C0001","บจ. ตัวอย่าง จำกัด","0105500000001","123 ถ.สุขุมวิท กรุงเทพฯ","สำนักงานใหญ่","คุณสมชาย","02-123-4567","info@example.com","30","P001","บริการทำบัญชี","","1","เดือน","5000","0","vat7","excluded","",""];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample1]);
+  ws["!cols"] = headers.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, "ใบสั่งขาย");
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Disposition", 'attachment; filename="template_sales_orders.xlsx"');
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.send(buf);
+});
+
+app.post("/api/sales-orders/import/preview", requireAuth, requireAnyModule("sales", "ecommerce"), _impUpload.single("file"), async (req: any, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "กรุณาเลือกบริษัท" });
+    const rawRows = _impParseFile(req.file.buffer, req.file.originalname);
+    if (!rawRows.length) return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+    if (rawRows.length > 10000) return res.status(400).json({ message: "รองรับสูงสุด 10,000 แถวต่อครั้ง" });
+    const [companyProducts, companyContacts, existingRows] = await Promise.all([
+      db.select().from(products).where(eq(products.companyId, companyId)),
+      db.select().from(contacts).where(eq(contacts.companyId, companyId)),
+      db.select({ n: salesOrders.orderNo }).from(salesOrders).where(eq(salesOrders.companyId, companyId)),
+    ]);
+    const productCodeMap = new Map(companyProducts.filter(p => p.code).map(p => [p.code!, p]));
+    const existingNos = new Set(existingRows.map(e => e.n));
+    const COL_MAP: Record<string,string> = { "เลขที่เอกสาร":"orderNo","วันที่เอกสาร":"orderDate","รหัสลูกค้า":"customerCode","ชื่อลูกค้า":"customerName","เลขประจำตัวผู้เสียภาษี":"customerTaxId","ที่อยู่ลูกค้า":"customerAddress","สาขา":"branch","ผู้ติดต่อ":"contactPerson","โทรศัพท์":"contactPhone","อีเมล":"contactEmail","เครดิต(วัน)":"creditDays","รหัสสินค้า":"productCode","ชื่อสินค้า/บริการ":"productName","รายละเอียด":"description","จำนวน":"qty","หน่วย":"unit","ราคาต่อหน่วย":"unitPrice","ส่วนลด":"discount","ประเภท VAT":"vatType","โหมดราคา":"priceMode","หมายเหตุ":"notes","อ้างอิง":"refDoc" };
+    const mapped = rawRows.map((row, idx) => { const r: any = { _rowNum: idx + 2 }; for (const [k, v] of Object.entries(COL_MAP)) r[v] = row[k] !== undefined ? String(row[k]).trim() : ""; return r; });
+    const grouped = new Map<string, any[]>(); let ai = 0;
+    for (const row of mapped) { const k = row.orderNo || `__auto_${++ai}`; if (!row.orderNo) row.orderNo = ""; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k)!.push(row); }
+    const documents: any[] = [];
+    for (const [key, rows] of Array.from(grouped.entries())) {
+      const first = rows[0];
+      const orderDate = _impParseDateBE(first.orderDate);
+      const errors: string[] = [];
+      if (!orderDate) errors.push("วันที่เอกสารไม่ถูกต้อง");
+      if (!first.customerName) errors.push("ไม่มีชื่อลูกค้า");
+      const isDuplicate = !!(first.orderNo && existingNos.has(first.orderNo));
+      if (isDuplicate) errors.push("เลขที่เอกสารซ้ำในระบบ");
+      const cm = _impMatchCustomer(first, companyContacts);
+      const { items, subtotal: rawSub } = _impBuildItems(rows, productCodeMap);
+      const priceMode = first.priceMode || "excluded", wht = 0;
+      const { vatAmount, subtotal, totalAmount } = _impComputeVat(items, rawSub, priceMode, wht);
+      documents.push({ key, orderNo: first.orderNo || "(สร้างอัตโนมัติ)", orderDate: orderDate || "", customerCode: first.customerCode, customerName: first.customerName, customerTaxId: first.customerTaxId, customerAddress: first.customerAddress, branch: first.branch, contactPerson: first.contactPerson, contactPhone: first.contactPhone, contactEmail: first.contactEmail, creditDays: parseInt(first.creditDays) || null, notes: first.notes, refDoc: first.refDoc, priceMode, withholdingTax: wht, subtotal, vatAmount, totalAmount, customerId: cm?.id || null, customerMatchName: cm ? (cm.name || cm.orgName) : null, items, errors, hasErrors: errors.length > 0 || items.some((i: any) => i.errors.length > 0), isDuplicate });
+    }
+    res.json({ totalRows: rawRows.length, totalDocuments: documents.length, validDocuments: documents.filter(d => !d.hasErrors).length, invalidDocuments: documents.filter(d => d.hasErrors).length, documents });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+app.post("/api/sales-orders/import/create", requireAuth, requireAnyModule("sales", "ecommerce"), async (req, res) => {
+  try {
+    if (!(await checkDocumentLimit(req, res))) return;
+    const user = req.user as any;
+    const { companyId, documents } = req.body;
+    if (!companyId || !Array.isArray(documents)) return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+    const created: any[] = [], skipped: any[] = [], errors: any[] = [];
+    for (const doc of documents) {
+      try {
+        if (doc.orderNo && doc.orderNo !== "(สร้างอัตโนมัติ)") {
+          const dup = await db.select({ id: salesOrders.id }).from(salesOrders).where(and(eq(salesOrders.companyId, companyId), eq(salesOrders.orderNo, doc.orderNo)));
+          if (dup.length > 0) { skipped.push({ orderNo: doc.orderNo, reason: "เลขที่เอกสารซ้ำ" }); continue; }
+        }
+        let orderNo = doc.orderNo;
+        if (!orderNo || orderNo === "(สร้างอัตโนมัติ)") orderNo = await getNextDocNo(companyId, "SO", salesOrders, salesOrders.orderNo, salesOrders.companyId, doc.orderDate);
+        const validItems = (doc.items || []).filter((i: any) => i.productName && (parseFloat(i.qty) || 0) > 0 && (parseFloat(i.unitPrice) || 0) > 0);
+        if (!validItems.length) { errors.push({ orderNo, error: "ไม่มีรายการที่ถูกต้อง" }); continue; }
+        const result = await db.transaction(async (tx) => {
+          const [nd] = await tx.insert(salesOrders).values({ companyId, orderNo, orderDate: doc.orderDate, customerId: doc.customerId ? Number(doc.customerId) : null, customerCode: doc.customerCode || null, customerName: doc.customerName, customerAddress: doc.customerAddress || null, customerTaxId: doc.customerTaxId || null, branch: doc.branch || null, contactPerson: doc.contactPerson || null, contactPhone: doc.contactPhone || null, contactEmail: doc.contactEmail || null, creditDays: doc.creditDays ? Number(doc.creditDays) : null, subtotal: String(doc.subtotal || "0"), discountAmount: "0", vatAmount: String(doc.vatAmount || "0"), totalAmount: String(doc.totalAmount || "0"), withholdingTax: String(doc.withholdingTax || "0"), status: "pending", channel: "direct", priceMode: doc.priceMode || "excluded", docPrefix: "SO", notes: doc.notes || null, refDoc: doc.refDoc || null, createdBy: user.id }).returning();
+          for (const item of validItems) await tx.insert(salesOrderItems).values({ salesOrderId: nd.id, productId: item.productId ? Number(item.productId) : null, productCode: item.productCode || null, productName: item.productName, description: item.description || null, qty: String(item.qty || "1"), unit: item.unit || "ชิ้น", unitPrice: String(item.unitPrice || "0"), discount: String(item.discount || "0"), discountType: "amount", total: String(item.total || "0"), vatType: item.vatType || "vat7" });
+          return nd;
+        });
+        logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "sales_order", entityId: String(result.id), entityName: orderNo }).catch(() => {});
+        created.push({ orderNo, id: result.id });
+      } catch (e: any) { errors.push({ orderNo: doc.orderNo || "(auto)", error: e.message }); }
+    }
+    const createdIds = created.map((c: any) => c.id);
+    if (createdIds.length > 0) { const [b] = await db.insert(documentImportBatches).values({ companyId, docType: "sales_order", totalCreated: createdIds.length, totalSkipped: skipped.length, totalErrors: errors.length, createdDocIds: JSON.stringify(createdIds), createdBy: user.id }).returning(); return res.json({ created, skipped, errors, total: documents.length, batchId: b.id }); }
+    res.json({ created, skipped, errors, total: documents.length });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+// ===================== CREDIT NOTE IMPORT =====================
+app.get("/api/credit-notes/import/template", (_req, res) => {
+  const headers = ["เลขที่เอกสาร","วันที่เอกสาร","รหัสลูกค้า","ชื่อลูกค้า","เลขประจำตัวผู้เสียภาษี","ที่อยู่ลูกค้า","สาขา","ผู้ติดต่อ","โทรศัพท์","อีเมล","เหตุผล","เลขที่ใบกำกับอ้างอิง","รหัสสินค้า","ชื่อสินค้า/บริการ","รายละเอียด","จำนวน","หน่วย","ราคาต่อหน่วย","ส่วนลด","ประเภท VAT","ภาษีหัก ณ ที่จ่าย","โหมดราคา","หมายเหตุ"];
+  const sample1 = ["CN6801001","01/01/2568","C0001","บจ. ตัวอย่าง จำกัด","0105500000001","123 ถ.สุขุมวิท กรุงเทพฯ","สำนักงานใหญ่","คุณสมชาย","02-123-4567","info@example.com","สินค้าชำรุด","TIV-001","P001","สินค้าคืน","","1","ชิ้น","1000","0","vat7","0","excluded",""];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample1]);
+  ws["!cols"] = headers.map(() => ({ wch: 16 }));
+  XLSX.utils.book_append_sheet(wb, ws, "ใบลดหนี้");
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Disposition", 'attachment; filename="template_credit_notes.xlsx"');
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.send(buf);
+});
+
+app.post("/api/credit-notes/import/preview", requireAuth, requireAnyModule("sales", "ecommerce"), _impUpload.single("file"), async (req: any, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "กรุณาเลือกบริษัท" });
+    const rawRows = _impParseFile(req.file.buffer, req.file.originalname);
+    if (!rawRows.length) return res.status(400).json({ message: "ไม่พบข้อมูลในไฟล์" });
+    if (rawRows.length > 10000) return res.status(400).json({ message: "รองรับสูงสุด 10,000 แถวต่อครั้ง" });
+    const [companyProducts, companyContacts, existingRows] = await Promise.all([
+      db.select().from(products).where(eq(products.companyId, companyId)),
+      db.select().from(contacts).where(eq(contacts.companyId, companyId)),
+      db.select({ n: salesCreditNotes.creditNoteNo }).from(salesCreditNotes).where(eq(salesCreditNotes.companyId, companyId)),
+    ]);
+    const productCodeMap = new Map(companyProducts.filter(p => p.code).map(p => [p.code!, p]));
+    const existingNos = new Set(existingRows.map(e => e.n));
+    const COL_MAP: Record<string,string> = { "เลขที่เอกสาร":"creditNoteNo","วันที่เอกสาร":"creditNoteDate","รหัสลูกค้า":"customerCode","ชื่อลูกค้า":"customerName","เลขประจำตัวผู้เสียภาษี":"customerTaxId","ที่อยู่ลูกค้า":"customerAddress","สาขา":"branch","ผู้ติดต่อ":"contactPerson","โทรศัพท์":"contactPhone","อีเมล":"contactEmail","เหตุผล":"reason","เลขที่ใบกำกับอ้างอิง":"refTaxInvoiceNo","รหัสสินค้า":"productCode","ชื่อสินค้า/บริการ":"productName","รายละเอียด":"description","จำนวน":"qty","หน่วย":"unit","ราคาต่อหน่วย":"unitPrice","ส่วนลด":"discount","ประเภท VAT":"vatType","ภาษีหัก ณ ที่จ่าย":"withholdingTax","โหมดราคา":"priceMode","หมายเหตุ":"notes" };
+    const mapped = rawRows.map((row, idx) => { const r: any = { _rowNum: idx + 2 }; for (const [k, v] of Object.entries(COL_MAP)) r[v] = row[k] !== undefined ? String(row[k]).trim() : ""; return r; });
+    const grouped = new Map<string, any[]>(); let ai = 0;
+    for (const row of mapped) { const k = row.creditNoteNo || `__auto_${++ai}`; if (!row.creditNoteNo) row.creditNoteNo = ""; if (!grouped.has(k)) grouped.set(k, []); grouped.get(k)!.push(row); }
+    const documents: any[] = [];
+    for (const [key, rows] of Array.from(grouped.entries())) {
+      const first = rows[0];
+      const creditNoteDate = _impParseDateBE(first.creditNoteDate);
+      const errors: string[] = [];
+      if (!creditNoteDate) errors.push("วันที่เอกสารไม่ถูกต้อง");
+      if (!first.customerName) errors.push("ไม่มีชื่อลูกค้า");
+      const isDuplicate = !!(first.creditNoteNo && existingNos.has(first.creditNoteNo));
+      if (isDuplicate) errors.push("เลขที่เอกสารซ้ำในระบบ");
+      const cm = _impMatchCustomer(first, companyContacts);
+      const { items, subtotal: rawSub } = _impBuildItems(rows, productCodeMap);
+      const priceMode = first.priceMode || "excluded", wht = parseFloat(first.withholdingTax) || 0;
+      const { vatAmount, subtotal, totalAmount } = _impComputeVat(items, rawSub, priceMode, wht);
+      documents.push({ key, creditNoteNo: first.creditNoteNo || "(สร้างอัตโนมัติ)", creditNoteDate: creditNoteDate || "", customerCode: first.customerCode, customerName: first.customerName, customerTaxId: first.customerTaxId, customerAddress: first.customerAddress, branch: first.branch, contactPerson: first.contactPerson, contactPhone: first.contactPhone, contactEmail: first.contactEmail, reason: first.reason, refTaxInvoiceNo: first.refTaxInvoiceNo, notes: first.notes, priceMode, withholdingTax: wht, subtotal, vatAmount, totalAmount, customerId: cm?.id || null, customerMatchName: cm ? (cm.name || cm.orgName) : null, items, errors, hasErrors: errors.length > 0 || items.some((i: any) => i.errors.length > 0), isDuplicate });
+    }
+    res.json({ totalRows: rawRows.length, totalDocuments: documents.length, validDocuments: documents.filter(d => !d.hasErrors).length, invalidDocuments: documents.filter(d => d.hasErrors).length, documents });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+app.post("/api/credit-notes/import/create", requireAuth, requireAnyModule("sales", "ecommerce"), async (req, res) => {
+  try {
+    if (!(await checkDocumentLimit(req, res))) return;
+    const user = req.user as any;
+    const { companyId, documents, autoJournal } = req.body;
+    if (!companyId || !Array.isArray(documents)) return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+    const created: any[] = [], skipped: any[] = [], errors: any[] = [];
+    for (const doc of documents) {
+      try {
+        if (doc.creditNoteNo && doc.creditNoteNo !== "(สร้างอัตโนมัติ)") {
+          const dup = await db.select({ id: salesCreditNotes.id }).from(salesCreditNotes).where(and(eq(salesCreditNotes.companyId, companyId), eq(salesCreditNotes.creditNoteNo, doc.creditNoteNo)));
+          if (dup.length > 0) { skipped.push({ creditNoteNo: doc.creditNoteNo, reason: "เลขที่เอกสารซ้ำ" }); continue; }
+        }
+        let creditNoteNo = doc.creditNoteNo;
+        if (!creditNoteNo || creditNoteNo === "(สร้างอัตโนมัติ)") creditNoteNo = await getNextDocNo(companyId, "CN", salesCreditNotes, salesCreditNotes.creditNoteNo, salesCreditNotes.companyId, doc.creditNoteDate);
+        const validItems = (doc.items || []).filter((i: any) => i.productName && (parseFloat(i.qty) || 0) > 0 && (parseFloat(i.unitPrice) || 0) > 0);
+        if (!validItems.length) { errors.push({ creditNoteNo, error: "ไม่มีรายการที่ถูกต้อง" }); continue; }
+        const result = await db.transaction(async (tx) => {
+          const [nd] = await tx.insert(salesCreditNotes).values({ companyId, creditNoteNo, creditNoteDate: doc.creditNoteDate, customerId: doc.customerId ? Number(doc.customerId) : null, customerCode: doc.customerCode || null, customerName: doc.customerName, customerAddress: doc.customerAddress || null, customerTaxId: doc.customerTaxId || null, branch: doc.branch || null, contactPerson: doc.contactPerson || null, contactPhone: doc.contactPhone || null, contactEmail: doc.contactEmail || null, reason: doc.reason || null, refTaxInvoiceNo: doc.refTaxInvoiceNo || null, subtotal: String(doc.subtotal || "0"), discountAmount: "0", vatAmount: String(doc.vatAmount || "0"), totalAmount: String(doc.totalAmount || "0"), status: "approved", priceMode: doc.priceMode || "excluded", docPrefix: "CN", notes: doc.notes || null, linkJournal: autoJournal ? true : false, createdBy: user.id }).returning();
+          for (const item of validItems) await tx.insert(salesCreditNoteItems).values({ creditNoteId: nd.id, productId: item.productId ? Number(item.productId) : null, productCode: item.productCode || null, productName: item.productName, description: item.description || null, qty: String(item.qty || "1"), unit: item.unit || "ชิ้น", unitPrice: String(item.unitPrice || "0"), discount: String(item.discount || "0"), discountType: "amount", total: String(item.total || "0"), vatType: item.vatType || "vat7" });
+          return nd;
+        });
+        if (autoJournal) {
+          try {
+            await createAutoJournalEntry({ companyId: result.companyId, documentType: "credit_note", sourceDocType: "credit_note", sourceDocId: result.id, docDate: result.creditNoteDate, docNo: result.creditNoteNo, subtotal: String(result.subtotal), vatAmount: String(result.vatAmount), totalAmount: String(result.totalAmount), withholdingTax: "0", userId: user.id, customerName: result.customerName });
+          } catch (e: any) { console.error("[CN Import] autoJournal:", e.message); }
+        }
+        logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "credit_note", entityId: String(result.id), entityName: creditNoteNo }).catch(() => {});
+        created.push({ creditNoteNo, id: result.id });
+      } catch (e: any) { errors.push({ creditNoteNo: doc.creditNoteNo || "(auto)", error: e.message }); }
+    }
+    const createdIds = created.map((c: any) => c.id);
+    if (createdIds.length > 0) { const [b] = await db.insert(documentImportBatches).values({ companyId, docType: "credit_note", totalCreated: createdIds.length, totalSkipped: skipped.length, totalErrors: errors.length, createdDocIds: JSON.stringify(createdIds), createdBy: user.id }).returning(); return res.json({ created, skipped, errors, total: documents.length, batchId: b.id }); }
+    res.json({ created, skipped, errors, total: documents.length });
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
 }

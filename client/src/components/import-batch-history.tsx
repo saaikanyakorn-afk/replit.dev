@@ -22,6 +22,13 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   expense: "ค่าใช้จ่าย",
   product: "สินค้า",
   contact: "คู่ค้า",
+  quotation: "ใบเสนอราคา",
+  tax_invoice: "ใบกำกับภาษี",
+  receipt: "ใบรับเงิน",
+  sales_order: "ใบสั่งขาย",
+  credit_note: "ใบลดหนี้",
+  purchase_order: "ใบสั่งซื้อ",
+  purchase_request: "ใบขอซื้อ",
 };
 
 function formatDateTh(dateStr: string | null | undefined) {

@@ -52,10 +52,10 @@ export function runPendingMigrations() {
   run("runMaterialIssueMigration",            runMaterialIssueMigration);           // N3  ✅ approved 2026-05-20
 
   // ── PENDING — awaiting push session approval ───────────────────────────────
-  // run("runProductionFinishMigration",      runProductionFinishMigration);        // N?  ⏳ not yet in queue
-  // run("runNcrMigration",                   runNcrMigration);                     // N?  ⏳ not yet in queue
-  // run("runLotLowStockThresholdMigration",  runLotLowStockThresholdMigration);    // N?  ⏳ not yet in queue
-  // run("runWarehouseColumnsForMfgMigration",runWarehouseColumnsForMfgMigration);  // N?  ⏳ not yet in queue
-  // run("runBomProcessStepsMigration",       runBomProcessStepsMigration);         // N?  ⏳ not yet in queue
-  // run("runWipWarehouseMigration",          runWipWarehouseMigration);            // N?  ⏳ not yet in queue
+  // run("runProductionFinishMigration",      runProductionFinishMigration);        // N11 ⏳ awaiting push approval
+  // run("runNcrMigration",                   runNcrMigration);                     // N11 ⏳ awaiting push approval
+  // run("runLotLowStockThresholdMigration",  runLotLowStockThresholdMigration);    // N11 ⏳ awaiting push approval
+  // run("runWarehouseColumnsForMfgMigration",runWarehouseColumnsForMfgMigration);  // N11 ⏳ awaiting push approval
+  // run("runBomProcessStepsMigration",       runBomProcessStepsMigration);         // N11 ⏳ awaiting push approval
+  // run("runWipWarehouseMigration",          runWipWarehouseMigration);            // N11 ⏳ awaiting push approval
 }

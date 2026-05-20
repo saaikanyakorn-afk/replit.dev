@@ -122,6 +122,8 @@ const ExpenseImport = lazy(() => import("@/pages/purchases/expense-import"));
 const PurchaseInvoiceList = lazy(() => import("@/pages/purchases/purchase-invoice-list"));
 const PurchaseInvoice = lazy(() => import("@/pages/purchases/purchase-invoice"));
 const PurchaseImport = lazy(() => import("@/pages/purchases/purchase-import"));
+const PurchaseOrderImport = lazy(() => import("@/pages/purchases/purchase-order-import"));
+const PurchaseRequestImport = lazy(() => import("@/pages/purchases/purchase-request-import"));
 const PurchasePdfImport = lazy(() => import("@/pages/purchases/purchase-pdf-import"));
 const ExpensePdfImport = lazy(() => import("@/pages/purchases/expense-pdf-import"));
 const PdfBulkImport = lazy(() => import("@/pages/purchases/pdf-bulk-import"));
@@ -304,6 +306,11 @@ const ReceiptShare = lazy(() => import("@/pages/sales/receipt-share"));
 const InvoiceList = lazy(() => import("@/pages/sales/invoice-list"));
 const InvoiceForm = lazy(() => import("@/pages/sales/invoice-form"));
 const InvoiceImport = lazy(() => import("@/pages/sales/invoice-import"));
+const QuotationImport = lazy(() => import("@/pages/sales/quotation-import"));
+const SalesOrderImport = lazy(() => import("@/pages/sales/sales-order-import"));
+const TaxInvoiceImport = lazy(() => import("@/pages/sales/tax-invoice-import"));
+const ReceiptImport = lazy(() => import("@/pages/sales/receipt-import"));
+const CreditNoteImport = lazy(() => import("@/pages/sales/credit-note-import"));
 const TaxInvoiceList = lazy(() => import("@/pages/sales/tax-invoice-list"));
 const TaxInvoiceForm = lazy(() => import("@/pages/sales/tax-invoice-form"));
 const EtaxSentList = lazy(() => import("@/pages/sales/etax-sent-list"));
@@ -683,6 +690,11 @@ function Router() {
       <Route path="/sales/invoice/new" component={InvoiceForm} />
       <Route path="/sales/invoice/edit/:id" component={InvoiceForm} />
       <Route path="/sales/invoice/import" component={InvoiceImport} />
+      <Route path="/sales/quote/import" component={QuotationImport} />
+      <Route path="/sales/order/import" component={SalesOrderImport} />
+      <Route path="/sales/tax-invoice/import" component={TaxInvoiceImport} />
+      <Route path="/sales/receipt/import" component={ReceiptImport} />
+      <Route path="/sales/credit-note/import" component={CreditNoteImport} />
       <Route path="/sales/invoice/pdf/:id" component={InvoicePdf} />
       <Route path="/share/invoice/:token" component={InvoiceShare} />
       <Route path="/sales/tax-invoice" component={TaxInvoiceList} />
@@ -714,6 +726,8 @@ function Router() {
       <Route path="/purchases/po" component={PurchaseOrderList} />
       <Route path="/purchases/po/new" component={PurchaseOrder} />
       <Route path="/purchases/po/edit/:id" component={PurchaseOrder} />
+      <Route path="/purchases/po/import" component={PurchaseOrderImport} />
+      <Route path="/purchases/pr/import" component={PurchaseRequestImport} />
       <Route path="/purchases/invoice" component={PurchaseInvoiceList} />
       <Route path="/purchases/ap/new" component={PurchaseInvoice} />
       <Route path="/purchases/ap/edit/:id" component={PurchaseInvoice} />
