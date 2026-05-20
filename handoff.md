@@ -296,6 +296,13 @@ Ask yourself: does this operation genuinely require atomicity (all-or-nothing)? 
 | Genuine atomicity required (e.g., deduct stock + record movement — must be together or not at all) | Transaction is acceptable — but STILL do all reads first outside the transaction. The transaction should contain ONLY the writes. |
 | Transaction wrapping reads + writes "because it's easier" | Remove the transaction entirely. Code every step explicitly. |
 
+**How to identify "genuine atomicity":** Ask — if write A succeeds but write B fails, does the data become permanently broken in a way that CANNOT be detected or fixed later? If yes → genuine atomicity. If no (e.g., a journal entry missing can be detected by a reconciliation check, or the document can still be found and the journal re-generated) → NOT genuine atomicity, code manually instead.
+
+Examples from this codebase:
+- `lot deduct + stock_movements INSERT` → genuine (double deduction = inventory wrong forever, no self-healing)
+- `expense INSERT + journal INSERT` → NOT genuine (missing journal can be detected; document exists and is recoverable)
+- `deposit deduction INSERT + depositReceipts UPDATE` → NOT genuine (balance mismatch is detectable; write cleanup code manually)
+
 **What "code it manually" means:**
 ```typescript
 // WRONG — lazy, holds connection from first SELECT through all INSERTs:
@@ -322,6 +329,8 @@ await db.update(table3).set(...).where(...);  // connection open then closed
 ```
 
 **DO NOT blindly remove every `db.transaction()` you see.** Each screen has its own business requirement. Study first. Decide second. Code third. Applying this pattern without understanding the business requirement of each screen is just as irresponsible as the original lazy transaction.
+
+**Connection to db.ts timeout (IMPORTANT):** `server/db.ts` currently has a WRONG fix — increased connection timeout to 20s + added warmup query. This was a band-aid that treated the symptom (timeout) not the cause (unnecessary transactions holding connections). Once the real fix (removing unnecessary transactions) is applied screen by screen, the db.ts changes should be reverted to normal values. Do NOT revert db.ts first — that will make the timeout worse before any screens are fixed.
 
 ---
 
