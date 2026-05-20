@@ -63,7 +63,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 ---
 
 ### N6 — WHT cert email + PDF + Niramit font + LINE card
-**Status:** 🚀 PUSHING 2026-05-20 — all 10 files pushed to prod repo ✅
+**Status:** ✅ DONE 2026-05-20 (Bangkok) — 11 files deployed, build passed, server online
 **Schema change:** NO
 **Push type:** Code-only push (multiple files, must push together — code-dependent)
 
@@ -79,8 +79,9 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 | `client/src/index.css` | Added `@fontsource/niramit` import | ✅ pushed commit `599adb7` |
 | `package.json` | Added `@fontsource/niramit` dep | ✅ pushed commit `3c7fc28` |
 | `package-lock.json` | Lock for `@fontsource/niramit` | ✅ pushed commit `1a1b171` |
+| `client/src/pages/purchases/wht-cert-share.tsx` | **Missing from original list** — old prod version imported `WhtCertContent` from `wht-cert-print.tsx`, dev version doesn't → build error fixed | ✅ pushed commit `671fe09` |
 
-⚠️ **All 10 files must be pushed together — removing any breaks Niramit font on production.**
+⚠️ **Lesson learned:** `wht-cert-share.tsx` was missing from original N6 list — old prod version had a dependency on `wht-cert-print.tsx` that dev had already removed. Always grep for cross-file imports when updating pages.
 
 ---
 
