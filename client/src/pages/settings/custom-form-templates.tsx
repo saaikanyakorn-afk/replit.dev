@@ -196,6 +196,7 @@ export default function CustomFormTemplates() {
   const [bgPreviewUrl, setBgPreviewUrl] = useState<string>("");
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [dynamicScale, setDynamicScale] = useState(PREVIEW_BASE_SCALE);
+  const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const { uploadFile } = useUpload();
@@ -652,8 +653,27 @@ export default function CustomFormTemplates() {
                       background: "#fff",
                       overflow: "hidden",
                       fontSize: 0,
+                      cursor: "crosshair",
                     }}
+                    onMouseMove={e => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const xMm = (e.clientX - rect.left) / dynamicScale;
+                      const yMm = (e.clientY - rect.top) / dynamicScale;
+                      setHoverCoord({ x: Math.round(xMm * 10) / 10, y: Math.round(yMm * 10) / 10 });
+                    }}
+                    onMouseLeave={() => setHoverCoord(null)}
                   >
+                    {hoverCoord && (
+                      <div style={{
+                        position: "absolute", top: 4, right: 4, zIndex: 50,
+                        background: "rgba(0,0,0,0.75)", color: "#fff",
+                        fontSize: 11, padding: "2px 7px", borderRadius: 4,
+                        fontFamily: "monospace", pointerEvents: "none",
+                      }}>
+                        X={hoverCoord.x} Y={hoverCoord.y} mm
+                      </div>
+                    )}
+
                     {(bgPreviewUrl || editing.backgroundImageUrl) && (
                       <img
                         src={bgPreviewUrl || editing.backgroundImageUrl!}
