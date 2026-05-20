@@ -130,6 +130,7 @@ const A4_W_MM = 210;
 const A4_H_MM = 297;
 const PREVIEW_SCALE = 2.5;
 const PREVIEW_BASE_SCALE = 2.5;
+const BASE_PX = 2; // 2px per mm → A4 = 420×594px natural canvas
 
 const SAMPLE_DATA: Record<string, string> = {
   customerName: "บริษัท สินว่ารวย จำกัด",
@@ -195,7 +196,7 @@ export default function CustomFormTemplates() {
   const [bgUploading, setBgUploading] = useState(false);
   const [bgPreviewUrl, setBgPreviewUrl] = useState<string>("");
   const [bgFile, setBgFile] = useState<File | null>(null);
-  const [dynamicScale, setDynamicScale] = useState(PREVIEW_BASE_SCALE);
+  const [containerWidth, setContainerWidth] = useState(420);
   const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -204,10 +205,9 @@ export default function CustomFormTemplates() {
   useEffect(() => {
     const el = previewContainerRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setDynamicScale(w / A4_W_MM);
-    });
+    const update = (w: number) => { if (w > 0) setContainerWidth(w); };
+    update(el.getBoundingClientRect().width);
+    const observer = new ResizeObserver(entries => update(entries[0]?.contentRect.width ?? 0));
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -642,119 +642,105 @@ export default function CustomFormTemplates() {
                     <Eye className="h-4 w-4 text-[#539BFF]" /> ตัวอย่าง (A4 เต็มหน้า)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="overflow-y-auto flex-1 pb-4 px-3">
+                <CardContent className="overflow-y-auto flex-1 pb-4 px-2">
+                  {/* outer: measures width, clips vertically for scroll */}
                   <div ref={previewContainerRef} style={{ width: "100%" }}>
-                  <div
-                    style={{
-                      width: pw * dynamicScale,
-                      height: ph * dynamicScale,
-                      position: "relative",
-                      border: "1px solid #ddd",
-                      background: "#fff",
-                      overflow: "hidden",
-                      fontSize: 0,
-                      cursor: "crosshair",
-                    }}
-                    onMouseMove={e => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const xMm = (e.clientX - rect.left) / dynamicScale;
-                      const yMm = (e.clientY - rect.top) / dynamicScale;
-                      setHoverCoord({ x: Math.round(xMm * 10) / 10, y: Math.round(yMm * 10) / 10 });
-                    }}
-                    onMouseLeave={() => setHoverCoord(null)}
-                  >
-                    {hoverCoord && (
-                      <div style={{
-                        position: "absolute", top: 4, right: 4, zIndex: 50,
-                        background: "rgba(0,0,0,0.75)", color: "#fff",
-                        fontSize: 11, padding: "2px 7px", borderRadius: 4,
-                        fontFamily: "monospace", pointerEvents: "none",
-                      }}>
-                        X={hoverCoord.x} Y={hoverCoord.y} mm
-                      </div>
-                    )}
-
-                    {(bgPreviewUrl || editing.backgroundImageUrl) && (
-                      <img
-                        src={bgPreviewUrl || editing.backgroundImageUrl!}
-                        alt="form background"
-                        style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.3, position: "absolute", top: 0, left: 0 }}
-                      />
-                    )}
-                    {editing.fields.map((f, i) => {
-                      const val = SAMPLE_DATA[f.key] || f.label;
-                      return (
-                        <div
-                          key={`f-${i}`}
-                          style={{
-                            position: "absolute",
-                            left: f.x * dynamicScale,
-                            top: f.y * dynamicScale,
-                            width: f.width * dynamicScale,
-                            fontSize: f.fontSize * dynamicScale * 0.35,
-                            fontWeight: f.fontWeight || "normal",
-                            textAlign: (f.align || "left") as any,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            color: "#1a56db",
-                            borderBottom: "1px dashed rgba(26,86,219,0.3)",
-                            lineHeight: 1.3,
-                          }}
-                          title={`${f.label}: X=${f.x} Y=${f.y}`}
-                        >
-                          {val}
-                        </div>
-                      );
-                    })}
-                    {editing.itemsTable && editing.itemsTable.columns.map((col, ci) => {
-                      return SAMPLE_ITEMS.slice(0, editing.itemsTable!.maxRows).map((item, ri) => {
-                        const val = (item as any)[col.key] || "";
-                        const topY = editing.itemsTable!.startY + ri * editing.itemsTable!.rowHeight;
-                        return (
-                          <div
-                            key={`i-${ci}-${ri}`}
-                            style={{
-                              position: "absolute",
-                              left: col.x * dynamicScale,
-                              top: topY * dynamicScale,
-                              width: col.width * dynamicScale,
-                              fontSize: col.fontSize * dynamicScale * 0.35,
-                              textAlign: col.align as any,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              color: "#047857",
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {val}
+                  {(() => {
+                    const natW = pw * BASE_PX;
+                    const natH = ph * BASE_PX;
+                    const cssScale = containerWidth / natW;
+                    const scaledH = natH * cssScale;
+                    return (
+                      /* wrapper: sets height so scroll works correctly */
+                      <div
+                        style={{ width: containerWidth, height: scaledH, position: "relative", overflow: "hidden", cursor: "crosshair" }}
+                        onMouseMove={e => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const xMm = (e.clientX - rect.left) / (cssScale * BASE_PX);
+                          const yMm = (e.clientY - rect.top) / (cssScale * BASE_PX);
+                          setHoverCoord({ x: Math.round(xMm * 10) / 10, y: Math.round(yMm * 10) / 10 });
+                        }}
+                        onMouseLeave={() => setHoverCoord(null)}
+                      >
+                        {hoverCoord && (
+                          <div style={{
+                            position: "absolute", top: 4, right: 4, zIndex: 50,
+                            background: "rgba(0,0,0,0.82)", color: "#fff",
+                            fontSize: 11, padding: "2px 8px", borderRadius: 4,
+                            fontFamily: "monospace", pointerEvents: "none",
+                          }}>
+                            X={hoverCoord.x} &nbsp; Y={hoverCoord.y} mm
                           </div>
-                        );
-                      });
-                    })}
-                    {editing.totals.map((t, i) => {
-                      const val = SAMPLE_TOTALS[t.key] || t.label;
-                      return (
-                        <div
-                          key={`t-${i}`}
-                          style={{
-                            position: "absolute",
-                            left: t.x * dynamicScale,
-                            top: t.y * dynamicScale,
-                            width: t.width * dynamicScale,
-                            fontSize: t.fontSize * dynamicScale * 0.35,
-                            textAlign: (t.align || "right") as any,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            color: "#b45309",
-                            borderBottom: "1px dashed rgba(180,83,9,0.3)",
-                            lineHeight: 1.3,
-                          }}
-                        >
-                          {val}
+                        )}
+                        {/* A4 canvas at natural size, then CSS-scaled to fit */}
+                        <div style={{
+                          width: natW, height: natH,
+                          transform: `scale(${cssScale})`,
+                          transformOrigin: "top left",
+                          position: "absolute", top: 0, left: 0,
+                          background: "#fff", border: "1px solid #ddd",
+                          overflow: "hidden", fontSize: 0,
+                        }}>
+                          {(bgPreviewUrl || editing.backgroundImageUrl) && (
+                            <img
+                              src={bgPreviewUrl || editing.backgroundImageUrl!}
+                              alt="form background"
+                              style={{ width: "100%", height: "100%", objectFit: "fill", opacity: 0.35, position: "absolute", top: 0, left: 0 }}
+                            />
+                          )}
+                          {editing.fields.map((f, i) => {
+                            const val = SAMPLE_DATA[f.key] || f.label;
+                            return (
+                              <div key={`f-${i}`} style={{
+                                position: "absolute",
+                                left: f.x * BASE_PX, top: f.y * BASE_PX, width: f.width * BASE_PX,
+                                fontSize: f.fontSize * BASE_PX * 0.35,
+                                fontWeight: f.fontWeight || "normal",
+                                textAlign: (f.align || "left") as any,
+                                whiteSpace: "nowrap", overflow: "hidden",
+                                color: "#1a56db", borderBottom: "1px dashed rgba(26,86,219,0.3)", lineHeight: 1.3,
+                              }} title={`${f.label}: X=${f.x} Y=${f.y}`}>
+                                {val}
+                              </div>
+                            );
+                          })}
+                          {editing.itemsTable && editing.itemsTable.columns.map((col, ci) =>
+                            SAMPLE_ITEMS.slice(0, editing.itemsTable!.maxRows).map((item, ri) => {
+                              const val = (item as any)[col.key] || "";
+                              const topY = editing.itemsTable!.startY + ri * editing.itemsTable!.rowHeight;
+                              return (
+                                <div key={`i-${ci}-${ri}`} style={{
+                                  position: "absolute",
+                                  left: col.x * BASE_PX, top: topY * BASE_PX, width: col.width * BASE_PX,
+                                  fontSize: col.fontSize * BASE_PX * 0.35,
+                                  textAlign: col.align as any,
+                                  whiteSpace: "nowrap", overflow: "hidden",
+                                  color: "#047857", lineHeight: 1.3,
+                                }}>
+                                  {val}
+                                </div>
+                              );
+                            })
+                          )}
+                          {editing.totals.map((t, i) => {
+                            const val = SAMPLE_TOTALS[t.key] || t.label;
+                            return (
+                              <div key={`t-${i}`} style={{
+                                position: "absolute",
+                                left: t.x * BASE_PX, top: t.y * BASE_PX, width: t.width * BASE_PX,
+                                fontSize: t.fontSize * BASE_PX * 0.35,
+                                textAlign: (t.align || "right") as any,
+                                whiteSpace: "nowrap", overflow: "hidden",
+                                color: "#b45309", borderBottom: "1px dashed rgba(180,83,9,0.3)", lineHeight: 1.3,
+                              }}>
+                                {val}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })()}
                   </div>
                 </CardContent>
               </Card>
