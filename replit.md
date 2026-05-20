@@ -658,14 +658,6 @@ git push github-dev main
 - **Same file, same session (continuing fix/iteration)** → ไม่ต้องขออนุญาตซ้ำ — push ได้ทันที ✅
 - "Same session" = same conversation context, same file being iterated on
 
-**⚠️ github-production PAT — IMPORTANT FOR ALL AGENTS:**
-- `.git/config` PAT อาจหมดอายุ (Replit block การแก้ไข .git/config)
-- **ใช้ env var `GITHUB_PAT_PRODUCTION` เสมอ** — push ด้วย URL ตรง:
-  ```bash
-  git push "https://x-access-token:${GITHUB_PAT_PRODUCTION}@github.com/saaikanyakorn-afk/etaxcenter.git" main
-  ```
-- `GITHUB_PAT_PRODUCTION` เก็บใน Replit Secrets (shared) — อัปเดต 2026-05-03
-- ถ้า push ล้มเหลว "Invalid username or token" → แจ้งพี่ช้าง regenerate token "etaxerp" บน GitHub แล้วอัปเดต env var ผ่าน Replit Secrets
 
 **If github-dev push is blocked by Secret Scanning:**
 - Ask พี่ช้าง to allow at: `https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning`
