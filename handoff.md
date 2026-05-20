@@ -191,9 +191,13 @@ These files are **not tied to any single feature** — they will be skipped if y
 ## ACTIVE — CURRENT STATE
 ## ═══════════════════════════════════
 
-**Last verified:** 2026-05-20 — Kai session (N3+N6+N6-hotfix deployed ✅ + N8 SMTP Email config fixed on dev ✅). Handoff updated by main agent.
-**Production status:** N3 ✅ deployed 2026-05-20 12:21 | N6 ✅ deployed 2026-05-20 | N6-hotfix ✅ deployed 2026-05-20 (latest)
-**Dev status:** Payment-side journal fixes ✅ + N3 ✅ + N6/hotfix ✅ + **N8 SMTP Email config ✅ fixed (dev only, awaiting พี่ทราย test before push)** — N4/N7 still pending push.
+**Last verified:** 2026-05-20 18:00 — Kai session. Handoff updated by main agent.
+**Production status:** N3 ✅ | N6 ✅ | N6-hotfix ✅ | **N6-hotfix2 ⏳ awaiting พี่ช้าง push** (share link 404 fix — `server/static.ts`)
+**Dev status:** N8 SMTP Email config page working ✅ (Ethereal dev test confirmed) | Resend domain DNS pending (FreeDNS) | N4/N7 still pending push
+
+**N6-hotfix2 summary (2026-05-20):** WHT cert share link ส่ง LINE แล้วเปิดบนมือถือ 404 — root cause: `server/static.ts` ไม่เคยถูก push → route `/share/wht-cert/:token` ไม่มีบน production. Fix: push `server/static.ts` 1 ไฟล์ (deploy command อยู่ใน `db/pending-push-queue.md` entry N6-hotfix2). รอพี่ช้าง approve.
+
+**N8 SMTP summary (2026-05-20):** Resend account ตั้งไว้แล้ว แต่ domain `etaxerp.com` ยัง Pending verify บน Resend เพราะ DNS records ยังไม่ได้เพิ่มที่ FreeDNS (afraid.org). Records ที่ต้องเพิ่ม: (1) CNAME `resend._domainkey` → `resend._domainkey.resend.com`, (2) DMARC TXT `_dmarc` → `v=DMARC1; p=none;`, (3) SPF/MX records จาก Resend dashboard Records tab. พี่ช้างต้องเพิ่มที่ afraid.org. ระหว่างรอ: Ethereal dev test ใช้ได้แล้ว (ปุ่มสีฟ้าในหน้า Email config).
 
 ---
 

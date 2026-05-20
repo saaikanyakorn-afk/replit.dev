@@ -105,6 +105,23 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
+### N6-hotfix2 — WHT cert share link 404 on production
+**Status:** ⏳ awaiting พี่ช้าง approval — bug confirmed, 1 file only
+**Schema change:** NO
+**Push type:** Code-only, 1 file (backend only — no build needed if prod runs compiled, but `npm run build` required since this is server-side)
+**Root cause:** `server/static.ts` has `/share/wht-cert/:token` route (added in N6) but this file was never pushed to production → 404 when mobile clicks LINE card button "ดูใบ 50 ทวิ"
+
+| File | Role | Status |
+|------|------|--------|
+| `server/static.ts` | Registers `/share/wht-cert/:token` route → serves OG page for WHT cert share link | ⏳ awaiting |
+
+Deploy command:
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/static.ts && npm run build && pm2 start etax-center
+```
+
+---
+
 ### N7 — RD VAT service + multi-branch dialog
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
 **Schema change:** NO
