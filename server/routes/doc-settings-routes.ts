@@ -379,6 +379,7 @@ app.post("/api/settings/smtp/test", requireAuth, requireRole("admin", "super_adm
     });
     res.json({ message: `ส่ง email ทดสอบไปที่ ${toEmail} สำเร็จ` });
   } catch (err: any) {
+    console.error("[SMTP test] error:", err.message, err.code, err.responseCode);
     res.status(500).json({ message: `ส่ง email ล้มเหลว: ${err.message}` });
   }
 });
