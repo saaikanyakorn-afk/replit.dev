@@ -3,6 +3,12 @@ import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
 import Layout from "@/components/layout";
+import { getSessionToken } from "@/lib/queryClient";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = getSessionToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export default function WhtCertPrint() {
   const { id } = useParams<{ id: string }>();
@@ -11,13 +17,17 @@ export default function WhtCertPrint() {
   const [loading, setLoading] = useState(true);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [error, setError] = useState("");
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfFetchError, setPdfFetchError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const pdfApiUrl = `/api/wht-certs/${id}/pdf`;
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/wht-certs/${id}`, { credentials: "include" });
+        const res = await fetch(`/api/wht-certs/${id}`, {
+          credentials: "include",
+          headers: getAuthHeaders(),
+        });
         if (res.ok) {
           const d = await res.json();
           setCertNo(d.certNo || "wht-cert");
@@ -27,6 +37,31 @@ export default function WhtCertPrint() {
       }
       setLoading(false);
     })();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let blobUrl: string | null = null;
+    (async () => {
+      try {
+        const res = await fetch(`/api/wht-certs/${id}/pdf`, {
+          credentials: "include",
+          headers: getAuthHeaders(),
+        });
+        if (!res.ok) {
+          setPdfFetchError(true);
+          return;
+        }
+        const blob = await res.blob();
+        blobUrl = URL.createObjectURL(blob);
+        setPdfBlobUrl(blobUrl);
+      } catch {
+        setPdfFetchError(true);
+      }
+    })();
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
   }, [id]);
 
   useEffect(() => {
@@ -40,7 +75,10 @@ export default function WhtCertPrint() {
 
   const handleDownload = async () => {
     try {
-      const res = await fetch(pdfApiUrl, { credentials: "include" });
+      const res = await fetch(`/api/wht-certs/${id}/pdf`, {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) return;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -61,7 +99,7 @@ export default function WhtCertPrint() {
             <ArrowLeft className="h-4 w-4" /> กลับ
           </Button>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint} data-testid="button-print">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint} disabled={!pdfBlobUrl} data-testid="button-print">
               <Printer className="h-4 w-4" /> พิมพ์
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload} data-testid="button-download">
@@ -69,15 +107,26 @@ export default function WhtCertPrint() {
             </Button>
           </div>
         </div>
-        {!iframeLoaded && <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>}
-        <iframe
-          ref={iframeRef}
-          src={pdfApiUrl}
-          className={`flex-1 w-full border-0 rounded ${iframeLoaded ? "" : "hidden"}`}
-          title={certNo}
-          onLoad={() => setIframeLoaded(true)}
-          data-testid="pdf-iframe"
-        />
+        {pdfFetchError && (
+          <div className="flex-1 flex items-center justify-center text-red-500 text-sm">
+            ไม่สามารถโหลด PDF ได้ — กรุณาลองใหม่อีกครั้ง
+          </div>
+        )}
+        {!pdfFetchError && !iframeLoaded && (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          </div>
+        )}
+        {!pdfFetchError && pdfBlobUrl && (
+          <iframe
+            ref={iframeRef}
+            src={pdfBlobUrl}
+            className={`flex-1 w-full border-0 rounded ${iframeLoaded ? "" : "hidden"}`}
+            title={certNo}
+            onLoad={() => setIframeLoaded(true)}
+            data-testid="pdf-iframe"
+          />
+        )}
       </div>
     </Layout>
   );

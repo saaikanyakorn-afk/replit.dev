@@ -85,6 +85,26 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 
 ---
 
+### N6-hotfix — WHT cert print page: iframe ส่งแค่ cookie ไม่มี Bearer token → 401 บน production
+**Status:** ⏳ awaiting พี่ช้าง approval
+**Schema change:** NO
+**Push type:** Code-only, 1 ไฟล์ (frontend only)
+
+**Root cause:** Production ใช้ `cookie.secure = true` + sessions จาก PostgreSQL แต่ React app ส่ง `Authorization: Bearer <token>` ใน localStorage สำหรับ fetch calls ทุกอัน ส่วน `<iframe src="/api/wht-certs/:id/pdf">` เป็น browser GET request — ไม่มี JS interceptor → ส่งแค่ cookies ไม่มี Bearer header → server ไม่เจอ session → 401
+
+**Fix:** เปลี่ยน iframe ให้ fetch PDF blob ด้วย `Authorization: Bearer` header แล้วสร้าง blob URL (`URL.createObjectURL`) ให้ iframe แทน — ทั้ง certNo fetch และ download button ก็เพิ่ม auth header แล้ว
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/purchases/wht-cert-print.tsx` | Blob URL pattern แทน `iframe src` direct URL — เพิ่ม `getAuthHeaders()` ใน fetch ทุกจุด | ⏳ awaiting |
+
+Deploy command (NO schema change — rebuild only):
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/src/pages/purchases/wht-cert-print.tsx && npm install && npm run build && pm2 start etax-center
+```
+
+---
+
 ### N7 — RD VAT service + multi-branch dialog
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทรายtested ✅
 **Schema change:** NO
