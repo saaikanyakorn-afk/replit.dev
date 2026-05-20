@@ -223,7 +223,138 @@ These files are **not tied to any single feature** — they will be skipped if y
 
 **N6-hotfix2 summary (2026-05-20):** WHT cert share link ส่ง LINE แล้วเปิดบนมือถือ 404 — root cause: `server/static.ts` ไม่เคยถูก push → route `/share/wht-cert/:token` ไม่มีบน production. Fix: push `server/static.ts` 1 ไฟล์ (deploy command อยู่ใน `db/pending-push-queue.md` entry N6-hotfix2). รอพี่ช้าง approve.
 
-**N8 SMTP summary (2026-05-20):** Resend account ตั้งไว้แล้ว แต่ domain `etaxerp.com` ยัง Pending verify บน Resend เพราะ DNS records ยังไม่ได้เพิ่มที่ FreeDNS (afraid.org). Records ที่ต้องเพิ่ม: (1) CNAME `resend._domainkey` → `resend._domainkey.resend.com`, (2) DMARC TXT `_dmarc` → `v=DMARC1; p=none;`, (3) SPF/MX records จาก Resend dashboard Records tab. พี่ช้างต้องเพิ่มที่ afraid.org. ระหว่างรอ: Ethereal dev test ใช้ได้แล้ว (ปุ่มสีฟ้าในหน้า Email config).
+**N8 SMTP summary (updated 2026-05-20 19:51):**
+
+**FINAL DESIGN — Two completely separate SMTP configs (never mix):**
+
+| Config keys | Purpose | Who configures | Touch? |
+|---|---|---|---|
+| `SYSADMIN_SMTP_*` | sysAdmin 2FA login email (login at `/sys-k7x9`) | พี่ช้าง only | ❌ NEVER |
+| `PLATFORM_EMAIL_SMTP_*` | Platform document email (WHT cert attachments etc.) | Platform → ตั้งค่า Email UI | ✅ OK |
+
+**What happened on 2026-05-20 that must be understood:**
+- Previous design used `SYSADMIN_SMTP_*` for BOTH 2FA AND document email → WRONG
+- พี่ทราย saved webmail credentials via UI → overwrote `SYSADMIN_SMTP_*` on dev DB (Brevo replaced with info@etaxcenter.com)
+- พี่ช้าง caught this: `SYSADMIN_SMTP_*` = 2FA for sysAdmin class users → overwriting = sysAdmin lockout on go-live
+- Fix: created new `PLATFORM_EMAIL_SMTP_*` keys. All GET/PUT/test endpoints now use `PLATFORM_EMAIL_SMTP_*` only.
+- Production DB: `SYSADMIN_SMTP_*` still has Brevo (untouched, correct). `PLATFORM_EMAIL_SMTP_*` does NOT exist yet → must INSERT at deploy.
+- Dev DB: `SYSADMIN_SMTP_*` has info@etaxcenter.com (พี่ทราย overwrote). `PLATFORM_EMAIL_SMTP_*` empty until พี่ทราย saves via UI again.
+
+**What พี่ทราย must do on dev to test N8:**
+1. Go to Platform → ตั้งค่า Email
+2. Select etaxcenter.com preset
+3. Fill: Username = `info@etaxcenter.com`, Password = webmail password, From Email = `อีเมลอัตโนมัติจาก E-Tax Center <info@etaxcenter.com>`
+4. Click บันทึก → this writes to `PLATFORM_EMAIL_SMTP_*` in dev DB (not SYSADMIN_SMTP_*)
+5. Fill test email → click ส่งทดสอบ → verify email arrives with correct From display
+
+**N8 files changed (dev → production):**
+- `client/src/pages/platform/email-config.tsx` — preset list: etaxcenter.com first, Gmail, Outlook, Brevo. UI reads/writes via `/api/settings/smtp`
+- `server/routes/expense-routes.ts` — WHT cert email: reads `PLATFORM_EMAIL_SMTP_*`, no Resend path, no replyTo, From = `อีเมลอัตโนมัติจาก E-Tax Center <fromAddress>`
+- `server/routes/doc-settings-routes.ts` — GET/PUT/test SMTP endpoints: all use `PLATFORM_EMAIL_SMTP_*` only. Added note in code: "NEVER read/write SYSADMIN_SMTP_* here"
+
+---
+
+## ⛔ N8 PRODUCTION DEPLOY PROCEDURE — READ EVERY WORD
+
+> **Rule 6 applies:** NO step below is self-authorizing. พี่ช้าง must approve EACH step explicitly before it is executed.
+
+### Context
+N8 introduces a new set of keys in `system_config` table: `PLATFORM_EMAIL_SMTP_*` (6 rows).
+These rows do NOT exist in production DB. The code on production will look for these keys.
+If they are missing → WHT cert email send will return error "ยังไม่ได้ตั้งค่า SMTP".
+**Therefore: the DB INSERT must happen BEFORE or AT THE SAME TIME as the code push — ideally before.**
+
+### Step 0 — Before anything: confirm SYSADMIN_SMTP_* is intact
+```sql
+SELECT config_key, LEFT(config_value, 20) AS val_preview
+FROM system_config
+WHERE config_key LIKE 'SYSADMIN_SMTP_%'
+ORDER BY config_key;
+```
+Expected: 6 rows with Brevo credentials (host = smtp-relay.brevo.com, user = something@smtp-brevo.com).
+If ANY of these are missing or show etaxcenter.com values → **STOP. Do not proceed. Report to พี่ช้าง immediately.**
+
+### Step 1 — Confirm PLATFORM_EMAIL_SMTP_* does NOT exist yet
+```sql
+SELECT config_key FROM system_config WHERE config_key LIKE 'PLATFORM_EMAIL_SMTP_%';
+```
+Expected: 0 rows. If rows exist → someone already ran this → skip to Step 3 to verify values.
+
+### Step 2 — Ask พี่ทราย for exact credentials before INSERT
+Do NOT hardcode anything. Get from พี่ทราย at deploy time:
+- `PLATFORM_EMAIL_SMTP_USER` = the webmail email address (e.g. `info@etaxcenter.com`)
+- `PLATFORM_EMAIL_SMTP_PASS` = the webmail password (handle securely, do not log)
+- `PLATFORM_EMAIL_SMTP_FROM` = display string (e.g. `อีเมลอัตโนมัติจาก E-Tax Center <info@etaxcenter.com>`)
+
+`PLATFORM_EMAIL_SMTP_HOST`, `PLATFORM_EMAIL_SMTP_PORT`, `PLATFORM_EMAIL_SMTP_SECURE` are fixed:
+- HOST = `mail.etaxcenter.com`
+- PORT = `587`
+- SECURE = `false`
+
+### Step 3 — INSERT into production DB (พี่ช้าง executes, never Kai)
+```sql
+INSERT INTO system_config (config_key, config_value) VALUES
+  ('PLATFORM_EMAIL_SMTP_HOST',   'mail.etaxcenter.com'),
+  ('PLATFORM_EMAIL_SMTP_PORT',   '587'),
+  ('PLATFORM_EMAIL_SMTP_SECURE', 'false'),
+  ('PLATFORM_EMAIL_SMTP_USER',   '<ASK พี่ทราย>'),
+  ('PLATFORM_EMAIL_SMTP_PASS',   '<ASK พี่ทราย>'),
+  ('PLATFORM_EMAIL_SMTP_FROM',   '<ASK พี่ทราย>')
+ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
+```
+This is safe: `ON CONFLICT ... DO UPDATE` = idempotent, can re-run safely.
+
+### Step 4 — Verify INSERT succeeded
+```sql
+SELECT config_key, LEFT(config_value, 40) AS val_preview
+FROM system_config
+WHERE config_key LIKE 'PLATFORM_EMAIL_SMTP_%'
+ORDER BY config_key;
+```
+Expected: exactly 6 rows. PASS value will show — verify host/port/user are correct. Password preview will show first 40 chars.
+
+### Step 5 — Also verify SYSADMIN_SMTP_* is STILL intact (Brevo, unchanged)
+```sql
+SELECT config_key, LEFT(config_value, 30) AS val_preview
+FROM system_config
+WHERE config_key LIKE 'SYSADMIN_SMTP_%'
+ORDER BY config_key;
+```
+Expected: still Brevo credentials. If ANY row now shows `mail.etaxcenter.com` → data was corrupted → STOP immediately.
+
+### Step 6 — Code push (3 files, after DB is confirmed)
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- \
+  client/src/pages/platform/email-config.tsx \
+  server/routes/expense-routes.ts \
+  server/routes/doc-settings-routes.ts \
+  && npm install && npm run build && pm2 start etax-center
+```
+⚠️ `npm run build` is MANDATORY — production runs `node dist/index.cjs`. Without build, old compiled code runs.
+
+### Step 7 — Post-deploy test
+1. พี่ทราย logs into Platform → ตั้งค่า Email
+2. Page should load showing `mail.etaxcenter.com` host, `info@etaxcenter.com` user, password = "Key ถูกบันทึกในระบบแล้ว" (green)
+3. Enter พี่ทราย's real email → click ส่งทดสอบ → email should arrive From `อีเมลอัตโนมัติจาก E-Tax Center <info@etaxcenter.com>`
+4. Go to a WHT cert → Send email → verify it sends successfully with PDF attachment
+
+### Step 8 — If step 7 fails
+- Check pm2 logs: `pm2 logs etax-center --lines 50`
+- Common failure: SMTP auth rejected (wrong password) → พี่ทราย updates credentials via UI (writes new PLATFORM_EMAIL_SMTP_PASS)
+- Common failure: Connection timeout → check firewall allows outbound port 587 to mail.etaxcenter.com
+- DO NOT touch SYSADMIN_SMTP_* regardless of failure
+
+### Deploy order summary
+```
+Step 0: Verify SYSADMIN_SMTP_* = Brevo ✓
+Step 1: Confirm PLATFORM_EMAIL_SMTP_* = 0 rows ✓
+Step 2: Get credentials from พี่ทราย ✓
+Step 3: INSERT 6 rows into system_config ✓
+Step 4: Verify 6 rows exist ✓
+Step 5: Verify SYSADMIN_SMTP_* still = Brevo ✓
+Step 6: Push 3 code files + npm run build ✓
+Step 7: Post-deploy test via UI ✓
+```
 
 ---
 
@@ -263,7 +394,7 @@ Before she gives you a single task, you MUST brief her. Say something like:
 | N4 | **ฝั่งขาย + ฝั่งจ่าย payment fixes + Expense timeout fix + RE overpayment block + Settings > วิธีชำระเงิน** — complete on dev (all 15 files + expense routes + route-helpers.ts + sales-docs/billing-notes/notifications routes). **Settings > วิธีชำระเงิน (`client/src/pages/settings/payment-methods.tsx`):** แยก tab รับเงิน/จ่ายเงิน, เพิ่ม/แก้ไข/ลบวิธีชำระเงินแต่ละประเภทได้, ผูกรหัสบัญชี (รับ → assets หมวด 1; จ่าย → assets+liabilities หมวด 1-2), บันทึก bankName/bankAccountNo, กำหนด default/active ได้. ถ้าไม่ผูกรหัสบัญชีระบบบล็อกตอนบันทึกเอกสาร. | ✅ พี่ทราย tested 2026-05-20 | พี่ช้าง approves push |
 | N5 | **B1: github-dev push blocked** — Secret Scanning found leaked PAT | ⏳ Waiting | พี่ช้าง allows at: https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning/unblock-secret/3DcYyNVdNrlS0UaUfER3yJCRuAZ |
 | N7 | **RD VAT Service — ค้นหาจากสรรพากรแทน DBD + multi-branch dialog + address formatting (2026-05-19):** ลบ DBD (openapi.dbd.go.th) ออกทั้งหมด. `lookupRdVatAll(taxId)` call `rdws.rd.go.th/serviceRD3/vatserviceRD3.asmx` (SOAP, anonymous/anonymous) BranchNumber 0–9 พร้อมกัน. `/api/dbd-lookup/:taxId` คืน `{ ...first, branches: [...], contactId? }` เสมอ. `BranchSelectProvider` (`client/src/contexts/branch-select-context.tsx`) global dialog — `selectBranch(branches)` คืน Promise; ใส่ใน `App.tsx`. `useDbdLookup` เรียก dialog ถ้า `branches.length > 1`. Branch label: 0 → "สำนักงานใหญ่", 1+ → padStart(5,"0"). Address: detect `isBkk = province.includes("กรุงเทพ")` → แขวง/เขต; other → ตำบล/อำเภอ/จังหวัดXXX. ครบทุก field: อาคาร ชั้น ห้อง **เลขที่** หมู่บ้าน หมู่ แยก ซอย ถนน. ทดสอบ: 0105535134278 ✅ 0105561017020 BR0/BR1 ✅ | ✅ พี่ทราย tested 2026-05-20 | พี่ช้าง approves push |
-| N8 | **SMTP Email Config (Platform)** — พี่ทรายต้องการตั้งค่า SMTP สำหรับส่งอีเมลจากระบบ (WHT cert email etc.). สร้างหน้า `/platform/email-config` ใหม่ + เพิ่ม "ตั้งค่า Email" ในเมนูซ้าย Platform. **Bug ที่พบและแก้แล้ว (2026-05-20):** (1) API เดิมใช้ `/api/sysadmin/smtp-config` → ต้องการ SysAdmin session → พี่ทราย (super_admin) เข้าไม่ได้. Fix: เปลี่ยนทุก endpoint ใน `email-config.tsx` ไปใช้ `/api/settings/smtp` (GET/PUT/POST test) ใน `doc-settings-routes.ts` ที่ใช้ `requireRole("admin","super_admin")` แทน. (2) App.tsx violation: route + import ถูกเพิ่มผิดที่ใน App.tsx (Group 1 protected) → Fix: ลบออกจาก App.tsx แล้วเพิ่มใน `app-extra.tsx` แทน ผ่าน `matchPlatformEmailConfig()` matcher + `PlatformEmailConfig` lazy import. (3) Pass masking: backend คืน `pass:"***"` + `hasPass:true` แต่ frontend ตรวจ `"••••"` → ไม่ match → Fix: เพิ่ม `hasPass` state boolean ใช้แทน. **Files changed:** `client/src/pages/platform/email-config.tsx` (API endpoints + hasPass state), `client/src/app-extra.tsx` (route added), `client/src/App.tsx` (route removed — revert violation), `client/src/components/platform-layout.tsx` (Mail nav item — ยังอยู่). **Test instruction for พี่ทราย:** ไปที่ Platform → ตั้งค่า Email → เลือก Resend → กรอก API key (re_...) → From Email: `onboarding@resend.dev` → บันทึก → กรอก email ตัวเอง → ส่งทดสอบ. **⚠️ ก่อน push:** update handoff.md (นี่แหละ) → เพิ่ม N8 entry ใน `db/pending-push-queue.md` → รอพี่ช้าง approve → push ไฟล์ที่เปลี่ยน 3 ตัว (ห้าม push App.tsx เพราะ Group 1). | ⏳ รอพี่ทราย test | Kai implements / พี่ช้าง approves push |
+| N8 | **SMTP Platform Email Config** — ตั้งค่าส่งเมล WHT cert จาก platform ผ่าน mail.etaxcenter.com webmail. **⚠️ CRITICAL DESIGN (2026-05-20):** ระบบมี 2 SMTP configs แยกกันสมบูรณ์: (1) `SYSADMIN_SMTP_*` = Brevo = 2FA สำหรับ sysAdmin class (login `/sys-k7x9`) — ❌ NEVER TOUCH (2) `PLATFORM_EMAIL_SMTP_*` = webmail etaxcenter.com = ส่งเอกสาร (WHT cert etc.) — ✅ OK. **N8 code fixes:** `expense-routes.ts` + `doc-settings-routes.ts` ทั้ง GET/PUT/test ใช้ `PLATFORM_EMAIL_SMTP_*` เท่านั้น. `email-config.tsx` preset: etaxcenter.com แรก. **⚠️ Production deploy requires DB INSERT first** (6 rows in `system_config`) BEFORE code push — see "N8 PRODUCTION DEPLOY PROCEDURE" section above. Credentials to INSERT: ask พี่ทราย at deploy time — never hardcode. **Dev test:** Platform → ตั้งค่า Email → เลือก etaxcenter.com → กรอก email+password → บันทึก (writes `PLATFORM_EMAIL_SMTP_*`) → ส่งทดสอบ. **Files (3):** `email-config.tsx`, `expense-routes.ts`, `doc-settings-routes.ts`. | 📝 dev — รอพี่ทราย test | Kai implements / พี่ช้าง approves push + DB INSERT |
 | N6 | **WHT cert (50 ทวิ) — PDF + Email + LINE + Niramit** — ✅ **DEPLOYED 2026-05-20** 11 files. email ดึงจาก source doc (expense.contactEmail) ผ่าน sourceDocId, fallback → contacts.email ผ่าน payeeVendorId. PDF: static import แทน dynamic require, checkbox canvas-based, tax ID column 210pt, signature embed, seqNo auto-compute. LINE card: สีม่วง #9333ea + certNo + payeeName + ยอดภาษีที่หัก. Niramit: @fontsource/niramit bundled ใน Vite. **N6-hotfix (2026-05-20):** หลัง deploy พบ print page `/purchases/wht/print/:id` → 401 บน production — root cause: `<iframe src="/api/wht-certs/:id/pdf">` เป็น browser GET request ไม่มี JS interceptor → ส่งแค่ cookies ไม่มี `Authorization: Bearer` → production ใช้ `cookie.secure=true` + Bearer token เป็น auth หลัก (localStorage) → iframe ไม่รู้จัก session. Fix: `wht-cert-print.tsx` เปลี่ยน iframe ให้ fetch blob ด้วย `getSessionToken()` → `URL.createObjectURL(blob)` → `<iframe src={blobUrl}>` — certNo fetch + download button เพิ่ม Bearer auth header ด้วย. commit `4e6ef45`. | ✅ Done (incl. hotfix) |
 
 ### Business knowledge you MUST know before touching any code:

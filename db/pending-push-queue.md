@@ -124,21 +124,42 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/s
 
 ### N8 — Platform Email Config + WHT cert email fix
 **Status:** 📝 dev — รอพี่ทราย test บน dev ก่อน แล้วรอพี่ช้าง approve push
-**Schema change:** NO
-**Push type:** Code-only, 3 files
+**Schema change:** NO (no new columns) — but requires **production DB data migration** (INSERT rows)
+**Push type:** Code push (3 files) + **production DB INSERT — must be first step at deploy time**
 
 **สิ่งที่เปลี่ยน:**
-1. `email-config.tsx` — เปลี่ยน preset เป็น etaxcenter.com (Webmail) เป็นตัวแรก + Outlook + ลบ Resend/Mailjet ออก
-2. `expense-routes.ts` — ลบ Resend path ออก, ใช้ SMTP อย่างเดียว, From = `อีเมลอัตโนมัติจาก E-Tax Center <noreply@etaxcenter.com>`, Reply-To = company.email จาก DB
-3. `doc-settings-routes.ts` — test endpoint ใช้ display name เดียวกัน
+1. `email-config.tsx` — preset etaxcenter.com (Webmail) เป็นตัวแรก, ลบ Resend/Mailjet
+2. `expense-routes.ts` — ใช้ SMTP only, reads `PLATFORM_EMAIL_SMTP_*` (not SYSADMIN_SMTP_*)
+3. `doc-settings-routes.ts` — GET/PUT/test all use `PLATFORM_EMAIL_SMTP_*` (not SYSADMIN_SMTP_*)
 
-**วิธีใช้หลัง push:** พี่ทรายไปที่ Platform → ตั้งค่า Email → เลือก etaxcenter.com → กรอก email + password webmail → บันทึก → ส่งทดสอบ
+**⚠️ KEY DESIGN CHANGE (2026-05-20):**
+- `SYSADMIN_SMTP_*` keys in `system_config` = **reserved for sysAdmin 2FA** (login at `/sys-k7x9`) — NEVER touch
+- `PLATFORM_EMAIL_SMTP_*` keys = **new keys** for platform document emails (WHT cert, etc.)
+- These keys do NOT exist in production DB yet → must INSERT at deploy time (step below)
+
+**⚠️ PRODUCTION DB DATA MIGRATION — DO THIS FIRST AT DEPLOY:**
+Before starting the code push, INSERT these rows into production `system_config`:
+```sql
+INSERT INTO system_config (config_key, config_value) VALUES
+  ('PLATFORM_EMAIL_SMTP_HOST', 'mail.etaxcenter.com'),
+  ('PLATFORM_EMAIL_SMTP_PORT', '587'),
+  ('PLATFORM_EMAIL_SMTP_USER', '<email ที่พี่ทรายใช้ — ถามก่อน INSERT>'),
+  ('PLATFORM_EMAIL_SMTP_PASS', '<password webmail — ถามพี่ทรายก่อน INSERT>'),
+  ('PLATFORM_EMAIL_SMTP_FROM', '<from display — ถามพี่ทราย>'),
+  ('PLATFORM_EMAIL_SMTP_SECURE', 'false')
+ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
+```
+⚠️ **Do NOT hardcode credentials here** — ask พี่ทราย for actual email + password at deploy time.
+⚠️ **Do NOT touch SYSADMIN_SMTP_*** — those are Brevo 2FA credentials. Changing = sysAdmin lockout.
+⚠️ **Verify on production after INSERT:** `SELECT config_key FROM system_config WHERE config_key LIKE 'PLATFORM_EMAIL_SMTP_%';` — should return 6 rows.
+
+**วิธีทดสอบบน dev ก่อน push:** พี่ทรายไปที่ Platform → ตั้งค่า Email → เลือก etaxcenter.com → กรอก email + password webmail → บันทึก → ส่งทดสอบ (การ Save จะ INSERT PLATFORM_EMAIL_SMTP_* ลง dev DB อัตโนมัติ)
 
 | File | Role | Status |
 |------|------|--------|
-| `client/src/pages/platform/email-config.tsx` | UI preset เปลี่ยนเป็น etaxcenter.com webmail | 📝 dev |
-| `server/routes/expense-routes.ts` | WHT cert email — ใช้ SMTP อย่างเดียว + from display name ถูกต้อง | 📝 dev |
-| `server/routes/doc-settings-routes.ts` | Test endpoint — from display name ถูกต้อง | 📝 dev |
+| `client/src/pages/platform/email-config.tsx` | UI preset etaxcenter.com webmail เป็นตัวแรก | 📝 dev |
+| `server/routes/expense-routes.ts` | WHT cert email — SMTP only, PLATFORM_EMAIL_SMTP_* | 📝 dev |
+| `server/routes/doc-settings-routes.ts` | GET/PUT/test — PLATFORM_EMAIL_SMTP_* only | 📝 dev |
 
 ---
 
