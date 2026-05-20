@@ -85,7 +85,6 @@ If you cannot recite that from memory — stop what you are doing and keep readi
 
 ## 🔑 MANDATORY PUSH RULE — ENFORCED BY พี่ช้าง — ALL AGENTS MUST FOLLOW
 
-**NEVER suggest regenerating a GitHub token. NEVER ask พี่ช้าง to update GITHUB_PAT_PRODUCTION. Token-based push is permanently retired.**
 
 
 **Deploy key details** (for reference only — do not regenerate):
