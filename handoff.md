@@ -220,7 +220,7 @@ There are **two completely separate SMTP configurations** in `system_config`. Th
 If you think you found a case that "needs" direct DB action — you have NOT. STOP. Report to พี่ช้าง. The answer is always: fix it in code, push via the queue, let the running application make the change through normal request flow.
 
 **🔑 PRINCIPLE — Before planning any production data migration (INSERT/UPDATE rows):**
-1. **VERIFY FIRST** — ask พี่ช้าง to run `SELECT` on production to check if the rows already exist
+1. **VERIFY FIRST** — Kai runs `SELECT` on production DB directly (read-only queries are trusted and allowed). Check if the rows already exist before writing any migration code.
 2. **Check if UI can create the data** — if the application has a UI that saves this data (PUT/POST endpoint with upsert), prefer that over a migration function. Only write migration code for data that cannot be created through normal application flow.
 3. **Check if code handles missing rows gracefully** — read the GET endpoint. If it returns safe defaults when rows are absent, the data does NOT need to be pre-seeded. Code-only push + UI configuration = correct path.
 4. Only if rows don't exist AND cannot be created via UI AND code crashes without them → write a migration.
@@ -749,7 +749,7 @@ This method lets Kai verify PDF changes end-to-end without needing พี่ท�
    ```
    psql "$DB_PROD_URL" -c "SELECT column_name FROM information_schema.columns WHERE table_name='<table>';"
    ```
-   If `$DB_PROD_URL` is not set in your session, STOP and ask พี่ช้าง — do NOT request credentials from any document.
+   If `$DB_PROD_URL` is not set in your session, ask พี่ช้าง to re-add it via Replit Secrets UI (🔒). **Last known status: unset as of 2026-05-21** (was re-added 2026-05-20, gone again). Do NOT request credentials from any document.
 
 **The 10-step checklist (Rule 2 — no shortcuts):**
 1. VERIFY FIRST — query prod DB before writing any code

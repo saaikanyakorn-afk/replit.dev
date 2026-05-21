@@ -154,8 +154,9 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/s
 
 ### N8 — Platform Email Config + WHT cert email fix
 **Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ 2026-05-20 (บันทึก + ส่งทดสอบ email ได้รับจริง)
-**Schema change:** NO (no new columns) — but requires **production DB data migration** (INSERT rows)
-**Push type:** Code push (3 files) + **production DB INSERT — must be first step at deploy time**
+**Schema change:** NO
+**Data migration:** NO — code handles missing rows gracefully (verified 2026-05-21)
+**Push type:** Code-only push (3 files) — 1 restart only
 
 **สิ่งที่เปลี่ยน:**
 1. `email-config.tsx` — preset etaxcenter.com (Webmail) เป็นตัวแรก, ลบ Resend/Mailjet
@@ -165,25 +166,19 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/s
 **⚠️ KEY DESIGN CHANGE (2026-05-20):**
 - `SYSADMIN_SMTP_*` keys in `system_config` = **reserved for sysAdmin 2FA** (login at `/sys-k7x9`) — NEVER touch
 - `PLATFORM_EMAIL_SMTP_*` keys = **new keys** for platform document emails (WHT cert, etc.)
-- These keys do NOT exist in production DB yet → must INSERT at deploy time (step below)
 
-**⚠️ PRODUCTION DB DATA MIGRATION — DO THIS FIRST AT DEPLOY:**
-Before starting the code push, INSERT these rows into production `system_config`:
+**Why NO data migration needed (verified 2026-05-21 by code analysis):**
+- `doc-settings-routes.ts` GET endpoint: returns `""` for all fields if rows absent — no crash ✅
+- `expense-routes.ts` send endpoint: line 2068 guards `if (!HOST || !USER || !PASS)` before using → returns graceful error if not configured ✅
+- `doc-settings-routes.ts` PUT endpoint: uses `upsert()` — creates rows on first save ✅
+- **Correct flow:** deploy code → พี่ช้าง/พี่ทราย goes to Platform → ตั้งค่า Email → fills credentials → Save → system creates the 6 rows automatically via PUT endpoint
+- ~~⚠️ Old note about "manual INSERT" was WRONG and violated the rule~~ — corrected 2026-05-21
+
+**⚠️ VERIFY before deploy** (when `DB_PROD_URL` is set — currently unset as of 2026-05-21):
 ```sql
-INSERT INTO system_config (config_key, config_value) VALUES
-  ('PLATFORM_EMAIL_SMTP_HOST', 'mail.etaxcenter.com'),
-  ('PLATFORM_EMAIL_SMTP_PORT', '587'),
-  ('PLATFORM_EMAIL_SMTP_USER', '<email ที่พี่ทรายใช้ — ถามก่อน INSERT>'),
-  ('PLATFORM_EMAIL_SMTP_PASS', '<password webmail — ถามพี่ทรายก่อน INSERT>'),
-  ('PLATFORM_EMAIL_SMTP_FROM', '<from display — ถามพี่ทราย>'),
-  ('PLATFORM_EMAIL_SMTP_SECURE', 'false')
-ON CONFLICT (config_key) DO UPDATE SET config_value = EXCLUDED.config_value;
+SELECT config_key FROM system_config WHERE config_key LIKE 'PLATFORM_EMAIL_SMTP_%';
 ```
-⚠️ **Do NOT hardcode credentials here** — ask พี่ทราย for actual email + password at deploy time.
-⚠️ **Do NOT touch SYSADMIN_SMTP_*** — those are Brevo 2FA credentials. Changing = sysAdmin lockout.
-⚠️ **Verify on production after INSERT:** `SELECT config_key FROM system_config WHERE config_key LIKE 'PLATFORM_EMAIL_SMTP_%';` — should return 6 rows.
-
-**วิธีทดสอบบน dev ก่อน push:** พี่ทรายไปที่ Platform → ตั้งค่า Email → เลือก etaxcenter.com → กรอก email + password webmail → บันทึก → ส่งทดสอบ (การ Save จะ INSERT PLATFORM_EMAIL_SMTP_* ลง dev DB อัตโนมัติ)
+Expected: 0 rows (never deployed) OR 6 rows (already configured). Either way: code-only push is correct.
 
 | File | Role | Status |
 |------|------|--------|
