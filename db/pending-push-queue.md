@@ -291,7 +291,6 @@ Expected: 0 rows (never deployed) OR 6 rows (already configured). Either way: co
 |------|------|--------|
 | `server/migrations-runner.ts` | Uncomment 6 migrations สำหรับ N11 | 📝 dev |
 | `shared/schema-extra.ts` | Migration functions ทั้ง 6 + schema tables ใหม่ | 📝 dev |
-| `shared/schema.ts` | general_settings + lot threshold field | 📝 dev |
 | `server/routes/manufacturing-routes.ts` | API routes ทั้งหมดของ MO, BOM, scan station, finish, NCR | 📝 dev |
 | `server/routes/products-routes.ts` | Material issue routes, lot history, goods-receiving delete | 📝 dev |
 | `server/routes/doc-settings-routes.ts` | Low-stock threshold settings (อยู่ใน N8 ด้วย — push ครั้งเดียว) | 📝 dev |

@@ -430,3 +430,88 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 **Reason:** Task #35 — เบิกวัตถุดิบล็อตเข้าไลน์ผลิตด้วย QR Scan. New module for issuing raw materials to production lines, with QR scan support for employee cards and product lot labels.
 
 **Status:** ✅ CONFIRMED on production 2026-05-20 12:21 Bangkok — flag `done_2026-05-20 12:21:57.506835+07`, `from_warehouse_id` column EXISTS. Commits: `585cd33` (schema-extra), `845583b` (migrations-runner NEW), `b4fc9d6` (products-routes), `40c80c7` (index-extra).
+
+---
+
+## 2026-05-17 — production_receipts + production_receipt_items tables (ENTRY #011)
+
+**What changed:**
+- Added `production_receipts` table: id, company_id, receipt_no, mo_id (FK→manufacturing_orders), received_by_user_id (FK→users), to_warehouse_id, notes, status (draft/confirmed), received_at
+- Added `production_receipt_items` table: id, production_receipt_id (FK→production_receipts ON DELETE CASCADE), product_id, product_name, lot_id, lot_number, quantity, unit
+
+**Backup location:** No backup required — new tables (no existing data affected)
+
+**Migration code:** `shared/schema-extra.ts` → `runProductionFinishMigration()`
+**Flag:** `CREATE_PRODUCTION_FINISH_TABLES_20260517` in `system_config`
+**Status:** ⏳ N11 awaiting approval — NOT yet on production
+
+---
+
+## 2026-05-17 — lot_low_stock_threshold column on general_settings (ENTRY #012a)
+
+**What changed:**
+- Added `lot_low_stock_threshold INTEGER DEFAULT 10` column to `general_settings`
+- Company-wide fallback threshold for lot low-stock warnings (product-level takes priority)
+
+**Backup location:** No backup required — pure ADD COLUMN with default (no data affected)
+
+**Migration code:** `shared/schema-extra.ts` → `runLotLowStockThresholdMigration()`
+**Flag:** `ADD_LOT_LOW_STOCK_THRESHOLD_TO_GENERAL_SETTINGS_20260517` in `system_config`
+**Note:** Column was previously in `shared/schema.ts` (removed — now handled via raw SQL migration only)
+**Status:** ⏳ N11 awaiting approval — NOT yet on production
+
+---
+
+## 2026-05-17 — ncr_reports table (ENTRY #012b)
+
+**What changed:**
+- Added `ncr_reports` table: id, company_id, ncr_no, mo_id, product_id, product_name, defect_qty, defect_type, description, corrective_action, status (open/closed), created_by, created_at, closed_at
+
+**Backup location:** No backup required — new table
+
+**Migration code:** `shared/schema-extra.ts` → `runNcrMigration()`
+**Flag:** `CREATE_NCR_REPORTS_TABLE_20260517` in `system_config`
+**Status:** ⏳ N11 awaiting approval — NOT yet on production
+
+---
+
+## 2026-05-17 — warehouse columns on mfg tables (ENTRY #012c / runWarehouseColumnsForMfgMigration)
+
+**What changed:**
+- `ALTER TABLE material_issues ADD COLUMN IF NOT EXISTS from_warehouse_id INTEGER`
+- `ALTER TABLE production_receipts ADD COLUMN IF NOT EXISTS to_warehouse_id INTEGER`
+
+**Backup location:** No backup required — ADD COLUMN IF NOT EXISTS (safe)
+
+**Migration code:** `shared/schema-extra.ts` → `runWarehouseColumnsForMfgMigration()`
+**Flag:** `ADD_WAREHOUSE_COLS_TO_MFG_TABLES_20260517` in `system_config`
+**Status:** ⏳ N11 awaiting approval — NOT yet on production
+
+---
+
+## 2026-05-17 — bom_process_steps + mo_process_logs tables (ENTRY #013)
+
+**What changed:**
+- Added `bom_process_steps` table: id, bom_id (FK→bom_headers ON DELETE CASCADE), step_no, name, description, created_at + index on bom_id
+- Added `mo_process_logs` table: id, mo_id (FK→manufacturing_orders ON DELETE CASCADE), step_no, step_name, qty_passed, notes, logged_by_employee_id, logged_by_name, logged_at + index on mo_id
+
+**Backup location:** No backup required — new tables
+
+**Migration code:** `shared/schema-extra.ts` → `runBomProcessStepsMigration()`
+**Flag:** `CREATE_BOM_PROCESS_STEPS_AND_MO_PROCESS_LOGS_20260517` in `system_config`
+**Reason:** Task #68 — ขั้นตอนการผลิตต่อ BOM + Scan Station
+**Status:** ⏳ N11 awaiting approval — NOT yet on production
+
+---
+
+## 2026-05-17 — wip_warehouse_id column on manufacturing_orders (ENTRY #014)
+
+**What changed:**
+- Added `wip_warehouse_id INTEGER` column to `manufacturing_orders`
+- Supports Raw Material → WIP → Finished Goods warehouse flow
+
+**Backup location:** No backup required — ADD COLUMN (no existing data affected)
+
+**Migration code:** `shared/schema-extra.ts` → `runWipWarehouseMigration()`
+**Flag:** `ADD_WIP_WAREHOUSE_TO_MFG_ORDERS_20260517` in `system_config`
+**Status:** ⏳ N11 awaiting approval — NOT yet on production

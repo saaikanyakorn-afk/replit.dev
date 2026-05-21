@@ -1000,8 +1000,12 @@ export async function runMesTablesMigration(db: any) {
  * Pure DDL — no data backfill needed. Default 10 applied to all rows.
  */
 export async function runLotLowStockThresholdMigration(db: any) {
+  const FLAG = "ADD_LOT_LOW_STOCK_THRESHOLD_TO_GENERAL_SETTINGS_20260517";
   try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
     await db.execute(sql.raw(`ALTER TABLE general_settings ADD COLUMN IF NOT EXISTS lot_low_stock_threshold INTEGER DEFAULT 10`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
     console.log("[migration] ✅ general_settings.lot_low_stock_threshold ready");
   } catch (e: any) {
     console.error("[migration] ❌ runLotLowStockThresholdMigration FAILED:", e.message);
