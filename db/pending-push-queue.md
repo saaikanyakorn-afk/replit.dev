@@ -496,7 +496,7 @@ Expected: 0 rows (never deployed) OR 6 rows (already configured). Either way: co
 
 | File | Role | Status |
 |------|------|--------|
-| `server/utils/platform-email.ts` | **NEW** — shared sendPlatformEmail helper | 📝 dev |
+| `server/utils/platform-email.ts` | **NEW** — shared sendPlatformEmail helper | ✅ pushed 2026-05-21 (commit f6e554d2) |
 | `tools/smtp-test.php` | **NEW** — standalone PHP SMTP test script for พี่ช้าง's Windows/Apache | 📝 dev |
 | `server/routes/billing-notes-routes.ts` | Resend → sendPlatformEmail | 📝 dev |
 | `server/routes/etax-hub.ts` | Resend → sendPlatformEmail | 📝 dev |
