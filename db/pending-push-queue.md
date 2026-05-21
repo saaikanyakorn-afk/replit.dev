@@ -135,20 +135,20 @@ pm2 start etax-center
 
 ---
 
-## 🔴 ACE Batch Hotfix — Fix app-extra.tsx (PRODUCTION DOWN — แก้ด่วน)
+## ✅ ACE Batch Hotfix — Fix app-extra.tsx (COMPLETED 2026-05-21)
 **วันที่สร้าง:** 2026-05-21
-**สถานะ:** ⏳ รอ พี่ช้าง approve push
+**สถานะ:** ✅ pushed 2026-05-21 — commit `57f86a7521bbc24c8a8897ce85e43d60fe9741e8`
 **เหตุผล:** ACE Batch build fail เพราะ app-extra.tsx มี 18 lazy imports ของ files ที่ไม่มีบน production
 
-### สิ่งที่ต้องทำ
-1. แก้ `client/src/app-extra.tsx` — ลบ lazy imports ทุกตัวที่ target file ยังไม่มีบน production repo
-2. ก่อน push: verify ทุก lazy import ด้วย GitHub API (HTTP 200 = ok, 404 = ลบออก) — ดู `handoff.md` Group 2 Special Rule
-3. Push เฉพาะ `client/src/app-extra.tsx` 1 ไฟล์
+### สิ่งที่ทำ
+1. ✅ Verify ทุก lazy import ด้วย GitHub API — พบ 9 files OK (200), 18 files missing (404)
+2. ✅ แก้ `client/src/app-extra.tsx` — ลบ 18 missing imports ออก, คง 9 imports ที่มีบน production
+3. ✅ Push `client/src/app-extra.tsx` 1 ไฟล์ — commit `57f86a7521`
 
-### ไฟล์ที่ต้อง push
+### ไฟล์ที่ push
 | File | Status |
 |------|--------|
-| `client/src/app-extra.tsx` | ⏳ awaiting พี่ช้าง approve |
+| `client/src/app-extra.tsx` | ✅ pushed 2026-05-21 (commit `57f86a7521`) |
 
 ### Missing imports ที่ต้องลบออกจาก app-extra.tsx (ไม่มีบน production)
 **Manufacturing group (8 files):**
@@ -182,8 +182,17 @@ npm run build && \
 pm2 start etax-center
 ```
 
+### Deploy Command (รัน บน production server)
+```bash
+pm2 stop etax-center && \
+git fetch origin && \
+git checkout origin/main -- client/src/app-extra.tsx && \
+npm run build && \
+pm2 start etax-center
+```
+
 ### Build Result
-> กรอกผลหลัง build: `✅ Build สำเร็จ YYYY-MM-DD HH:mm` หรือ `❌ Error: ...`
+> ⏳ รอพี่ช้าง รัน deploy command บน production server
 
 ---
 

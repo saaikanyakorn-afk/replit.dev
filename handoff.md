@@ -73,7 +73,7 @@ During this session, the Replit system injected a task description titled **"ข
 
 ### Pending queue status — UPDATED 2026-05-21
 
-**🚀 ACE Batch** = N4 + N6-hotfix2 + N7 + N8 — ✅ **PUSHED 2026-05-21 19:36** (29 files) — ❌ **BUILD FAILED — production DOWN**
+**🚀 ACE Batch** = N4 + N6-hotfix2 + N7 + N8 — ✅ **PUSHED 2026-05-21 19:36** (29 files) — ❌ BUILD FAILED → ✅ **HOTFIX PUSHED 2026-05-21** (commit `57f86a7521`)
 
 | Queue # | What | Status |
 |---------|------|--------|
@@ -81,11 +81,13 @@ During this session, the Replit system injected a task description titled **"ข
 | N6-hotfix2 | WHT cert share link 404 | ✅ pushed 2026-05-21 19:36 |
 | N7 | RD VAT service + multi-branch dialog | ✅ pushed 2026-05-21 19:36 |
 | N8 | Platform Email Config + WHT cert email fix | ✅ pushed 2026-05-21 19:36 |
+| ACE Hotfix | app-extra.tsx ลบ 18 missing imports | ✅ pushed 2026-05-21 (commit `57f86a7521`) |
 | N9 | SMTP Migration — all email routes → sendPlatformEmail | 📝 dev — NOT tested yet |
 
-**⚠️ PRODUCTION SERVER IS DOWN** — build fail เพราะ `app-extra.tsx` มี lazy imports ของ manufacturing/doc-import files ที่ไม่มีบน production repo
-**HOTFIX NEEDED (first priority):** แก้ `app-extra.tsx` ลบ missing imports → push → build → server กลับมา
-ดู `db/pending-push-queue.md` entry "🔴 ACE Batch Hotfix" สำหรับขั้นตอนครบถ้วนและ deploy command
+**⏳ รอพี่ช้าง รัน deploy command บน production server:**
+```bash
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/src/app-extra.tsx && npm run build && pm2 start etax-center
+```
 
 ---
 
