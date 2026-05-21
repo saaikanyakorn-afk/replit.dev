@@ -52,39 +52,39 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 **Backend (9 ไฟล์):**
 | File | สิ่งที่แก้ | จาก | Status |
 |------|-----------|-----|--------|
-| `server/db.ts` | Connection timeout 20s + warmup pool | N4 | ⏳ awaiting |
-| `server/route-helpers.ts` | เพิ่ม `computeRemainingBalance()` | N4 | ⏳ awaiting |
-| `server/static.ts` | Route `/share/wht-cert/:token` — ลิงก์จาก LINE 404 หาย | N6-hotfix2 | ⏳ awaiting |
-| `server/routes/expense-routes.ts` | Credit PM logic + paymentStatus + WHT email (N4+N8 รวม) | N4+N8 | ⏳ awaiting |
-| `server/routes/billing-notes-routes.ts` | RE overpayment validation + sendPlatformEmail | N4 | ⏳ awaiting |
-| `server/routes/notifications-routes.ts` | RE overpayment validation (batch) | N4 | ⏳ awaiting |
-| `server/routes/sales-docs-routes.ts` | RE overpayment + TIV journal fix + Quotation URL fix | N4 | ⏳ awaiting |
-| `server/routes/purchase-routes.ts` | Address formatting ครบทุก field + branch code 5 หลัก | N7 | ⏳ awaiting |
-| `server/routes/doc-settings-routes.ts` | GET/PUT/test ใช้ `PLATFORM_EMAIL_SMTP_*` เท่านั้น (N8+N12 รวม) | N8 | ⏳ awaiting |
+| `server/db.ts` | Connection timeout 20s + warmup pool | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/route-helpers.ts` | เพิ่ม `computeRemainingBalance()` | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/static.ts` | Route `/share/wht-cert/:token` — ลิงก์จาก LINE 404 หาย | N6-hotfix2 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/routes/expense-routes.ts` | Credit PM logic + paymentStatus + WHT email (N4+N8 รวม) | N4+N8 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/routes/billing-notes-routes.ts` | RE overpayment validation + sendPlatformEmail | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/routes/notifications-routes.ts` | RE overpayment validation (batch) | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/routes/sales-docs-routes.ts` | RE overpayment + TIV journal fix + Quotation URL fix | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/routes/purchase-routes.ts` | Address formatting ครบทุก field + branch code 5 หลัก | N7 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `server/routes/doc-settings-routes.ts` | GET/PUT/test ใช้ `PLATFORM_EMAIL_SMTP_*` เท่านั้น (N8+N12 รวม) | N8 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
 
 **Frontend (20 ไฟล์):**
 | File | สิ่งที่แก้ | จาก | Status |
 |------|-----------|-----|--------|
-| `client/src/pages/settings/payment-methods.tsx` | **NEW** — UI ตั้งค่าวิธีรับ/จ่ายเงิน + ผูกรหัสบัญชี | N4 | ⏳ awaiting |
-| `client/src/pages/purchases/expense.tsx` | Payment status fix | N4 | ⏳ awaiting |
-| `client/src/pages/purchases/purchase-invoice.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/purchases/purchase-order.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/purchases/purchase-request.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/purchases/purchase-deposit-form.tsx` | Credit PM fix | N4 | ⏳ awaiting |
-| `client/src/pages/purchases/debit-note-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/sales/tax-invoice-form.tsx` | lineItemAccounts → JournalPreviewPanel | N4 | ⏳ awaiting |
-| `client/src/pages/sales/receipt-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/sales/credit-note-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/sales/deposit-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/sales/sales-order-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/finance/ap-billing.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/finance/receipt-billing.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/pages/ecommerce/ecommerce-quick-invoice.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
-| `client/src/components/related-docs-dialog.tsx` | Navigate → listPath?docNo=xxx (ลบ editPath) | N4 | ⏳ awaiting |
-| `client/src/hooks/use-dbd-lookup.ts` | เรียก `selectBranch()` singleton แทน Context hook | N7 | ⏳ awaiting |
-| `client/src/contexts/branch-select-context.tsx` | **NEW** — `BranchSelectPortal` singleton + `BranchSelectProvider` no-op | N7 | ⏳ awaiting |
-| `client/src/app-extra.tsx` | render `<BranchSelectPortal />` (แทน App.tsx ที่ NEVER push) | N7 | ⏳ awaiting |
-| `client/src/pages/platform/email-config.tsx` | **NEW** — SMTP config UI preset etaxcenter.com | N8 | ⏳ awaiting |
+| `client/src/pages/settings/payment-methods.tsx` | **NEW** — UI ตั้งค่าวิธีรับ/จ่ายเงิน + ผูกรหัสบัญชี | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/purchases/expense.tsx` | Payment status fix | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/purchases/purchase-invoice.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/purchases/purchase-order.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/purchases/purchase-request.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/purchases/purchase-deposit-form.tsx` | Credit PM fix | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/purchases/debit-note-form.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/sales/tax-invoice-form.tsx` | lineItemAccounts → JournalPreviewPanel | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/sales/receipt-form.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/sales/credit-note-form.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/sales/deposit-form.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/sales/sales-order-form.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/finance/ap-billing.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/finance/receipt-billing.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/ecommerce/ecommerce-quick-invoice.tsx` | PM dropdown fallback | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/components/related-docs-dialog.tsx` | Navigate → listPath?docNo=xxx (ลบ editPath) | N4 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/hooks/use-dbd-lookup.ts` | เรียก `selectBranch()` singleton แทน Context hook | N7 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/contexts/branch-select-context.tsx` | **NEW** — `BranchSelectPortal` singleton + `BranchSelectProvider` no-op | N7 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/app-extra.tsx` | render `<BranchSelectPortal />` (แทน App.tsx ที่ NEVER push) | N7 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
+| `client/src/pages/platform/email-config.tsx` | **NEW** — SMTP config UI preset etaxcenter.com | N8 | ✅ pushed 2026-05-21 19:36 (Bangkok) |
 
 ### Rebuild
 **YES** — มีทั้ง frontend (.tsx) และ backend (.ts) → ต้อง `npm run build` ก่อน start
