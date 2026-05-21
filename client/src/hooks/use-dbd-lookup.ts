@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useToast } from "./use-toast";
-import { useBranchSelect, RdBranch } from "@/contexts/branch-select-context";
+import { selectBranch, RdBranch } from "@/contexts/branch-select-context";
 
 interface DBDResult {
   name: string;
@@ -48,7 +48,6 @@ async function serverDBDSearch(query: string): Promise<DBDResult[]> {
 export function useDbdLookup() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { selectBranch } = useBranchSelect();
 
   const lookup = async (taxId: string): Promise<DBDResult | null> => {
     const cleanId = taxId.replace(/\D/g, "");

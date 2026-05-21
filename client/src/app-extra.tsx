@@ -22,6 +22,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import ManufacturingLayout from "@/components/manufacturing-layout";
+import { BranchSelectPortal } from "@/contexts/branch-select-context";
 
 const CreditNotePdf = lazy(() => import("@/pages/sales/credit-note-pdf"));
 const CreditNoteShare = lazy(() => import("@/pages/sales/credit-note-share"));
@@ -703,5 +704,5 @@ export default function AppExtra() {
     );
   }
 
-  return null;
+  return <BranchSelectPortal />;
 }

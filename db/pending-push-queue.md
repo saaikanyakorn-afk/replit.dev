@@ -31,6 +31,107 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ---
 
+## 🚀 ACE Batch — Combined Deploy Entry
+**วันที่สร้าง:** 2026-05-21
+**อนุมัติ:** พี่ช้าง ✅ (2026-05-21)
+**รวม:** N4 + N6-hotfix2 + N7 + N8
+
+### สรุปสิ่งที่แก้
+| กลุ่ม | สิ่งที่แก้ |
+|------|-----------|
+| **N4** | Payment method fixes ทุกเอกสาร, Expense บันทึกได้ (🔴 prod bug), RE overpayment block, Settings > วิธีชำระเงิน (NEW), server timeout fix |
+| **N6-hotfix2** | /share/wht-cert/:token 404 บน production หาย |
+| **N7** | ค้นหาบริษัทจากกรมสรรพากร (RD VAT) แทน DBD, multi-branch dialog, address formatting |
+| **N8** | Platform Email config UI (etaxcenter.com webmail), SMTP ใช้ PLATFORM_EMAIL_SMTP_* เท่านั้น |
+
+### ⚠️ N8 Pre-deploy DB INSERT (ก่อน push)
+ต้อง INSERT 6 rows เข้า `system_config` บน production ก่อน — ดู handoff.md N8 section สำหรับ SQL (credentials ถามพี่ทรายตอน deploy — ห้าม hardcode)
+
+### ไฟล์ทั้งหมด (29 ไฟล์)
+
+**Backend (9 ไฟล์):**
+| File | สิ่งที่แก้ | จาก | Status |
+|------|-----------|-----|--------|
+| `server/db.ts` | Connection timeout 20s + warmup pool | N4 | ⏳ awaiting |
+| `server/route-helpers.ts` | เพิ่ม `computeRemainingBalance()` | N4 | ⏳ awaiting |
+| `server/static.ts` | Route `/share/wht-cert/:token` — ลิงก์จาก LINE 404 หาย | N6-hotfix2 | ⏳ awaiting |
+| `server/routes/expense-routes.ts` | Credit PM logic + paymentStatus + WHT email (N4+N8 รวม) | N4+N8 | ⏳ awaiting |
+| `server/routes/billing-notes-routes.ts` | RE overpayment validation + sendPlatformEmail | N4 | ⏳ awaiting |
+| `server/routes/notifications-routes.ts` | RE overpayment validation (batch) | N4 | ⏳ awaiting |
+| `server/routes/sales-docs-routes.ts` | RE overpayment + TIV journal fix + Quotation URL fix | N4 | ⏳ awaiting |
+| `server/routes/purchase-routes.ts` | Address formatting ครบทุก field + branch code 5 หลัก | N7 | ⏳ awaiting |
+| `server/routes/doc-settings-routes.ts` | GET/PUT/test ใช้ `PLATFORM_EMAIL_SMTP_*` เท่านั้น (N8+N12 รวม) | N8 | ⏳ awaiting |
+
+**Frontend (20 ไฟล์):**
+| File | สิ่งที่แก้ | จาก | Status |
+|------|-----------|-----|--------|
+| `client/src/pages/settings/payment-methods.tsx` | **NEW** — UI ตั้งค่าวิธีรับ/จ่ายเงิน + ผูกรหัสบัญชี | N4 | ⏳ awaiting |
+| `client/src/pages/purchases/expense.tsx` | Payment status fix | N4 | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-invoice.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-order.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-request.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/purchases/purchase-deposit-form.tsx` | Credit PM fix | N4 | ⏳ awaiting |
+| `client/src/pages/purchases/debit-note-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/sales/tax-invoice-form.tsx` | lineItemAccounts → JournalPreviewPanel | N4 | ⏳ awaiting |
+| `client/src/pages/sales/receipt-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/sales/credit-note-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/sales/deposit-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/sales/sales-order-form.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/finance/ap-billing.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/finance/receipt-billing.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/pages/ecommerce/ecommerce-quick-invoice.tsx` | PM dropdown fallback | N4 | ⏳ awaiting |
+| `client/src/components/related-docs-dialog.tsx` | Navigate → listPath?docNo=xxx (ลบ editPath) | N4 | ⏳ awaiting |
+| `client/src/hooks/use-dbd-lookup.ts` | เรียก `selectBranch()` singleton แทน Context hook | N7 | ⏳ awaiting |
+| `client/src/contexts/branch-select-context.tsx` | **NEW** — `BranchSelectPortal` singleton + `BranchSelectProvider` no-op | N7 | ⏳ awaiting |
+| `client/src/app-extra.tsx` | render `<BranchSelectPortal />` (แทน App.tsx ที่ NEVER push) | N7 | ⏳ awaiting |
+| `client/src/pages/platform/email-config.tsx` | **NEW** — SMTP config UI preset etaxcenter.com | N8 | ⏳ awaiting |
+
+### Rebuild
+**YES** — มีทั้ง frontend (.tsx) และ backend (.ts) → ต้อง `npm run build` ก่อน start
+
+### Deploy Command (Production)
+```bash
+pm2 stop etax-center && \
+git fetch origin && \
+git checkout origin/main -- \
+  server/db.ts \
+  server/route-helpers.ts \
+  server/static.ts \
+  server/routes/expense-routes.ts \
+  server/routes/billing-notes-routes.ts \
+  server/routes/notifications-routes.ts \
+  server/routes/sales-docs-routes.ts \
+  server/routes/purchase-routes.ts \
+  server/routes/doc-settings-routes.ts \
+  client/src/pages/settings/payment-methods.tsx \
+  client/src/pages/purchases/expense.tsx \
+  client/src/pages/purchases/purchase-invoice.tsx \
+  client/src/pages/purchases/purchase-order.tsx \
+  client/src/pages/purchases/purchase-request.tsx \
+  client/src/pages/purchases/purchase-deposit-form.tsx \
+  client/src/pages/purchases/debit-note-form.tsx \
+  client/src/pages/sales/tax-invoice-form.tsx \
+  client/src/pages/sales/receipt-form.tsx \
+  client/src/pages/sales/credit-note-form.tsx \
+  client/src/pages/sales/deposit-form.tsx \
+  client/src/pages/sales/sales-order-form.tsx \
+  client/src/pages/finance/ap-billing.tsx \
+  client/src/pages/finance/receipt-billing.tsx \
+  client/src/pages/ecommerce/ecommerce-quick-invoice.tsx \
+  client/src/components/related-docs-dialog.tsx \
+  client/src/hooks/use-dbd-lookup.ts \
+  client/src/contexts/branch-select-context.tsx \
+  client/src/app-extra.tsx \
+  client/src/pages/platform/email-config.tsx && \
+npm run build && \
+pm2 start etax-center
+```
+
+### Build Result
+> กรอกผลหลัง build: `✅ Build สำเร็จ YYYY-MM-DD HH:mm` หรือ `❌ Error: ...`
+
+---
+
 ## 📋 รายการ Code ที่รอ Push ทั้งหมด — จัดตาม Function ภาษาไทย
 **อัพเดต:** 2026-05-21
 
@@ -127,10 +228,10 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 ### 10. ค้นหาบริษัทจากกรมสรรพากร + Multi-Branch (N7 — ⏳ รอ พี่ช้าง approve)
 | File | หมายเหตุ |
 |------|---------|
-| `client/src/hooks/use-dbd-lookup.ts` | RD VAT lookup + branch select |
-| `client/src/contexts/branch-select-context.tsx` | **NEW** — dialog เลือก branch |
+| `client/src/hooks/use-dbd-lookup.ts` | RD VAT lookup — เรียก `selectBranch()` singleton แทน Context hook |
+| `client/src/contexts/branch-select-context.tsx` | **NEW** — `BranchSelectPortal` singleton (createPortal→body) + `BranchSelectProvider` no-op |
 | `server/routes/purchase-routes.ts` | Address formatting + รหัส branch 5 หลัก |
-| ⚠️ `client/src/App.tsx` | **NEVER push ตรง** — ต้องลงทะเบียน BranchSelectContext ผ่าน `app-extra.tsx` แทน |
+| `client/src/app-extra.tsx` | render `<BranchSelectPortal />` — ใช้แทน App.tsx (rule: NEVER push App.tsx) |
 
 ---
 
