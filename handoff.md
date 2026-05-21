@@ -410,6 +410,14 @@ await db.update(table3).set(...).where(...);  // connection open then closed
   **BEFORE EVERY PUSH — GET PERMISSION FROM พี่ช้าง:**
   Tell พี่ช้าง: (1) filename(s), (2) what each file does, (3) confirmed it is not a protected file, (4) confirmed it has an entry in `db/pending-push-queue.md`. Do not push until พี่ช้าง says yes.
 
+  **DEPENDENCY CHECK — ก่อนสร้าง file list ทุกครั้ง (บทเรียน 2026-05-21):**
+  ก่อนสร้าง file list ใน `db/pending-push-queue.md` ต้อง scan static imports ของทุกไฟล์ที่จะ push:
+  1. หา static import ทุกบรรทัด (`import ... from "..."`) ในไฟล์นั้น
+  2. สำหรับ import ที่ชี้ไปยัง local file (เริ่มด้วย `../` หรือ `./`) — verify ว่าไฟล์นั้นมีบน production repo (HTTP 200) ด้วย GitHub API
+  3. ถ้า dependency ยัง 404 → ต้องเพิ่มไฟล์นั้นเข้า file list ด้วย แล้ว verify dependency ของมันต่อไปด้วย (recursive)
+  4. ห้ามสร้าง file list จากแค่ "ไฟล์ที่แก้ไข" โดยไม่ตรวจ dependency — นั่นคือ root cause ของ ACE Batch build fail 2026-05-21
+  **Root cause ของ build fail ครั้งที่สอง (2026-05-21):** ACE Batch push `sales-docs-routes.ts`, `expense-routes.ts`, `billing-notes-routes.ts` ซึ่งทั้งหมด static import `sendPlatformEmail` จาก `../utils/platform-email` — แต่ไม่ได้เพิ่ม `server/utils/platform-email.ts` เข้า file list → build fail "Could not resolve ../utils/platform-email"
+
   **WHAT TO PUSH TOGETHER:**
   Multiple files may be pushed in the same push ONLY if they fix the same single issue and removing one would break the others. Files that are not directly code-dependent = separate pushes.
 
