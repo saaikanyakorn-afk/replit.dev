@@ -365,6 +365,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 
 | Deploy # | Date | Entry | Files |
 |----------|------|-------|-------|
+| N11-schema | 2026-05-21 | N11 Manufacturing Schema Migration — 3 ADD COLUMN + 6 flags | migrations-runner.ts (`3e43ad9`, `5cf60e9`), schema-extra.ts (`40accd1`) |
 | #66 | 2026-05-15 | innerJoin migration + 6 other fixes | products-routes.ts, product-import-export.tsx, import-batch-routes.ts, commerce-intelligence.ts, price-calculator.ts, ad-cost-routes.ts, pos-routes.ts, ecommerce-routes.ts, notifications-routes.ts, storage.ts, bundle-management.tsx, inventory-list.tsx, queryClient.ts |
 | #73 | 2026-05-15 | TIV paymentMethod cash/credit toggle fix | (files not recorded — historical gap) |
 | #74 | 2026-05-15 | Revert related-docs navigate กลับ listPath เสมอ | (files not recorded — historical gap) |
