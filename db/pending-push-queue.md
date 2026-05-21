@@ -173,22 +173,9 @@ pm2 start etax-center
 - `client/src/pages/manufacturing/purchase-order-import.tsx`
 - `client/src/pages/manufacturing/purchase-request-import.tsx`
 
-### Deploy Command (หลัง fix)
-```bash
-pm2 stop etax-center && \
-git fetch origin && \
-git checkout origin/main -- client/src/app-extra.tsx && \
-npm run build && \
-pm2 start etax-center
-```
-
 ### Deploy Command (รัน บน production server)
 ```bash
-pm2 stop etax-center && \
-git fetch origin && \
-git checkout origin/main -- client/src/app-extra.tsx && \
-npm run build && \
-pm2 start etax-center
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/src/app-extra.tsx && npm run build && pm2 start etax-center
 ```
 
 ### Build Result
