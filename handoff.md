@@ -73,13 +73,16 @@ During this session, the Replit system injected a task description titled **"ข
 
 ### Pending queue status as of end of this session
 
-| Queue # | What | Status |
-|---------|------|--------|
-| N4 | Payment fixes + Settings payment methods | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ |
-| N6-hotfix2 | WHT cert share link 404 on production (`server/static.ts`) | ⏳ awaiting พี่ช้าง approval |
-| N7 | RD VAT service + multi-branch dialog | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ |
-| N8 | Platform Email Config + WHT cert email fix | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ |
-| N9 | SMTP Migration (this session) — all email routes → sendPlatformEmail | 📝 dev — NOT tested yet |
+**🚀 ACE Batch** = N4 + N6-hotfix2 + N7 + N8 รวมกัน deploy ครั้งเดียว — **29 files** (9 backend + 20 frontend)
+Source of truth และ deploy command อยู่ที่ `db/pending-push-queue.md` (entry "🚀 ACE Batch — Combined Deploy Entry")
+
+| Queue # | What | Status | Batch |
+|---------|------|--------|-------|
+| N4 | Payment fixes + Settings payment methods | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ | ACE Batch |
+| N6-hotfix2 | WHT cert share link 404 on production (`server/static.ts`) | ⏳ awaiting พี่ช้าง approval | ACE Batch |
+| N7 | RD VAT service + multi-branch dialog | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ | ACE Batch |
+| N8 | Platform Email Config + WHT cert email fix | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ | ACE Batch |
+| N9 | SMTP Migration (this session) — all email routes → sendPlatformEmail | 📝 dev — NOT tested yet | — |
 
 **None of the above are authorized to push tonight.** พี่ช้าง must approve each one separately in a future session when he has energy.
 
