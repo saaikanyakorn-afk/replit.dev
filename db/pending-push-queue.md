@@ -252,7 +252,7 @@ Expected: 0 rows (never deployed) OR 6 rows (already configured). Either way: co
 ---
 
 ### N11 — Manufacturing Features Batch (Tasks #35, #37, #38, #40, #41, #47, #68, #76, #80, #89–#94)
-**Status:** 📝 dev — พี่ทราย ยังไม่ได้เทสบน dev ทั้งหมด (บาง Task เทสแล้ว ระหว่าง 17–18 พ.ค.)
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ 2026-05-21
 **Schema change:** YES — 6 migrations รอ approve (ดูด้านล่าง)
 **Push type:** Schema migration push (Rule 2 — 10-step procedure)
 
