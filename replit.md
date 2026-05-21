@@ -776,7 +776,7 @@ process.env.DB_PROD_URL
   - SSH key → libcrypto version mismatch in container
 - **Each remote uses its OWN token** — never cross-use tokens across repos (พี่ช้าง rule)
 - If token expired → ask พี่ช้าง to regenerate **"etaxerp"** on GitHub → update `.git/config` via `git remote set-url` in code_execution (bash blocks this)
-- **⚠️ ANY update to these notes must be done in ALL 3 places**: replit.md (local) + etaxcenter repo (production GitHub)
+- **⚠️ replit.md is LOCAL ONLY** — NEVER push to production repo (etaxcenter). Production repo contains code files only.
 
 ### Kai's Repo PAT (git remote `github-replit` → saaikanyakorn-afk/replit.dev)
 - PAT stored in `.git/config`
