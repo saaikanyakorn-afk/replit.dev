@@ -841,11 +841,20 @@ STEPS:
   [ ] 4. Kai: confirm each PUT response 200/201 → mark file `✅ pushed YYYY-MM-DD HH:mm` in queue file
   [ ] 5. พี่ช้าง: pulls on production server + restart (downtime ~1-3 min, Apache shows maintenance page automatically)
   [ ] 6. Kai (migration batch only): query production DB BY EYES — `SELECT * FROM <new_table> LIMIT 1;` — confirm structure, NOT just COUNT (Rule 4 LOOK INSIDE)
-  [ ] 7. Kai (migration batch only): comment out migration block in `shared/schema-extra.ts` with date/reason → API PUT clean file
+  [ ] 7. Kai (migration batch only): comment out migration block in `server/migrations-runner.ts` with date/reason → API PUT clean file
   [ ] 8. พี่ช้าง: pulls clean file + restart #2 (migration batch only)
-  [ ] 9. พี่ช้าง: verify ALL features work (not just migration)
+  [ ] 9. Migration batch: server online = DONE (no feature test — migration is standalone, no feature code was pushed)
+         Code-only batch: พี่ทราย verifies ALL features on production (NOT พี่ช้าง)
   [ ] 10. Move queue entry from "ACTIVE QUEUE" → "DEPLOYED — HISTORY" in queue file → batch closed ✅
 ```
+
+**⚠️ CRITICAL DEPLOYMENT RULES:**
+
+**Rule A — Migration batch = ALWAYS standalone:**
+Database migration pushes contain ONLY the files needed for DB manipulation (`server/migrations-runner.ts` + `shared/schema-extra.ts`). NEVER push feature code alongside a migration. There is no feature to test after a migration-only push — server online = verification done.
+
+**Rule B — Code push testing = พี่ทราย, NOT พี่ช้าง:**
+When feature code is deployed (one file or many), it is พี่ทราย who tests on production. พี่ช้าง handles the server operations (pull, build, restart) only.
 
 **For non-migration batches:** skip steps 6, 7, 8 (no DB to verify, no clean-push round).
 
