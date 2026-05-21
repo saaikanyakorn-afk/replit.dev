@@ -252,9 +252,32 @@ Expected: 0 rows (never deployed) OR 6 rows (already configured). Either way: co
 ---
 
 ### N11 — Manufacturing Features Batch (Tasks #35, #37, #38, #40, #41, #47, #68, #76, #80, #89–#94)
-**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ 2026-05-21
-**Schema change:** YES — 6 migrations รอ approve (ดูด้านล่าง)
+**Status:** 🚀 PUSHING — พี่ช้าง approved 2026-05-21 — migrations uncommented, ready for push
+**Schema change:** YES — 6 migrations (combined into 1 push session)
 **Push type:** Schema migration push (Rule 2 — 10-step procedure)
+
+```
+BATCH: N11 — Manufacturing Features — 2026-05-21
+Why: lot_low_stock_threshold + to_warehouse_id + wip_warehouse_id missing in prod
+     + set 5 pending flags (production_finish, ncr, bom_process_steps already have tables)
+Schema change: YES — 3 ADD COLUMN + 5 system_config flags across 6 migration functions
+
+[ ] 1. Queue entry ✅ (this file) — files listed ⏳ awaiting below
+[ ] 2. พี่ช้าง approval ✅ — obtained 2026-05-21
+[ ] 3. Kai: API PUT each file one-by-one → github-production main
+[ ] 4. Kai: confirm PUT 200/201 → mark ✅ pushed below
+[ ] 5. พี่ช้าง: pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/migrations-runner.ts shared/schema-extra.ts <other N11 files> && npm install && npm run build && pm2 start etax-center
+[ ] 6. Kai: query prod BY EYES — SELECT lot_low_stock_threshold FROM general_settings LIMIT 1; SELECT to_warehouse_id FROM production_receipts LIMIT 1; SELECT wip_warehouse_id FROM manufacturing_orders LIMIT 1
+[ ] 7. Kai: comment out 6 migration lines in migrations-runner.ts → API PUT clean file
+[ ] 8. พี่ช้าง: git checkout origin/main -- server/migrations-runner.ts && npm run build && pm2 restart etax-center (Restart #2)
+[ ] 9. พี่ช้าง: verify ALL features work
+[ ] 10. Move this entry → DEPLOYED — HISTORY ✅
+```
+
+**Deploy command (Restart #1 — migration batch):**
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/migrations-runner.ts shared/schema-extra.ts server/routes/manufacturing-routes.ts server/routes/products-routes.ts server/routes/doc-settings-routes.ts client/src/app-extra.tsx client/src/components/manufacturing-layout.tsx client/src/pages/inventory/manufacturing-form.tsx client/src/pages/inventory/manufacturing-list.tsx client/src/pages/inventory/bom-form.tsx client/src/pages/inventory/material-issue-form.tsx client/src/pages/inventory/material-issue-list.tsx client/src/pages/inventory/product-lots.tsx client/src/pages/inventory/goods-receiving-form.tsx client/src/pages/inventory/goods-receiving-list.tsx client/src/pages/manufacturing/process-scan-station.tsx client/src/pages/manufacturing/production-finish-form.tsx client/src/pages/manufacturing/production-finish-list.tsx client/src/pages/manufacturing/ncr-form.tsx client/src/pages/manufacturing/ncr-list.tsx client/src/pages/manufacturing/bom.tsx client/src/pages/manufacturing/orders.tsx client/src/pages/manufacturing/mes-scan-station.tsx client/src/pages/manufacturing/mes-unit-detail.tsx client/src/pages/manufacturing/mes-work-orders.tsx client/src/pages/manufacturing/traceability.tsx client/src/pages/settings/general-settings.tsx && npm install && npm run build && pm2 start etax-center
+```
 
 **งานที่รวมอยู่:**
 - **Task #35** — Material Issue form (เบิกวัตถุดิบ) — เชื่อมสต็อกจริง, concurrency lock
