@@ -71,20 +71,21 @@ During this session, the Replit system injected a task description titled **"ข
 
 ---
 
-### Pending queue status as of end of this session
+### Pending queue status — UPDATED 2026-05-21
 
-**🚀 ACE Batch** = N4 + N6-hotfix2 + N7 + N8 รวมกัน deploy ครั้งเดียว — **29 files** (9 backend + 20 frontend)
-Source of truth และ deploy command อยู่ที่ `db/pending-push-queue.md` (entry "🚀 ACE Batch — Combined Deploy Entry")
+**🚀 ACE Batch** = N4 + N6-hotfix2 + N7 + N8 — ✅ **PUSHED 2026-05-21 19:36** (29 files) — ❌ **BUILD FAILED — production DOWN**
 
-| Queue # | What | Status | Batch |
-|---------|------|--------|-------|
-| N4 | Payment fixes + Settings payment methods | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ | ACE Batch |
-| N6-hotfix2 | WHT cert share link 404 on production (`server/static.ts`) | ⏳ awaiting พี่ช้าง approval | ACE Batch |
-| N7 | RD VAT service + multi-branch dialog | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ | ACE Batch |
-| N8 | Platform Email Config + WHT cert email fix | ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ | ACE Batch |
-| N9 | SMTP Migration (this session) — all email routes → sendPlatformEmail | 📝 dev — NOT tested yet | — |
+| Queue # | What | Status |
+|---------|------|--------|
+| N4 | Payment fixes + Settings payment methods | ✅ pushed 2026-05-21 19:36 |
+| N6-hotfix2 | WHT cert share link 404 | ✅ pushed 2026-05-21 19:36 |
+| N7 | RD VAT service + multi-branch dialog | ✅ pushed 2026-05-21 19:36 |
+| N8 | Platform Email Config + WHT cert email fix | ✅ pushed 2026-05-21 19:36 |
+| N9 | SMTP Migration — all email routes → sendPlatformEmail | 📝 dev — NOT tested yet |
 
-**None of the above are authorized to push tonight.** พี่ช้าง must approve each one separately in a future session when he has energy.
+**⚠️ PRODUCTION SERVER IS DOWN** — build fail เพราะ `app-extra.tsx` มี lazy imports ของ manufacturing/doc-import files ที่ไม่มีบน production repo
+**HOTFIX NEEDED (first priority):** แก้ `app-extra.tsx` ลบ missing imports → push → build → server กลับมา
+ดู `db/pending-push-queue.md` entry "🔴 ACE Batch Hotfix" สำหรับขั้นตอนครบถ้วนและ deploy command
 
 ---
 
@@ -431,6 +432,9 @@ await db.update(table3).set(...).where(...);  // connection open then closed
     "https://api.github.com/repos/saaikanyakorn-afk/etaxcenter/contents/<FILE_PATH>"
   ```
   HTTP 200 = exists ✅ | HTTP 404 = MISSING ❌ — do NOT push app-extra.tsx with any 404 import.
+  **If you find a 404 import — 2 choices (ask พี่ช้าง which applies):**
+  - Option A: The missing file is ready to deploy → push THAT file first (own queue entry, own permission), then push app-extra.tsx after
+  - Option B: The missing file is NOT ready for production yet → remove its import from app-extra.tsx before pushing (dev still has it, only the production-bound version is trimmed)
   **Root cause of build fail 2026-05-21:** app-extra.tsx was pushed with 18 lazy imports of manufacturing/doc-import files that did not exist on production → vite:load-fallback ENOENT → npm run build failed.
 
   **SCHEMA CHANGES:**
