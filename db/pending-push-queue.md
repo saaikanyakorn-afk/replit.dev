@@ -66,6 +66,8 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/s
 
 ⚠️ **หมายเหตุ:** `billing-notes-routes.ts`, `sales-docs-routes.ts`, `expense-routes.ts` มีการแก้ทั้ง N4 (logic) และ N9 (SMTP migration) — push ในสถานะ dev ปัจจุบันครอบคลุมทั้งคู่แล้ว
 
+🔴 **Production bug (2026-05-21):** ค่าใช้จ่าย (Expense) บันทึกไม่ได้ — error "วิธีชำระเงิน Cash ยังไม่ได้ตั้งค่ารหัสบัญชีในระบบ" เกิดจาก `expense-routes.ts` (N4) ที่ยังไม่ได้ push + `client/src/pages/settings/payment-methods.tsx` ยังไม่มีบน production — **error นี้จะหายเมื่อ N4 deploy ครบ**
+
 | File | Role | Status |
 |------|------|--------|
 | `server/db.ts` | Connection timeout 20s + warmup | ⏳ awaiting |
