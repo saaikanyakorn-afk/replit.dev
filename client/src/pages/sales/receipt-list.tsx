@@ -13,7 +13,7 @@ import {
   Search, Plus, Receipt, Edit2, Trash2, Eye, ChevronRight, Download,
   CheckCircle2, Clock, Minus, CreditCard, Banknote, FileCheck,
   AlertCircle, XCircle, Copy, MoreHorizontal, FileText, Link2, MessageSquare, Printer, MailCheck,
-  BookOpen, ExternalLink, Calendar as CalendarIcon, Paperclip, FileDown
+  BookOpen, ExternalLink, Calendar as CalendarIcon, Paperclip, FileDown, Upload
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LineSendDialog from "@/components/line-send-dialog";
@@ -208,6 +208,9 @@ export default function ReceiptList() {
               <div className="flex items-center gap-2">
                 <BulkDeleteButton count={bulk.selectedIds.size} isPending={bulk.isPending} onClick={() => bulk.setShowConfirm(true)} />
                 <ListExportButton data={filtered} columns={exportColumns} fileName="ใบเสร็จรับเงิน" />
+                <Button data-testid="button-import" variant="outline" onClick={() => navigate("/sales/receipt/import")} className="h-9 text-sm px-4 border-[#05b187] text-[#05b187]">
+                  <Upload className="h-3.5 w-3.5 mr-1" /> นำเข้า Excel
+                </Button>
                 <Button data-testid="button-create" onClick={() => navigate("/sales/receipt/new")} className="h-9 text-sm px-4">
                   <Plus className="h-3.5 w-3.5 mr-1" /> สร้างใบเสร็จรับเงิน
                 </Button>

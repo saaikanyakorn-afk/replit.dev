@@ -17,7 +17,7 @@ import {
   Copy, Link2, MessageSquare, Printer, Minus,
   BookOpen, ExternalLink, CreditCard, DollarSign,
   XCircle, Send, Phone, Mail, MailCheck,
-  Calendar as CalendarIcon, Paperclip, FileDown
+  Calendar as CalendarIcon, Paperclip, FileDown, Upload
 } from "lucide-react";
 import LineSendDialog from "@/components/line-send-dialog";
 import SendEmailDialog from "@/components/send-email-dialog";
@@ -225,6 +225,9 @@ export default function SalesOrderList() {
               <div className="flex items-center gap-2">
                 <BulkDeleteButton count={bulk.selectedIds.size} isPending={bulk.isPending} onClick={() => bulk.setShowConfirm(true)} />
                 <ListExportButton data={filtered} columns={exportColumns} fileName="ใบสั่งขาย" />
+                <Button data-testid="button-import" variant="outline" onClick={() => navigate("/sales/order/import")} className="h-9 text-sm px-4 border-[#05b187] text-[#05b187]">
+                  <Upload className="h-3.5 w-3.5 mr-1" /> นำเข้า Excel
+                </Button>
                 <Button data-testid="button-create-order" onClick={() => navigate("/sales/order/new")} className="h-9 text-sm px-4">
                   <Plus className="h-3.5 w-3.5 mr-1" /> สร้างใบสั่งขาย
                 </Button>

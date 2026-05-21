@@ -13,7 +13,7 @@ import {
   Search, Plus, FileText, Edit2, Trash2, Eye, Minus, Phone, Mail,
   CheckCircle2, Clock, XCircle, AlertCircle, Copy, MoreHorizontal, ArrowRight,
   BookOpen, ExternalLink, Calendar as CalendarIcon, ShoppingBag,
-  Printer, Link2, MessageSquare, MailCheck, Paperclip, FileDown
+  Printer, Link2, MessageSquare, MailCheck, Paperclip, FileDown, Upload
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LineSendDialog from "@/components/line-send-dialog";
@@ -176,6 +176,9 @@ export default function PurchaseRequestList() {
               </div>
               <div className="flex items-center gap-2">
                 <ListExportButton data={filtered} columns={exportColumns} fileName="ใบขอซื้อ" />
+                <Button data-testid="button-import" variant="outline" onClick={() => navigate("/purchases/pr/import")} className="h-9 text-sm px-4 border-[#05b187] text-[#05b187]">
+                  <Upload className="h-3.5 w-3.5 mr-1" /> นำเข้า Excel
+                </Button>
                 <Button data-testid="button-create" onClick={() => navigate("/purchases/pr/new")} className="h-9 text-sm px-4">
                   <Plus className="h-3.5 w-3.5 mr-1" /> สร้างใบขอซื้อ
                 </Button>

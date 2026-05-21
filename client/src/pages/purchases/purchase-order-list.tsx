@@ -13,7 +13,7 @@ import { useCompany } from "@/lib/company-context";
 import {
   Search, Plus, Edit2, Trash2, Eye, Minus, Phone, Mail,
   CheckCircle2, Clock, Send, XCircle, AlertCircle, Copy, MoreHorizontal, ClipboardList, ArrowRight,
-  BookOpen, ExternalLink, Calendar as CalendarIcon, Printer, Link2, MessageSquare, MailCheck, Paperclip, FileDown
+  BookOpen, ExternalLink, Calendar as CalendarIcon, Printer, Link2, MessageSquare, MailCheck, Paperclip, FileDown, Upload
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LineSendDialog from "@/components/line-send-dialog";
@@ -185,6 +185,9 @@ export default function PurchaseOrderList() {
               <div className="flex items-center gap-2">
                 <BulkDeleteButton count={bulk.selectedIds.size} isPending={bulk.isPending} onClick={() => bulk.setShowConfirm(true)} />
                 <ListExportButton data={filtered} columns={exportColumns} fileName="ใบสั่งซื้อ" />
+                <Button data-testid="button-import" variant="outline" onClick={() => navigate("/purchases/po/import")} className="h-9 text-sm px-4 border-[#05b187] text-[#05b187]">
+                  <Upload className="h-3.5 w-3.5 mr-1" /> นำเข้า Excel
+                </Button>
                 <Button data-testid="button-create-po" onClick={() => navigate("/purchases/po/new")} className="h-9 text-sm px-4">
                   <Plus className="h-3.5 w-3.5 mr-1" /> สร้างใบสั่งซื้อ
                 </Button>
