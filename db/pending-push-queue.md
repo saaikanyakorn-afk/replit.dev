@@ -142,9 +142,9 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ---
 
-### 12–22. Manufacturing Features — แยกตาม Function (N12 — 📝 รอ พี่ทราย verify)
+### 12–22. Manufacturing Features — แยกตาม Function (N12 — ⏳ รอ พี่ช้าง approve)
 
-> Schema deploy แล้วใน N11 (2026-05-21) — code เท่านั้นที่รอ
+> Schema deploy แล้วใน N11 (2026-05-21) — พี่ทราย tested ✅ 2026-05-21 — code เท่านั้นที่รอ push
 
 | Function | Files |
 |---------|-------|
@@ -499,11 +499,9 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 ---
 
 ### N12 — Manufacturing Features Code Push (N11 code — แยกตาม function)
-**Status:** 📝 รอพี่ทราย verify ก่อน — ยังไม่ push
+**Status:** ⏳ awaiting พี่ช้าง approval — พี่ทราย tested ✅ 2026-05-21
 **Schema change:** NO — schema deploy แล้วใน N11 (2026-05-21)
 **Push type:** Code-only push — พี่ทราย verify บน production หลัง push
-
-**⚠️ พี่ทราย: กรุณาทดสอบทุก function ด้านล่างบน dev ก่อน confirm พร้อม push**
 
 ---
 
