@@ -195,7 +195,7 @@ imports ทั้งหมดใน file (`@/lib/auth`, `@/lib/utils`, `@/compon
 ### ไฟล์ที่ push
 | File | สิ่งที่แก้ | Status |
 |------|-----------|--------|
-| `client/src/components/platform-layout.tsx` | เพิ่ม Email menu item (line 31) ใน ADMIN_NAV | ⏳ awaiting push |
+| `client/src/components/platform-layout.tsx` | เพิ่ม Email menu item (line 31) ใน ADMIN_NAV | ✅ pushed 2026-05-21 (commit `852d6925`) |
 
 ### Deploy Command (Production)
 ```bash
