@@ -28,3 +28,8 @@ deploy-package/
 # Dev-only files — never push to any remote
 .local/
 db/dev-vs-prod-diff.md
+
+# Dev log files — local only, never push
+*.txt
+!client/**/*.txt
+!server/**/*.txt
