@@ -627,27 +627,30 @@ pm2 stop etax-center
 git fetch origin && git checkout origin/main -- client/src/components/etax-send-dialog.tsx && npm run build && pm2 start etax-center
 ```
 
-## 🔵 GITHUB-REPLIT PUSH RULE — MANDATORY AFTER EVERY CODE CHANGE
+## 🔵 KAI'S REPO PUSH RULE — MANDATORY AFTER EVERY CODE CHANGE
 
-**Push changed code files to `github-replit` immediately after every code change that passes testing on the Replit preview — NO authorization needed. "Changed files" means source code only (`.ts`, `.tsx`, `.js`, `.css`, etc.) — NOT documents, notes, logs, or `.local/` files.**
+**Push changed code files to kai's repo immediately after every code change that passes testing on the Replit preview — NO authorization needed. "Changed files" means source code only (`.ts`, `.tsx`, `.js`, `.css`, etc.) — NOT documents, notes, logs, or `.local/` files.**
 
 **Why:**
-1. When agent switches (Kai won't know it happened), the new agent MUST compare `github-replit` repo against current dev code to find what changed
+1. When agent switches (Kai won't know it happened), the new agent MUST compare kai's repo against current dev code to find what changed
 
 **Command (run after every file change passes preview test):**
 ```bash
 git push github-replit main
 ```
-⚠️ github-replit = `saaikanyakorn-afk/replit.dev` (agent's own area — push freely)
-⚠️ github-production = `saaikanyakorn-afk/etaxcenter` (production — requires พี่ช้าง authorization)
+⚠️ kai's repo = `saaikanyakorn-afk/replit.dev` (git remote: `github-replit`) — push freely after testing
+⚠️ production repo = `saaikanyakorn-afk/etaxcenter` (git remote: `github-production`) — requires พี่ช้าง authorization
+
+**⚠️ If push to kai's repo is blocked by GitHub Secret Scanning:**
+Ask พี่ช้าง to allow the push — provide the unblock URL(s) from the error message and wait for confirmation before retrying.
 
 **Two repos the agent uses — never confuse them:**
-| Remote | Repo | Purpose |
-|--------|------|---------|
-| `github-replit` | saaikanyakorn-afk/replit.dev | Agent's area — push every change that passes testing, no auth needed |
-| `github-production` | saaikanyakorn-afk/etaxcenter | Production source — requires พี่ช้าง explicit authorization per push |
+| Human name | Git remote | Repo | Rule |
+|-----------|------------|------|------|
+| **kai's repo** | `github-replit` | saaikanyakorn-afk/replit.dev | Push freely after testing passes |
+| **production repo** | `github-production` | saaikanyakorn-afk/etaxcenter | Requires พี่ช้าง explicit authorization |
 
-**github-production push authorization rules:**
+**production repo push authorization rules:**
 - **New file (never pushed this session)** → ต้องขออนุญาตพี่ช้างก่อน ✅
 - **Same file, same session (continuing fix/iteration)** → ไม่ต้องขออนุญาตซ้ำ — push ได้ทันที ✅
 - "Same session" = same conversation context, same file being iterated on
@@ -775,9 +778,10 @@ process.env.DB_PROD_URL
 - If token expired → ask พี่ช้าง to regenerate **"etaxerp"** on GitHub → update `.git/config` via `git remote set-url` in code_execution (bash blocks this)
 - **⚠️ ANY update to these notes must be done in ALL 3 places**: replit.md (local) + etaxcenter repo (production GitHub)
 
-### GitHub Replit PAT (github-replit remote → saaikanyakorn-afk/replit.dev)
+### Kai's Repo PAT (git remote `github-replit` → saaikanyakorn-afk/replit.dev)
 - PAT stored in `.git/config`
 - Push normally: `git push github-replit main`
+- If blocked by Secret Scanning → ask พี่ช้าง to allow at the URL shown in the error
 
 ---
 
@@ -1148,10 +1152,10 @@ Every production error that surfaces to the user must have **exactly two layers 
 
 The agent works with exactly two git remotes. There is a third repo that the agent has no rights to and must never mention, reference, or interact with in any way — treat it as if it does not exist.
 
-- **github-replit** (`afk/replit.dev`) — This is the agent's own area. Push here as soon as a code change passes testing on the Replit preview. No authorization needed. After every push, update `handoff.md` with: what file changed, when it was pushed, how it was tested, and why the change was made.
-- **github-production** (`afk/etaxcenter`) — This is the live production server repo. Requires พี่ช้าง explicit authorization before every single push. Never write, suggest, or prepare a deploy/cherry-pick command for production until พี่ช้าง approves. Authorization from a previous push does NOT carry over to the next one.
+- **kai's repo** (git remote: `github-replit`, repo: `afk/replit.dev`) — Push here as soon as a code change passes testing on the Replit preview. No authorization needed. After every push, update `handoff.md` with: what file changed, when it was pushed, how it was tested, and why the change was made. ⚠️ If push is blocked by GitHub Secret Scanning, ask พี่ช้าง to allow it before retrying.
+- **production repo** (git remote: `github-production`, repo: `afk/etaxcenter`) — Requires พี่ช้าง explicit authorization before every single push. Never write, suggest, or prepare a deploy/cherry-pick command for production until พี่ช้าง approves. Authorization from a previous push does NOT carry over to the next one.
 
-**Note on violation history (2026-04-16):** An agent wrote cherry-pick commands for production before receiving authorization. That restriction applies only to github-production.
+**Note on violation history (2026-04-16):** An agent wrote cherry-pick commands for production before receiving authorization. That restriction applies only to the production repo.
 
 ### Rule 3: No Excuses
 - "I forgot" is not acceptable

@@ -418,7 +418,7 @@ await db.update(table3).set(...).where(...);  // connection open then closed
   - Stop immediately. Tell พี่ช้าง what broke. Wait for พี่ช้าง to classify it — you may NOT classify it yourself.
   - **Minor glitch (พี่ช้าง's call only):** Still the same session. Fix the issue, then tell พี่ช้าง only what changed. Push after พี่ช้าง acknowledges. No need to repeat the full authorization process.
   - **Not minor (พี่ช้าง's call only):** This session is closed and marked "Failed Deploy". Do not push anything further. The fix must be built and verified on dev first. A new push session requires full authorization from the beginning.
-- **Dev push**: `git push github-replit main` — after every code change passes preview testing, no auth needed
+- **Dev push (kai's repo)**: `git push github-replit main` — after every code change passes preview testing, no auth needed. ⚠️ If blocked by GitHub Secret Scanning → ask พี่ช้าง to allow at the URL(s) from the error message, wait for confirmation, then retry.
 - **NEVER**: push entire branch to github-production
 
   **🚫 BLACKLIST — FILES THAT MUST NEVER EXIST ON PRODUCTION REPO (`saaikanyakorn-afk/etaxcenter`):**
