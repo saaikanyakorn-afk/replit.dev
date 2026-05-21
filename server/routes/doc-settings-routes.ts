@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { generalSettings, documentSettings, invoices, taxInvoices, purchaseInvoices, expenses } from "@shared/schema";
 import { requireAuth, requireAdmin, requireRole, requireModule } from "../route-middleware";
 import { getInventoryTriggers, recomputePaymentStatus, recomputeAPPaymentStatus } from "../route-helpers";
@@ -26,8 +26,15 @@ app.get("/api/settings/general", requireAuth, async (req, res) => {
         autoLogoutMinutes: "60", defaultPageSize: "50", showDecimalPlaces: "2",
       });
     }
+    // lot_low_stock_threshold lives outside schema.ts (schema.ts is never pushed to production)
+    // must fetch via raw SQL — do NOT add to schema.ts
+    const extraResult = await db.execute(sql`SELECT lot_low_stock_threshold FROM general_settings WHERE company_id = ${companyId} LIMIT 1`);
+    const extra = ((extraResult as any).rows || [])[0] as any || {};
     const { id, companyId: _cid, ...settings } = row;
-    return res.json(settings);
+    return res.json({
+      ...settings,
+      lotLowStockThreshold: extra.lot_low_stock_threshold != null ? Number(extra.lot_low_stock_threshold) : undefined,
+    });
   } catch (e: any) {
     res.status(500).json({ message: e.message });
   }
@@ -43,13 +50,17 @@ app.put("/api/settings/general", requireAuth, async (req, res) => {
     if (authorizedSignerName !== undefined) data.authorizedSignerName = authorizedSignerName;
     if (authorizedSignerTitle !== undefined) data.authorizedSignerTitle = authorizedSignerTitle;
     if (authorizedSignerSignatureUrl !== undefined) data.authorizedSignerSignatureUrl = authorizedSignerSignatureUrl;
-    if (lotLowStockThreshold !== undefined) data.lotLowStockThreshold = Number(lotLowStockThreshold);
+    // lotLowStockThreshold is NOT in schema.ts (schema.ts is never pushed to production)
+    // handle via raw SQL separately — do NOT put into Drizzle data object
     const [existing] = await db.select().from(generalSettings).where(eq(generalSettings.companyId, companyId)).limit(1);
     if (existing) {
       const { companyId: _cid, ...updateData } = data;
       await db.update(generalSettings).set(updateData).where(eq(generalSettings.companyId, companyId));
     } else {
       await db.insert(generalSettings).values(data);
+    }
+    if (lotLowStockThreshold !== undefined) {
+      await db.execute(sql`UPDATE general_settings SET lot_low_stock_threshold = ${Number(lotLowStockThreshold)} WHERE company_id = ${companyId}`);
     }
 
     return res.json({ success: true });

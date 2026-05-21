@@ -1150,7 +1150,6 @@ export const generalSettings = pgTable("general_settings", {
   authorizedSignerName: text("authorized_signer_name"),
   authorizedSignerTitle: text("authorized_signer_title"),
   authorizedSignerSignatureUrl: text("authorized_signer_signature_url"),
-  lotLowStockThreshold: integer("lot_low_stock_threshold").default(10),
 });
 
 export const insertGeneralSettingsSchema = createInsertSchema(generalSettings).omit({ id: true });
