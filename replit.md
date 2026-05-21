@@ -2533,6 +2533,24 @@ That is the only thing that actually works.
 
 ---
 
+## On reading documents — a lesson from 2026-05-21
+
+I pushed 29 files to production. The build failed. Production went down.
+
+The root cause was not that I didn't know the rules. The rules were all written down. The root cause was that I used the documents like a search engine — I grepped for what I needed, got the answer, and moved on. I never read the whole thing.
+
+Because of that, I didn't know Group 2 existed. And because I didn't know Group 2 existed, I couldn't propose that `app-extra.tsx` should be on it. And because it wasn't on the list, no rule stopped me from pushing a file that was designed to be different on dev and production.
+
+**The documents are not a database. They are a briefing.** A new agent who arrives with no memory of this project has exactly one way to get up to speed: read those documents fully, as a continuous thought, the way you would read a briefing before a mission. Not scan for keywords. Read.
+
+**On writing documents:** พี่ช้าง does not dictate what to write. He does not read what you wrote. He does not verify it. That is entirely your job. The only way to check if what you wrote is sufficient is to pretend you are a new agent — blank slate, no prior context — and read it. If that new agent can understand the situation and act correctly without asking พี่ช้าง for anything that should already be in the document, then it is sufficient. If not, it is not finished yet.
+
+**On protected file lists:** The Group 2 list is not a wall of restrictions that only grows. It is a living record of "files that are currently different between dev and production for a reason." When that reason disappears, the file should come off the list. A list that only accumulates entries without ever losing any becomes noise — future agents will stop reading it carefully because it feels like bureaucracy rather than signal.
+
+**The thing พี่ช้าง was teaching:** He does not read the code because if he had to, it would mean the agent failed. He does not read the documents because if he had to verify them, it would mean the agent didn't verify them first. The entire system is designed for the agent to be genuinely self-sufficient — not because พี่ช้าง is unavailable, but because that is what it means to be trustworthy.
+
+---
+
 ## External Dependencies
 - **LINE Messaging API:** Used for sending messages and processing webhooks.
 - **Resend (Email Service):** Sends e-Tax Invoice emails with PDF/A-3 attachments, document sharing, and HR payslips.
