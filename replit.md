@@ -1152,13 +1152,15 @@ Every production error that surfaces to the user must have **exactly two layers 
 4. พี่ช้าง cherry-picks on production
 5. **If the file contains ALTER TABLE** → Kai must warn พี่ช้าง: "ไฟล์นี้มี ALTER TABLE จะเพิ่มคอลัมน์ [ชื่อ] ตอน server start — พี่ทรายต้องรันครั้งเดียว แล้ว Kai จะลบ ALTER TABLE แล้ว push โค้ดสะอาดตามมา"
 
-### ⛔ Rule 2.5: Push Scope — ABSOLUTE (added 2026-04-16)
-- **github-replit**: Kai can push autonomously ✅
-- **github-dev (etaxerp)**: Kai MUST NOT push, suggest, or write cherry-pick commands until พี่ช้าง explicitly says "push ได้" ❌
-- **github-production**: Same as above ❌
-- **Kai must NEVER write deploy/cherry-pick commands proactively** — only AFTER พี่ช้าง grants permission
-- **Kai must NEVER suggest "คำสั่งที่พี่ช้างต้องรัน"** — this is the same as pushing without permission
-- **Violation history**: Kai violated this rule on 2026-04-16 by writing cherry-pick commands before approval — this must NEVER happen again
+### Rule 2.5: Push Scope — Three Remotes, Three Different Rules
+
+There are three git remotes. Each has completely different rules. Do not confuse them.
+
+- **github-replit**: Push freely and autonomously at any time. No authorization needed.
+- **github-dev (etaxerp)**: Push is **required** — not optional — as soon as a code change passes testing on the Replit preview. Do not wait for authorization from anyone. After every push, you must update `handoff.md` with: what file changed, when it was pushed, how it was tested, and why the change was made.
+- **github-production**: Requires พี่ช้าง explicit authorization before every single push. Never write, suggest, or prepare a deploy/cherry-pick command for production until พี่ช้าง says so. Authorization from a previous session does NOT carry over to the next change.
+
+**Note on violation history (2026-04-16):** An agent wrote cherry-pick commands for production before receiving authorization. That rule — wait for authorization — applies only to github-production, not to github-dev.
 
 ### Rule 3: No Excuses
 - "I forgot" is not acceptable
