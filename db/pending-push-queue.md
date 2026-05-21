@@ -29,6 +29,141 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ## ACTIVE QUEUE
 
+---
+
+## 📋 รายการ Code ที่รอ Push ทั้งหมด — จัดตาม Function ภาษาไทย
+**อัพเดต:** 2026-05-21
+
+> ⏳ = พี่ทราย tested แล้ว รอพี่ช้าง approve push
+> 📝 = รอพี่ทราย verify บน dev ก่อน
+> 🔴 = Production bug ที่จะหายเมื่อ push
+
+---
+
+### 🔴 ปัญหา Production ตอนนี้ (2026-05-21)
+**ค่าใช้จ่าย (Expense) บันทึกไม่ได้** — error "วิธีชำระเงิน Cash ยังไม่ได้ตั้งค่ารหัสบัญชีในระบบ"
+→ หน้า UI **Settings > วิธีชำระเงิน ยังไม่มีบน production** (อยู่ใน N4 ที่รอ push)
+→ error จะหายเองเมื่อ **N4 deploy ครบ**
+
+---
+
+### 1. ตั้งค่าวิธีชำระเงิน 🔴 (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `client/src/pages/settings/payment-methods.tsx` | UI ตั้งค่า วิธีรับเงิน / วิธีจ่ายเงิน + ผูกรหัสบัญชี — **ยังไม่มีบน production** |
+
+---
+
+### 2. ค่าใช้จ่าย (Expense) 🔴 (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `server/routes/expense-routes.ts` | Credit PM logic + paymentStatus + WHT email (N4+N8+N9 รวม) |
+| `client/src/pages/purchases/expense.tsx` | Payment status fix |
+
+---
+
+### 3. ใบสั่งซื้อ / ใบขอซื้อ / ใบมัดจำซื้อ / ใบเดบิต (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `client/src/pages/purchases/purchase-invoice.tsx` | PM dropdown fallback |
+| `client/src/pages/purchases/purchase-order.tsx` | PM dropdown fallback |
+| `client/src/pages/purchases/purchase-request.tsx` | PM dropdown fallback |
+| `client/src/pages/purchases/purchase-deposit-form.tsx` | Credit PM fix |
+| `client/src/pages/purchases/debit-note-form.tsx` | PM dropdown fallback |
+
+---
+
+### 4. ใบขาย / ใบกำกับภาษี / ใบเสร็จ / ใบลดหนี้ (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `server/routes/sales-docs-routes.ts` | RE overpayment + TIV journal fix + Quotation URL fix (N4+N9+N10 รวม) |
+| `client/src/pages/sales/tax-invoice-form.tsx` | lineItemAccounts → JournalPreviewPanel |
+| `client/src/pages/sales/receipt-form.tsx` | PM dropdown fallback |
+| `client/src/pages/sales/credit-note-form.tsx` | PM dropdown fallback |
+| `client/src/pages/sales/deposit-form.tsx` | PM dropdown fallback |
+| `client/src/pages/sales/sales-order-form.tsx` | PM dropdown fallback |
+
+---
+
+### 5. ใบวางบิล / ชำระหนี้ (AP/AR Billing) (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `server/routes/billing-notes-routes.ts` | RE overpayment validation + sendPlatformEmail (N4+N9 รวม) |
+| `server/routes/notifications-routes.ts` | RE overpayment validation (batch) |
+| `client/src/pages/finance/ap-billing.tsx` | PM dropdown fallback |
+| `client/src/pages/finance/receipt-billing.tsx` | PM dropdown fallback |
+
+---
+
+### 6. E-Commerce (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `client/src/pages/ecommerce/ecommerce-quick-invoice.tsx` | PM dropdown fallback |
+
+---
+
+### 7. เอกสารเกี่ยวข้อง (Related Docs Navigation) (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `client/src/components/related-docs-dialog.tsx` | Navigate → listPath?docNo=xxx (ลบ editPath) |
+
+---
+
+### 8. ระบบ — Server Core (N4 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `server/db.ts` | Connection timeout 20s + warmup pool |
+| `server/route-helpers.ts` | เพิ่ม `computeRemainingBalance()` |
+
+---
+
+### 9. ใบ 50 ทวิ — Share Link (N6-hotfix2 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `server/static.ts` | Route `/share/wht-cert/:token` — กดลิงก์จาก LINE แล้ว 404 บน production |
+
+---
+
+### 10. ค้นหาบริษัทจากกรมสรรพากร + Multi-Branch (N7 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `client/src/hooks/use-dbd-lookup.ts` | RD VAT lookup + branch select |
+| `client/src/contexts/branch-select-context.tsx` | **NEW** — dialog เลือก branch |
+| `server/routes/purchase-routes.ts` | Address formatting + รหัส branch 5 หลัก |
+| ⚠️ `client/src/App.tsx` | **NEVER push ตรง** — ต้องลงทะเบียน BranchSelectContext ผ่าน `app-extra.tsx` แทน |
+
+---
+
+### 11. ตั้งค่า Email แพลตฟอร์ม (Platform Email) (N8 — ⏳ รอ พี่ช้าง approve)
+| File | หมายเหตุ |
+|------|---------|
+| `client/src/pages/platform/email-config.tsx` | UI preset etaxcenter.com webmail |
+| `server/routes/doc-settings-routes.ts` | GET/PUT/test ใช้ PLATFORM_EMAIL_SMTP_* (N8+N12 รวม) |
+
+---
+
+### 12–22. Manufacturing Features — แยกตาม Function (N12 — 📝 รอ พี่ทราย verify)
+
+> Schema deploy แล้วใน N11 (2026-05-21) — code เท่านั้นที่รอ
+
+| Function | Files |
+|---------|-------|
+| ใบสั่งผลิต | `manufacturing-form.tsx`, `manufacturing-list.tsx`, `orders.tsx` |
+| สูตรการผลิต BOM | `bom-form.tsx`, `bom.tsx` |
+| ขั้นตอนการผลิต + สแกนสเตชั่น | `process-scan-station.tsx`, `mes-scan-station.tsx`, `mes-unit-detail.tsx`, `mes-work-orders.tsx` |
+| ใบเบิกวัตถุดิบ | `material-issue-form.tsx`, `material-issue-list.tsx` |
+| ใบเสร็จสิ้นการผลิต | `production-finish-form.tsx`, `production-finish-list.tsx` |
+| NCR (รายงานความไม่สอดคล้อง) | `ncr-form.tsx`, `ncr-list.tsx` |
+| ล็อตสินค้า + แจ้งเตือนสต็อกต่ำ | `product-lots.tsx` |
+| ใบรับสินค้า | `goods-receiving-form.tsx`, `goods-receiving-list.tsx` |
+| ตรวจสอบย้อนกลับ | `traceability.tsx` |
+| การตั้งค่าทั่วไป (Lot Threshold) | `general-settings.tsx` |
+| Server + Layout (push พร้อมทุก function) | `manufacturing-routes.ts`, `products-routes.ts`, `app-extra.tsx`, `manufacturing-layout.tsx` |
+
+ดูรายละเอียด file ทีละไฟล์ได้ที่ **N12 section** ด้านล่าง
+
+---
+
 ### N3 — Material Issue (เบิกวัตถุดิบ Lot Scan)
 **Status:** ✅ DONE 2026-05-20 12:21 (Bangkok) — migration confirmed: flag SET, `from_warehouse_id` EXISTS on prod
 **Schema change:** YES — `material_issues` + `material_issue_items` tables (ENTRY #009)
