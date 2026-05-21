@@ -252,7 +252,7 @@ Expected: 0 rows (never deployed) OR 6 rows (already configured). Either way: co
 ---
 
 ### N11 — Manufacturing Features Batch (Tasks #35, #37, #38, #40, #41, #47, #68, #76, #80, #89–#94)
-**Status:** 🚀 PUSHING — พี่ช้าง approved 2026-05-21 — migrations uncommented, ready for push
+**Status:** ✅ SCHEMA DONE 2026-05-21 — 3 columns + 6 flags confirmed in prod — Restart #2 complete
 **Schema change:** YES — 6 migrations (combined into 1 push session)
 **Push type:** Schema migration push (Rule 2 — 10-step procedure)
 
