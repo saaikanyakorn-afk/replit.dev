@@ -15,6 +15,11 @@
  * Strategy: use manual useLocation() path matching instead of wouter <Route> to avoid
  * differences between wouter <Route> outside <Switch> in dev vs production compiled bundle.
  * Extract id/token from the path string directly and pass as props — no useParams() needed.
+ *
+ * NOTE (2026-05-21): Manufacturing/doc-import routes (MES, material-issue, production-finish,
+ * NCR, process-scan, employee-qr, doc-import pages) are present on dev but NOT YET on
+ * production. They are excluded here until those files are pushed to production repo.
+ * See handoff.md Group 2 Special Rule and db/pending-push-queue.md ACE Batch Hotfix entry.
  */
 
 import { lazy, Suspense, useEffect } from "react";
@@ -34,24 +39,6 @@ const ExchangeRateSettings = lazy(() => import("@/pages/settings/exchange-rate-s
 // [inventory-triggers] /settings/inventory-triggers — app-extra module required
 const InventoryTriggersPage = lazy(() => import("@/pages/settings/inventory-triggers"));
 
-// [mes] MES — Manufacturing Execution System — added 2026-05-16
-const MesWorkOrders = lazy(() => import("@/pages/manufacturing/mes-work-orders"));
-const MesUnitDetail = lazy(() => import("@/pages/manufacturing/mes-unit-detail"));
-const MesScanStation = lazy(() => import("@/pages/manufacturing/mes-scan-station"));
-
-// [material-issue] เบิกวัตถุดิบ — added 2026-05-17
-const MaterialIssueList = lazy(() => import("@/pages/inventory/material-issue-list"));
-const MaterialIssueForm = lazy(() => import("@/pages/inventory/material-issue-form"));
-
-// [production-finish] ใบรับสินค้าสำเร็จรูป WIP→FG — added 2026-05-17
-const ProductionFinishList = lazy(() => import("@/pages/manufacturing/production-finish-list"));
-const ProductionFinishForm = lazy(() => import("@/pages/manufacturing/production-finish-form"));
-
-// [ncr] Non-Conformance Report — added 2026-05-17
-const NcrList = lazy(() => import("@/pages/manufacturing/ncr-list"));
-const NcrForm = lazy(() => import("@/pages/manufacturing/ncr-form"));
-const EmployeeQRPage = lazy(() => import("@/pages/inventory/employee-qr"));
-
 // [mfg-form] Manufacturing order form inside ManufacturingLayout
 // /manufacturing/orders/form and /manufacturing/orders/form/:id
 const ManufacturingForm = lazy(() => import("@/pages/inventory/manufacturing-form"));
@@ -60,20 +47,8 @@ const ManufacturingForm = lazy(() => import("@/pages/inventory/manufacturing-for
 // /manufacturing/bom/new and /manufacturing/bom/edit/:id
 const BomFormPage = lazy(() => import("@/pages/inventory/bom-form"));
 
-// [process-scan] Process Scan Station — scan employee + MO + log step
-const ProcessScanStation = lazy(() => import("@/pages/manufacturing/process-scan-station"));
-
 // [platform-email-config] SMTP config — platform super_admin only (app-extra bypass)
 const PlatformEmailConfig = lazy(() => import("@/pages/platform/email-config"));
-
-// [doc-import] Document import pages — sales & purchase (cannot be added to App.tsx)
-const QuotationImport = lazy(() => import("@/pages/sales/quotation-import"));
-const SalesOrderImport = lazy(() => import("@/pages/sales/sales-order-import"));
-const TaxInvoiceImport = lazy(() => import("@/pages/sales/tax-invoice-import"));
-const ReceiptImport = lazy(() => import("@/pages/sales/receipt-import"));
-const CreditNoteImport = lazy(() => import("@/pages/sales/credit-note-import"));
-const PurchaseOrderImport = lazy(() => import("@/pages/purchases/purchase-order-import"));
-const PurchaseRequestImport = lazy(() => import("@/pages/purchases/purchase-request-import"));
 
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
@@ -135,91 +110,9 @@ function matchMfgBomEdit(location: string): string | null {
   return m ? m[1] : null;
 }
 
-// [mes] MES route matchers
-function matchMesWorkOrders(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/mes/work-orders";
-}
-function matchMesUnitDetail(location: string): string | null {
-  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/mes\/work-orders\/(\d+)$/);
-  return m ? m[1] : null;
-}
-function matchMesScan(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/mes/scan";
-}
-
-// [material-issue] Material issue route matchers — inventory prefix
-function matchMaterialIssueList(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/inventory/material-issues";
-}
-function matchMaterialIssueForm(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/inventory/material-issue/form";
-}
-function matchMaterialIssueFormEdit(location: string): string | null {
-  const m = location.replace(/\?.*$/, "").match(/^\/inventory\/material-issue\/form\/(\d+)$/);
-  return m ? m[1] : null;
-}
-function matchEmployeeQR(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/inventory/employee-qr";
-}
-function matchHrEmployeeQR(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/hr/employee-qr";
-}
-// [material-issue] Manufacturing-prefix routes (same components, ManufacturingLayout sidebar)
-function matchMfgMaterialIssueList(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/material-issues";
-}
-function matchMfgMaterialIssueForm(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/material-issue/form";
-}
-function matchMfgMaterialIssueFormEdit(location: string): string | null {
-  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/material-issue\/form\/(\d+)$/);
-  return m ? m[1] : null;
-}
-function matchMfgEmployeeQR(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/employee-qr";
-}
-
-// [production-finish] route matchers
-function matchProductionFinishList(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/production-finish";
-}
-function matchProductionFinishForm(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/production-finish/form";
-}
-function matchProductionFinishFormEdit(location: string): number | null {
-  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/production-finish\/form\/(\d+)$/);
-  return m ? Number(m[1]) : null;
-}
-
-// [process-scan] Process Scan Station matcher
-function matchProcessScan(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/process-scan";
-}
-
 // [platform-email-config] /platform/email-config — super_admin SMTP settings
 function matchPlatformEmailConfig(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/platform/email-config";
-}
-
-// [doc-import] exact path matchers for 7 document import pages
-function matchQuotationImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/quote/import"; }
-function matchSalesOrderImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/order/import"; }
-function matchTaxInvoiceImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/tax-invoice/import"; }
-function matchReceiptImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/receipt/import"; }
-function matchCreditNoteImport(l: string) { return l.replace(/\?.*$/, "") === "/sales/credit-note/import"; }
-function matchPurchaseOrderImport(l: string) { return l.replace(/\?.*$/, "") === "/purchases/po/import"; }
-function matchPurchaseRequestImport(l: string) { return l.replace(/\?.*$/, "") === "/purchases/pr/import"; }
-
-// [ncr] route matchers
-function matchNcrList(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/ncr";
-}
-function matchNcrForm(location: string): boolean {
-  return location.replace(/\?.*$/, "") === "/manufacturing/ncr/form";
-}
-function matchNcrFormEdit(location: string): number | null {
-  const m = location.replace(/\?.*$/, "").match(/^\/manufacturing\/ncr\/form\/(\d+)$/);
-  return m ? Number(m[1]) : null;
 }
 
 export default function AppExtra() {
@@ -269,33 +162,7 @@ export default function AppExtra() {
   const mfgOrdersFormEditId = matchMfgOrdersFormEdit(location);
   const isMfgBomNew = matchMfgBomNew(location);
   const mfgBomEditId = matchMfgBomEdit(location);
-  const isMesWorkOrders = matchMesWorkOrders(location);
-  const mesUnitDetailId = matchMesUnitDetail(location);
-  const isMesScan = matchMesScan(location);
-  const isMaterialIssueList = matchMaterialIssueList(location);
-  const isMaterialIssueForm = matchMaterialIssueForm(location);
-  const materialIssueFormEditId = matchMaterialIssueFormEdit(location);
-  const isEmployeeQR = matchEmployeeQR(location);
-  const isHrEmployeeQR = matchHrEmployeeQR(location);
-  const isMfgMaterialIssueList = matchMfgMaterialIssueList(location);
-  const isMfgMaterialIssueForm = matchMfgMaterialIssueForm(location);
-  const mfgMaterialIssueFormEditId = matchMfgMaterialIssueFormEdit(location);
-  const isMfgEmployeeQR = matchMfgEmployeeQR(location);
-  const isProductionFinishList = matchProductionFinishList(location);
-  const isProductionFinishForm = matchProductionFinishForm(location);
-  const productionFinishFormEditId = matchProductionFinishFormEdit(location);
-  const isNcrList = matchNcrList(location);
-  const isNcrForm = matchNcrForm(location);
-  const ncrFormEditId = matchNcrFormEdit(location);
-  const isProcessScan = matchProcessScan(location);
   const isPlatformEmailConfig = matchPlatformEmailConfig(location);
-  const isQuotationImport = matchQuotationImport(location);
-  const isSalesOrderImport = matchSalesOrderImport(location);
-  const isTaxInvoiceImport = matchTaxInvoiceImport(location);
-  const isReceiptImport = matchReceiptImport(location);
-  const isCreditNoteImport = matchCreditNoteImport(location);
-  const isPurchaseOrderImport = matchPurchaseOrderImport(location);
-  const isPurchaseRequestImport = matchPurchaseRequestImport(location);
 
   if (pdfId) {
     return (
@@ -403,218 +270,6 @@ export default function AppExtra() {
     );
   }
 
-  // [mes] MES Work Orders list
-  if (isMesWorkOrders) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <MesWorkOrders />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [mes] MES Unit Detail / Work Order detail
-  if (mesUnitDetailId) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <MesUnitDetail idProp={mesUnitDetailId} />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [mes] MES Scan Station — full-screen dark UI for workers
-  if (isMesScan) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <MesScanStation />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [material-issue/mfg] ใบเบิกวัตถุดิบ — manufacturing sidebar (same components, /manufacturing prefix)
-  if (isMfgMaterialIssueList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <MaterialIssueList urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (isMfgMaterialIssueForm) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <MaterialIssueForm urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (mfgMaterialIssueFormEditId) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <MaterialIssueForm idProp={mfgMaterialIssueFormEditId} urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (isMfgEmployeeQR) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <EmployeeQRPage />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [material-issue] ใบเบิกวัตถุดิบ — list
-  if (isMaterialIssueList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <MaterialIssueList />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [material-issue] ใบเบิกวัตถุดิบ — new form
-  if (isMaterialIssueForm) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <MaterialIssueForm />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [material-issue] ใบเบิกวัตถุดิบ — edit/view existing
-  if (materialIssueFormEditId) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <MaterialIssueForm idProp={materialIssueFormEditId} />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [material-issue] QR บัตรพนักงาน
-  if (isEmployeeQR) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <EmployeeQRPage />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [hr] QR บัตรพนักงาน (HR context)
-  if (isHrEmployeeQR) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <EmployeeQRPage />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [production-finish] ใบรับสินค้าสำเร็จรูป WIP→FG — list
-  if (isProductionFinishList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <ProductionFinishList urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [production-finish] สร้างใบรับ — new form
-  if (isProductionFinishForm) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <ProductionFinishForm urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [production-finish] view/confirm existing receipt
-  if (productionFinishFormEditId) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <ProductionFinishForm idProp={productionFinishFormEditId} urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [ncr] รายการ NCR — list
-  if (isNcrList) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <NcrList urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [ncr] สร้าง NCR — new form
-  if (isNcrForm) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <NcrForm urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [ncr] view/edit existing NCR
-  if (ncrFormEditId) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ManufacturingLayout>
-            <NcrForm idProp={ncrFormEditId} urlBase="/manufacturing" />
-          </ManufacturingLayout>
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
   // [platform-email-config] SMTP settings page — platform super_admin only
   if (isPlatformEmailConfig) {
     return (
@@ -626,83 +281,6 @@ export default function AppExtra() {
     );
   }
 
-  // [process-scan] Process Scan Station — full-screen for workers
-  if (isProcessScan) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ProcessScanStation />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [doc-import] Sales document import pages
-  if (isQuotationImport) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <QuotationImport />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (isSalesOrderImport) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <SalesOrderImport />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (isTaxInvoiceImport) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <TaxInvoiceImport />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (isReceiptImport) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <ReceiptImport />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (isCreditNoteImport) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <CreditNoteImport />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
-  // [doc-import] Purchase document import pages
-  if (isPurchaseOrderImport) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <PurchaseOrderImport />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-  if (isPurchaseRequestImport) {
-    return (
-      <FullPageOverlay>
-        <Suspense fallback={null}>
-          <PurchaseRequestImport />
-        </Suspense>
-      </FullPageOverlay>
-    );
-  }
-
+  // [branch-select] Global portal for multi-branch selector — replaces App.tsx injection
   return <BranchSelectPortal />;
 }
