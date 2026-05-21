@@ -416,9 +416,22 @@ await db.update(table3).set(...).where(...);  // connection open then closed
   Always use the `-extra` file to extend — never modify the parent.
 
   **RESTRICTED FILES — GROUP 2 (require พี่ช้าง permission before touching on dev AND before pushing):**
-  `server/db.ts`, `server/db-schema-sync.ts`, `server/route-middleware.ts`, `server/routes.ts`, `server/routes/pos-routes.ts`, `server/routes/line-routes.ts`, `client/src/pages/platform/*`
+  `server/db.ts`, `server/db-schema-sync.ts`, `server/route-middleware.ts`, `server/routes.ts`, `server/routes/pos-routes.ts`, `server/routes/line-routes.ts`, `client/src/pages/platform/*`, `client/src/app-extra.tsx`
   Permission is case-by-case — a past approval does NOT carry over to the next change.
   If พี่ช้าง denies the change → create a `-extra.ts` workaround instead. This permanently promotes that file to Group 1. See `replit.md` Protected Files section for full details.
+
+  **⚠️ SPECIAL RULE for `client/src/app-extra.tsx` (added 2026-05-21 after ACE Batch build fail):**
+  This file is Group 2 because dev version ≠ production version by design.
+  Dev has lazy imports for pages that are built but NOT YET pushed to production (manufacturing modules, doc-import pages, etc.).
+  **MANDATORY CHECK before every push of app-extra.tsx:**
+  For EVERY lazy import in the file, verify the target file EXISTS on production GitHub repo:
+  ```bash
+  PAT="$GITHUB_PAT_PRODUCTION"
+  curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $PAT" \
+    "https://api.github.com/repos/saaikanyakorn-afk/etaxcenter/contents/<FILE_PATH>"
+  ```
+  HTTP 200 = exists ✅ | HTTP 404 = MISSING ❌ — do NOT push app-extra.tsx with any 404 import.
+  **Root cause of build fail 2026-05-21:** app-extra.tsx was pushed with 18 lazy imports of manufacturing/doc-import files that did not exist on production → vite:load-fallback ENOENT → npm run build failed.
 
   **SCHEMA CHANGES:**
   Always their own isolated push, following the full 10-step migration procedure in `replit.md`. NEVER combined with any other file.

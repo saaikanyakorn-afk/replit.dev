@@ -692,6 +692,17 @@ Before modifying ANY file on the protected/review-carefully lists — even small
 If no `-extra` exists → the file is NOT protected and can be pushed normally.
 If an `-extra` exists but the parent is not in this list → add the parent here.
 
+**Restricted files (Group 2 — require พี่ช้าง permission before touching on dev AND before pushing):**
+- `server/db.ts`, `server/db-schema-sync.ts`, `server/route-middleware.ts`, `server/routes.ts`
+- `server/routes/pos-routes.ts`, `server/routes/line-routes.ts`
+- `client/src/pages/platform/*`
+- `client/src/app-extra.tsx` ← **special: see rule below**
+
+**⚠️ SPECIAL RULE for `client/src/app-extra.tsx` (added 2026-05-21):**
+Dev version ≠ production version by design — dev has lazy imports for pages that are built but NOT YET pushed to production.
+**MANDATORY CHECK before every push of this file:** verify every lazy import target exists on production repo (HTTP 200 via GitHub API). Any 404 = stop, do NOT push.
+Failure to check caused ACE Batch build fail on 2026-05-21: 18 missing manufacturing/doc-import files → vite:load-fallback ENOENT → `npm run build` failed on production server.
+
 **How a Group 2 file becomes Group 1 permanently:**
 If พี่ช้าง denies a Group 2 file change → you MUST create a `-extra.ts` workaround file instead of modifying the parent. The moment that `-extra.ts` file exists, the parent file is automatically promoted to Group 1 — it can never be touched directly again, on dev or production, for any reason.
 
