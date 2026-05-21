@@ -312,8 +312,8 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 
 | File | Role | Status |
 |------|------|--------|
-| `server/migrations-runner.ts` | Uncomment 6 migrations สำหรับ N11 | 📝 dev |
-| `shared/schema-extra.ts` | Migration functions ทั้ง 6 + schema tables ใหม่ | 📝 dev |
+| `server/migrations-runner.ts` | Uncomment 6 migrations สำหรับ N11 | ✅ pushed 2026-05-21 commit `3e43ad9` |
+| `shared/schema-extra.ts` | Migration functions ทั้ง 6 + schema tables ใหม่ | ✅ pushed 2026-05-21 commit `40accd1` |
 | `server/routes/manufacturing-routes.ts` | API routes ทั้งหมดของ MO, BOM, scan station, finish, NCR | 📝 dev |
 | `server/routes/products-routes.ts` | Material issue routes, lot history, goods-receiving delete | 📝 dev |
 | `server/routes/doc-settings-routes.ts` | Low-stock threshold settings (อยู่ใน N8 ด้วย — push ครั้งเดียว) | 📝 dev |
