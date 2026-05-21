@@ -128,6 +128,61 @@ pm2 start etax-center
 ```
 
 ### Build Result
+> ❌ **BUILD FAILED — 2026-05-21 (production server ยัง DOWN อยู่)**
+> Error: `[vite:load-fallback] Could not load client/src/pages/manufacturing/mes-unit-detail` — ENOENT
+> Root cause: `app-extra.tsx` ที่ push ไปมี lazy imports ของ manufacturing/doc-import files ที่ไม่มีบน production repo
+> **ต้องแก้ก่อน production จะกลับมาทำงานได้ — ดู entry "ACE Batch Hotfix" ด้านล่าง**
+
+---
+
+## 🔴 ACE Batch Hotfix — Fix app-extra.tsx (PRODUCTION DOWN — แก้ด่วน)
+**วันที่สร้าง:** 2026-05-21
+**สถานะ:** ⏳ รอ พี่ช้าง approve push
+**เหตุผล:** ACE Batch build fail เพราะ app-extra.tsx มี 18 lazy imports ของ files ที่ไม่มีบน production
+
+### สิ่งที่ต้องทำ
+1. แก้ `client/src/app-extra.tsx` — ลบ lazy imports ทุกตัวที่ target file ยังไม่มีบน production repo
+2. ก่อน push: verify ทุก lazy import ด้วย GitHub API (HTTP 200 = ok, 404 = ลบออก) — ดู `handoff.md` Group 2 Special Rule
+3. Push เฉพาะ `client/src/app-extra.tsx` 1 ไฟล์
+
+### ไฟล์ที่ต้อง push
+| File | Status |
+|------|--------|
+| `client/src/app-extra.tsx` | ⏳ awaiting พี่ช้าง approve |
+
+### Missing imports ที่ต้องลบออกจาก app-extra.tsx (ไม่มีบน production)
+**Manufacturing group (8 files):**
+- `client/src/pages/manufacturing/mes-work-orders.tsx`
+- `client/src/pages/manufacturing/mes-unit-detail.tsx`
+- `client/src/pages/manufacturing/mes-scan-station.tsx`
+- `client/src/pages/manufacturing/material-issue-list.tsx`
+- `client/src/pages/manufacturing/material-issue-form.tsx`
+- `client/src/pages/manufacturing/production-finish-list.tsx`
+- `client/src/pages/manufacturing/production-finish-form.tsx`
+- `client/src/pages/manufacturing/ncr-list.tsx`
+- `client/src/pages/manufacturing/ncr-form.tsx`
+- `client/src/pages/manufacturing/employee-qr.tsx`
+- `client/src/pages/manufacturing/process-scan-station.tsx`
+
+**Doc-import group (7 files):**
+- `client/src/pages/manufacturing/quotation-import.tsx`
+- `client/src/pages/manufacturing/sales-order-import.tsx`
+- `client/src/pages/manufacturing/tax-invoice-import.tsx`
+- `client/src/pages/manufacturing/receipt-import.tsx`
+- `client/src/pages/manufacturing/credit-note-import.tsx`
+- `client/src/pages/manufacturing/purchase-order-import.tsx`
+- `client/src/pages/manufacturing/purchase-request-import.tsx`
+
+### Deploy Command (หลัง fix)
+```bash
+pm2 stop etax-center && \
+git fetch origin && \
+git checkout origin/main -- client/src/app-extra.tsx && \
+npm run build && \
+pm2 start etax-center
+```
+
+### Build Result
 > กรอกผลหลัง build: `✅ Build สำเร็จ YYYY-MM-DD HH:mm` หรือ `❌ Error: ...`
 
 ---
