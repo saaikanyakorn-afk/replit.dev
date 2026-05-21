@@ -179,7 +179,28 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 ```
 
 ### Build Result
-> ⏳ รอพี่ช้าง รัน deploy command บน production server
+> ✅ **BUILD PASSED** — 2026-05-21 (via Deploy #50 — platform-email.ts fixed the remaining error)
+> dist\index.cjs 7.8mb — Done in 438ms — etax-center online 77.4mb
+
+---
+
+## ⏳ N8-hotfix2 — platform-layout.tsx (Email menu หายบน production)
+**วันที่สร้าง:** 2026-05-21
+**อนุมัติ:** พี่ช้าง ✅ (2026-05-21 — implied by "update document first")
+**เหตุผล:** `client/src/components/platform-layout.tsx` ถูกลืมออกจาก ACE Batch (Deploy #48) — ทำให้เมนู "ตั้งค่า Email" (line 31) ไม่แสดงบน production sidebar แม้ว่า `email-config.tsx` ถูก push ไปแล้ว
+
+### Dependency check ✅
+imports ทั้งหมดใน file (`@/lib/auth`, `@/lib/utils`, `@/components/ui/button`, `wouter`, `lucide-react`) เป็น core files ที่มีบน production แน่นอนแล้ว
+
+### ไฟล์ที่ push
+| File | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `client/src/components/platform-layout.tsx` | เพิ่ม Email menu item (line 31) ใน ADMIN_NAV | ⏳ awaiting push |
+
+### Deploy Command (Production)
+```bash
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/src/components/platform-layout.tsx && npm run build && pm2 start etax-center
+```
 
 ---
 
@@ -286,11 +307,12 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
-### 11. ตั้งค่า Email แพลตฟอร์ม (Platform Email) (N8 — ⏳ รอ พี่ช้าง approve)
-| File | หมายเหตุ |
-|------|---------|
-| `client/src/pages/platform/email-config.tsx` | UI preset etaxcenter.com webmail |
-| `server/routes/doc-settings-routes.ts` | GET/PUT/test ใช้ PLATFORM_EMAIL_SMTP_* (N8+N12 รวม) |
+### 11. ตั้งค่า Email แพลตฟอร์ม (Platform Email) (N8)
+| File | หมายเหตุ | Status |
+|------|---------|--------|
+| `client/src/pages/platform/email-config.tsx` | UI preset etaxcenter.com webmail | ✅ pushed 2026-05-21 19:36 (ACE Batch) |
+| `server/routes/doc-settings-routes.ts` | GET/PUT/test ใช้ PLATFORM_EMAIL_SMTP_* | ✅ pushed 2026-05-21 19:36 (ACE Batch) |
+| `client/src/components/platform-layout.tsx` | **ลืม push ใน ACE Batch** — Email menu item ใน sidebar | ⏳ awaiting push (N8-hotfix2) |
 
 ---
 
