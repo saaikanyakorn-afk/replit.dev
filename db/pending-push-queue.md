@@ -361,6 +361,117 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 
 ---
 
+### N12 — Manufacturing Features Code Push (N11 code — แยกตาม function)
+**Status:** 📝 รอพี่ทราย verify ก่อน — ยังไม่ push
+**Schema change:** NO — schema deploy แล้วใน N11 (2026-05-21)
+**Push type:** Code-only push — พี่ทราย verify บน production หลัง push
+
+**⚠️ พี่ทราย: กรุณาทดสอบทุก function ด้านล่างบน dev ก่อน confirm พร้อม push**
+
+---
+
+**1. ใบสั่งผลิต (Manufacturing Order)**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/inventory/manufacturing-form.tsx` | ฟอร์มสั่งผลิต — WIP warehouse, navigate-to-list after save | 📝 รอ verify |
+| `client/src/pages/inventory/manufacturing-list.tsx` | รายการใบสั่งผลิต | 📝 รอ verify |
+| `client/src/pages/manufacturing/orders.tsx` | Manufacturing orders page | 📝 รอ verify |
+
+---
+
+**2. สูตรการผลิต BOM**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/inventory/bom-form.tsx` | ฟอร์ม BOM — ขั้นตอนการผลิต (process steps) | 📝 รอ verify |
+| `client/src/pages/manufacturing/bom.tsx` | BOM management page | 📝 รอ verify |
+
+---
+
+**3. ขั้นตอนการผลิต + สแกนสเตชั่น**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/manufacturing/process-scan-station.tsx` | Scan station — real-time log, supervisor name/filter, live indicator, ลบ log | 📝 รอ verify |
+| `client/src/pages/manufacturing/mes-scan-station.tsx` | MES scan station | 📝 รอ verify |
+| `client/src/pages/manufacturing/mes-unit-detail.tsx` | MES unit detail | 📝 รอ verify |
+| `client/src/pages/manufacturing/mes-work-orders.tsx` | MES work orders | 📝 รอ verify |
+
+---
+
+**4. ใบเบิกวัตถุดิบ (Material Issue)**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/inventory/material-issue-form.tsx` | ฟอร์มเบิกวัตถุดิบ — lot select, MO link, low-stock warning | 📝 รอ verify |
+| `client/src/pages/inventory/material-issue-list.tsx` | รายการใบเบิกวัตถุดิบ | 📝 รอ verify |
+
+---
+
+**5. ใบเสร็จสิ้นการผลิต (Production Finish)**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/manufacturing/production-finish-form.tsx` | ฟอร์มใบเสร็จสิ้นการผลิต | 📝 รอ verify |
+| `client/src/pages/manufacturing/production-finish-list.tsx` | รายการใบเสร็จสิ้นการผลิต | 📝 รอ verify |
+
+---
+
+**6. รายงานความไม่สอดคล้อง NCR (Non-Conformance Report)**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/manufacturing/ncr-form.tsx` | ฟอร์ม NCR | 📝 รอ verify |
+| `client/src/pages/manufacturing/ncr-list.tsx` | รายการ NCR | 📝 รอ verify |
+
+---
+
+**7. ล็อตสินค้า + แจ้งเตือนสต็อกต่ำ**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/inventory/product-lots.tsx` | Lot list — low-stock warning, lot history, Excel export | 📝 รอ verify |
+
+---
+
+**8. ใบรับสินค้า (Goods Receiving)**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/inventory/goods-receiving-form.tsx` | ฟอร์มรับสินค้า — ลบใบที่อนุมัติแล้ว + reverse inventory | 📝 รอ verify |
+| `client/src/pages/inventory/goods-receiving-list.tsx` | รายการรับสินค้า | 📝 รอ verify |
+
+---
+
+**9. ตรวจสอบย้อนกลับ (Traceability)**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/manufacturing/traceability.tsx` | Traceability page | 📝 รอ verify |
+
+---
+
+**10. การตั้งค่าทั่วไป — เกณฑ์สต็อกต่ำ (General Settings)**
+
+| File | Role | Status |
+|------|------|--------|
+| `client/src/pages/settings/general-settings.tsx` | เพิ่ม lot_low_stock_threshold setting | 📝 รอ verify |
+
+---
+
+**11. Server routes + Layout (push พร้อมกับทุก function)**
+
+| File | Role | Status |
+|------|------|--------|
+| `server/routes/manufacturing-routes.ts` | API routes ทั้งหมดของ MO, BOM, scan station, finish, NCR | 📝 รอ verify |
+| `server/routes/products-routes.ts` | Material issue routes, lot history, goods-receiving delete | 📝 รอ verify |
+| `server/routes/doc-settings-routes.ts` | Low-stock threshold settings | 📝 รอ verify |
+| `client/src/app-extra.tsx` | Register NCR, production-finish routes | 📝 รอ verify |
+| `client/src/components/manufacturing-layout.tsx` | Layout สำหรับ manufacturing module | 📝 รอ verify |
+
+---
+
 ## DEPLOYED — HISTORY
 
 | Deploy # | Date | Entry | Files |

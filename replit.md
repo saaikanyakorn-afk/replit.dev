@@ -843,7 +843,7 @@ STEPS:
   [ ] 6. Kai (migration batch only): query production DB BY EYES — `SELECT * FROM <new_table> LIMIT 1;` — confirm structure, NOT just COUNT (Rule 4 LOOK INSIDE)
   [ ] 7. Kai (migration batch only): comment out migration block in `server/migrations-runner.ts` with date/reason → API PUT clean file
   [ ] 8. พี่ช้าง: pulls clean file + restart #2 (migration batch only)
-  [ ] 9. Migration batch: server online = DONE (no feature test — migration is standalone, no feature code was pushed)
+  [ ] 9. Migration batch: Kai updates schema-history.md with entry (what changed, flags, commits, verified date) → server online = DONE
          Code-only batch: พี่ทราย verifies ALL features on production (NOT พี่ช้าง)
   [ ] 10. Move queue entry from "ACTIVE QUEUE" → "DEPLOYED — HISTORY" in queue file → batch closed ✅
 ```

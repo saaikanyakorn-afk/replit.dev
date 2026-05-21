@@ -443,7 +443,8 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 
 **Migration code:** `shared/schema-extra.ts` → `runProductionFinishMigration()`
 **Flag:** `CREATE_PRODUCTION_FINISH_TABLES_20260517` in `system_config`
-**Status:** ⏳ N11 awaiting approval — NOT yet on production
+**Production DB verified:** 2026-05-21 — tables existed already (CREATE IF NOT EXISTS skipped). Flag = `done_2026-05-21 16:28:12.483517+07`
+**Status:** ✅ CONFIRMED on production 2026-05-21. Commits: `3e43ad9` (uncomment), `40accd1` (schema-extra), `5cf60e9` (clean re-comment)
 
 ---
 
@@ -458,7 +459,8 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 **Migration code:** `shared/schema-extra.ts` → `runLotLowStockThresholdMigration()`
 **Flag:** `ADD_LOT_LOW_STOCK_THRESHOLD_TO_GENERAL_SETTINGS_20260517` in `system_config`
 **Note:** Column was previously in `shared/schema.ts` (removed — now handled via raw SQL migration only)
-**Status:** ⏳ N11 awaiting approval — NOT yet on production
+**Production DB verified:** 2026-05-21 — column `lot_low_stock_threshold INTEGER` confirmed present. Flag = `done_2026-05-21 16:28:12.586352+07`
+**Status:** ✅ CONFIRMED on production 2026-05-21. Commits: `3e43ad9` (uncomment), `40accd1` (schema-extra), `5cf60e9` (clean re-comment)
 
 ---
 
@@ -471,7 +473,8 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 
 **Migration code:** `shared/schema-extra.ts` → `runNcrMigration()`
 **Flag:** `CREATE_NCR_REPORTS_TABLE_20260517` in `system_config`
-**Status:** ⏳ N11 awaiting approval — NOT yet on production
+**Production DB verified:** 2026-05-21 — table existed already (CREATE IF NOT EXISTS skipped). Flag = `done_2026-05-21 16:28:12.487363+07`
+**Status:** ✅ CONFIRMED on production 2026-05-21. Commits: `3e43ad9` (uncomment), `40accd1` (schema-extra), `5cf60e9` (clean re-comment)
 
 ---
 
@@ -485,7 +488,8 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 
 **Migration code:** `shared/schema-extra.ts` → `runWarehouseColumnsForMfgMigration()`
 **Flag:** `ADD_WAREHOUSE_COLS_TO_MFG_TABLES_20260517` in `system_config`
-**Status:** ⏳ N11 awaiting approval — NOT yet on production
+**Production DB verified:** 2026-05-21 — `to_warehouse_id` added to `production_receipts` ✅, `from_warehouse_id` already existed (IF NOT EXISTS skipped). Flag = `done_2026-05-21 16:28:12.528841+07`
+**Status:** ✅ CONFIRMED on production 2026-05-21. Commits: `3e43ad9` (uncomment), `40accd1` (schema-extra), `5cf60e9` (clean re-comment)
 
 ---
 
@@ -500,7 +504,8 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 **Migration code:** `shared/schema-extra.ts` → `runBomProcessStepsMigration()`
 **Flag:** `CREATE_BOM_PROCESS_STEPS_AND_MO_PROCESS_LOGS_20260517` in `system_config`
 **Reason:** Task #68 — ขั้นตอนการผลิตต่อ BOM + Scan Station
-**Status:** ⏳ N11 awaiting approval — NOT yet on production
+**Production DB verified:** 2026-05-21 — tables existed already (CREATE IF NOT EXISTS skipped). Flag = `done_2026-05-21 16:28:12.521994+07`
+**Status:** ✅ CONFIRMED on production 2026-05-21. Commits: `3e43ad9` (uncomment), `40accd1` (schema-extra), `5cf60e9` (clean re-comment)
 
 ---
 
@@ -514,4 +519,5 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 
 **Migration code:** `shared/schema-extra.ts` → `runWipWarehouseMigration()`
 **Flag:** `ADD_WIP_WAREHOUSE_TO_MFG_ORDERS_20260517` in `system_config`
-**Status:** ⏳ N11 awaiting approval — NOT yet on production
+**Production DB verified:** 2026-05-21 — column `wip_warehouse_id INTEGER` confirmed present on `manufacturing_orders`. Flag = `done_2026-05-21 16:28:12.547895+07`
+**Status:** ✅ CONFIRMED on production 2026-05-21. Commits: `3e43ad9` (uncomment), `40accd1` (schema-extra), `5cf60e9` (clean re-comment)
