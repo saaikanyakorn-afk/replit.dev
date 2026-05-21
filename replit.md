@@ -47,7 +47,7 @@ If you cannot recite that from memory — stop what you are doing and keep readi
 ### พี่ทราย — Business Owner / End User
 - Works with Kai on **dev only** — UI, business logic, document layouts, features
 - **Has NO authority to approve technical commands**, including:
-  - Push to github-production or github-dev
+  - Push to github-production
   - DB migrations on production
   - Server restarts on production
   - Any deploy or cherry-pick action
@@ -627,37 +627,30 @@ pm2 stop etax-center
 git fetch origin && git checkout origin/main -- client/src/components/etax-send-dialog.tsx && npm run build && pm2 start etax-center
 ```
 
-## 🔵 GITHUB-DEV PUSH RULE — MANDATORY AFTER EVERY CODE CHANGE
+## 🔵 GITHUB-REPLIT PUSH RULE — MANDATORY AFTER EVERY CODE CHANGE
 
-**Kai must cherry-pick push changed code files to `github-dev` immediately after every code change — NO authorization needed. "Changed files" means source code only (`.ts`, `.tsx`, `.js`, `.css`, etc.) — NOT documents, notes, logs, or `.local/` files.**
+**Push changed code files to `github-replit` immediately after every code change that passes testing on the Replit preview — NO authorization needed. "Changed files" means source code only (`.ts`, `.tsx`, `.js`, `.css`, etc.) — NOT documents, notes, logs, or `.local/` files.**
 
 **Why:**
-1. พี่ช้าง does not read the code — no comments on what/how Kai writes
-2. When agent switches (Kai won't know it happened), the new agent MUST compare `github-dev` repo against current dev code to find what changed
+1. When agent switches (Kai won't know it happened), the new agent MUST compare `github-replit` repo against current dev code to find what changed
 
-**Command (run after every file change):**
+**Command (run after every file change passes preview test):**
 ```bash
-git push github-dev main
+git push github-replit main
 ```
-⚠️ This is a cherry-pick push of only changed files — NOT a full branch push.
-⚠️ github-dev = `saaikanyakorn-afk/dev.etaxerp` (dev backup only — NOT for production)
-⚠️ github-production = `saaikanyakorn-afk/etaxcenter` (production cherry-pick — พี่ช้าง pulls from here)
+⚠️ github-replit = `saaikanyakorn-afk/replit.dev` (agent's own area — push freely)
+⚠️ github-production = `saaikanyakorn-afk/etaxcenter` (production — requires พี่ช้าง authorization)
 
-**Two separate repos — never confuse them:**
+**Two repos the agent uses — never confuse them:**
 | Remote | Repo | Purpose |
 |--------|------|---------|
-| `github-dev` | saaikanyakorn-afk/dev.etaxerp | Dev backup — push every change, no auth needed |
-| `github-production` | saaikanyakorn-afk/etaxcenter | Production source — cherry-pick only verified/approved files |
+| `github-replit` | saaikanyakorn-afk/replit.dev | Agent's area — push every change that passes testing, no auth needed |
+| `github-production` | saaikanyakorn-afk/etaxcenter | Production source — requires พี่ช้าง explicit authorization per push |
 
 **github-production push authorization rules:**
 - **New file (never pushed this session)** → ต้องขออนุญาตพี่ช้างก่อน ✅
 - **Same file, same session (continuing fix/iteration)** → ไม่ต้องขออนุญาตซ้ำ — push ได้ทันที ✅
 - "Same session" = same conversation context, same file being iterated on
-
-
-**If github-dev push is blocked by Secret Scanning:**
-- Ask พี่ช้าง to allow at: `https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning`
-- Never embed raw PAT tokens in any file — always use `$GITHUB_PAT`
 
 ---
 
@@ -782,10 +775,9 @@ process.env.DB_PROD_URL
 - If token expired → ask พี่ช้าง to regenerate **"etaxerp"** on GitHub → update `.git/config` via `git remote set-url` in code_execution (bash blocks this)
 - **⚠️ ANY update to these notes must be done in ALL 3 places**: replit.md (local) + etaxcenter repo (production GitHub)
 
-### GitHub Dev PAT (github-dev remote → saaikanyakorn-afk/dev.etaxerp)
-- PAT stored in `.git/config` — still valid as of 2026-05-03
-- Push normally: `git push github-dev main`
-- If blocked by Secret Scanning → allow at: `https://github.com/saaikanyakorn-afk/dev.etaxerp/security/secret-scanning`
+### GitHub Replit PAT (github-replit remote → saaikanyakorn-afk/replit.dev)
+- PAT stored in `.git/config`
+- Push normally: `git push github-replit main`
 
 ---
 
@@ -1152,15 +1144,14 @@ Every production error that surfaces to the user must have **exactly two layers 
 4. พี่ช้าง cherry-picks on production
 5. **If the file contains ALTER TABLE** → Kai must warn พี่ช้าง: "ไฟล์นี้มี ALTER TABLE จะเพิ่มคอลัมน์ [ชื่อ] ตอน server start — พี่ทรายต้องรันครั้งเดียว แล้ว Kai จะลบ ALTER TABLE แล้ว push โค้ดสะอาดตามมา"
 
-### Rule 2.5: Push Scope — Three Remotes, Three Different Rules
+### Rule 2.5: Push Scope — Two Remotes the Agent Uses
 
-There are three git remotes. Each has completely different rules. Do not confuse them.
+The agent works with exactly two git remotes. There is a third repo that the agent has no rights to and must never mention, reference, or interact with in any way — treat it as if it does not exist.
 
-- **github-replit**: Push freely and autonomously at any time. No authorization needed.
-- **github-dev (etaxerp)**: Push is **required** — not optional — as soon as a code change passes testing on the Replit preview. Do not wait for authorization from anyone. After every push, you must update `handoff.md` with: what file changed, when it was pushed, how it was tested, and why the change was made.
-- **github-production**: Requires พี่ช้าง explicit authorization before every single push. Never write, suggest, or prepare a deploy/cherry-pick command for production until พี่ช้าง says so. Authorization from a previous session does NOT carry over to the next change.
+- **github-replit** (`afk/replit.dev`) — This is the agent's own area. Push here as soon as a code change passes testing on the Replit preview. No authorization needed. After every push, update `handoff.md` with: what file changed, when it was pushed, how it was tested, and why the change was made.
+- **github-production** (`afk/etaxcenter`) — This is the live production server repo. Requires พี่ช้าง explicit authorization before every single push. Never write, suggest, or prepare a deploy/cherry-pick command for production until พี่ช้าง approves. Authorization from a previous push does NOT carry over to the next one.
 
-**Note on violation history (2026-04-16):** An agent wrote cherry-pick commands for production before receiving authorization. That rule — wait for authorization — applies only to github-production, not to github-dev.
+**Note on violation history (2026-04-16):** An agent wrote cherry-pick commands for production before receiving authorization. That restriction applies only to github-production.
 
 ### Rule 3: No Excuses
 - "I forgot" is not acceptable
@@ -2278,7 +2269,7 @@ Other:
 ## CRITICAL DEPLOY RULES — READ EVERY SESSION
 - **NEVER push security-related code to etaxerp (github-production) EVER.** This includes: sysAdmin features, 2FA/MFA, auth methods, password policy, IP whitelist, session/lockout logic, audit log changes, permissions changes, anything under `/sys-k7x9` or `server/routes/sysadmin-routes.ts` or `client/src/pages/platform/`.
 - **etaxerp is in FREEZE mode** waiting for พี่ทราย to confirm all business requirements complete. Only business/bug fixes may go to prod, and only with พี่ช้าง's explicit per-commit approval.
-- Security work lives ONLY on github-replit (and github-dev when approved). Never cherry-pick security commits to prod working dir.
+- Security work lives ONLY on github-replit. Never cherry-pick security commits to prod working dir.
 - Commit `73e7d519` (sysAdmin LINE ID 2FA requirement) — github-replit ONLY. DO NOT propagate.
 
 ## /sys-k7x9 Security Work — PAUSED
