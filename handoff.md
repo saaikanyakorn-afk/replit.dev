@@ -219,6 +219,12 @@ There are **two completely separate SMTP configurations** in `system_config`. Th
 
 If you think you found a case that "needs" direct DB action — you have NOT. STOP. Report to พี่ช้าง. The answer is always: fix it in code, push via the queue, let the running application make the change through normal request flow.
 
+**🔑 PRINCIPLE — Before planning any production data migration (INSERT/UPDATE rows):**
+1. **VERIFY FIRST** — ask พี่ช้าง to run `SELECT` on production to check if the rows already exist
+2. **Check if UI can create the data** — if the application has a UI that saves this data (PUT/POST endpoint with upsert), prefer that over a migration function. Only write migration code for data that cannot be created through normal application flow.
+3. **Check if code handles missing rows gracefully** — read the GET endpoint. If it returns safe defaults when rows are absent, the data does NOT need to be pre-seeded. Code-only push + UI configuration = correct path.
+4. Only if rows don't exist AND cannot be created via UI AND code crashes without them → write a migration.
+
 Violating this rule = production data corruption = irrecoverable damage to a live multi-tenant accounting system used by real businesses for real tax filings.
 
 ---
