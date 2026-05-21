@@ -436,6 +436,8 @@ await db.update(table3).set(...).where(...);  // connection open then closed
   - Option A: The missing file is ready to deploy → push THAT file first (own queue entry, own permission), then push app-extra.tsx after
   - Option B: The missing file is NOT ready for production yet → remove its import from app-extra.tsx before pushing (dev still has it, only the production-bound version is trimmed)
   **Root cause of build fail 2026-05-21:** app-extra.tsx was pushed with 18 lazy imports of manufacturing/doc-import files that did not exist on production → vite:load-fallback ENOENT → npm run build failed.
+  **⬅️ REMOVAL CONDITION — when to remove app-extra.tsx from Group 2:**
+  When ALL lazy imports in app-extra.tsx exist on production (every check returns HTTP 200), dev version = production version. The reason for Group 2 protection no longer exists. At that point, remove app-extra.tsx from this list — it becomes a normal pushable file. Leaving it on the list after that point wastes future agent effort and causes confusion.
 
   **SCHEMA CHANGES:**
   Always their own isolated push, following the full 10-step migration procedure in `replit.md`. NEVER combined with any other file.

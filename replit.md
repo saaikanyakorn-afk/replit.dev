@@ -700,8 +700,9 @@ If an `-extra` exists but the parent is not in this list → add the parent here
 
 **⚠️ SPECIAL RULE for `client/src/app-extra.tsx` (added 2026-05-21):**
 Dev version ≠ production version by design — dev has lazy imports for pages that are built but NOT YET pushed to production.
-**MANDATORY CHECK before every push of this file:** verify every lazy import target exists on production repo (HTTP 200 via GitHub API). Any 404 = stop, do NOT push.
+**MANDATORY CHECK before every push of this file:** verify every lazy import target exists on production repo (HTTP 200 via GitHub API). Any 404 = stop, do NOT push. If 404 found: either push the missing file first (if it's ready — Option A), or remove its import from app-extra.tsx before pushing (if not ready — Option B). Ask พี่ช้าง which applies.
 Failure to check caused ACE Batch build fail on 2026-05-21: 18 missing manufacturing/doc-import files → vite:load-fallback ENOENT → `npm run build` failed on production server.
+**⬅️ REMOVAL CONDITION:** When ALL lazy imports in app-extra.tsx exist on production (every check = HTTP 200), dev version = production version — the reason for Group 2 protection is gone. Remove app-extra.tsx from this list at that point. It becomes a normal pushable file.
 
 **How a Group 2 file becomes Group 1 permanently:**
 If พี่ช้าง denies a Group 2 file change → you MUST create a `-extra.ts` workaround file instead of modifying the parent. The moment that `-extra.ts` file exists, the parent file is automatically promoted to Group 1 — it can never be touched directly again, on dev or production, for any reason.
