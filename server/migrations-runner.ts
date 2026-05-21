@@ -51,11 +51,11 @@ export function runPendingMigrations() {
 
   run("runMaterialIssueMigration",            runMaterialIssueMigration);           // N3  ✅ approved 2026-05-20
 
-  // ── N11 — APPROVED 2026-05-21 — uncomment for push session ────────────────
-  run("runProductionFinishMigration",         runProductionFinishMigration);        // N11 ✅ approved 2026-05-21
-  run("runNcrMigration",                      runNcrMigration);                     // N11 ✅ approved 2026-05-21
-  run("runLotLowStockThresholdMigration",     runLotLowStockThresholdMigration);    // N11 ✅ approved 2026-05-21
-  run("runWarehouseColumnsForMfgMigration",   runWarehouseColumnsForMfgMigration);  // N11 ✅ approved 2026-05-21
-  run("runBomProcessStepsMigration",          runBomProcessStepsMigration);         // N11 ✅ approved 2026-05-21
-  run("runWipWarehouseMigration",             runWipWarehouseMigration);            // N11 ✅ approved 2026-05-21
+  // ── N11 — DEPLOYED 2026-05-21 — all 6 flags SET, 3 columns confirmed in prod ─
+  // run("runProductionFinishMigration",      runProductionFinishMigration);        // N11 ✅ done 2026-05-21
+  // run("runNcrMigration",                   runNcrMigration);                     // N11 ✅ done 2026-05-21
+  // run("runLotLowStockThresholdMigration",  runLotLowStockThresholdMigration);    // N11 ✅ done 2026-05-21
+  // run("runWarehouseColumnsForMfgMigration",runWarehouseColumnsForMfgMigration);  // N11 ✅ done 2026-05-21
+  // run("runBomProcessStepsMigration",       runBomProcessStepsMigration);         // N11 ✅ done 2026-05-21
+  // run("runWipWarehouseMigration",          runWipWarehouseMigration);            // N11 ✅ done 2026-05-21
 }
