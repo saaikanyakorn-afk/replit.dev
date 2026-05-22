@@ -1202,7 +1202,7 @@ export async function runPaymentTypeColumnMigration(db: any) {
   try {
     const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
     if ((flag.rows || []).length > 0) return;
-    await db.execute(sql.raw(`ALTER TABLE payment_methods ADD COLUMN IF NOT EXISTS payment_type text`));
+    await db.execute(sql.raw(`ALTER TABLE payment_methods ADD COLUMN payment_type text`));
     await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
     console.log("[migration] ✅ payment_type added to payment_methods");
   } catch (e: any) {
