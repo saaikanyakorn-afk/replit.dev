@@ -1636,12 +1636,108 @@ export function registerPurchaseRoutes(app: Express) {
     } catch { return null; }
   }
 
+  // ─── RD VAT BRANCH CACHE ────────────────────────────────────────────────
+  // Sequential background crawler + DB cache for กรมสรรพากร branch lookups.
+  // Dev: parallel SOAP calls are unreliable in Replit sandbox — sequential
+  //      one-at-a-time calls are far more likely to succeed.
+  // Prod: cache hit after first warmup — no SOAP calls at all for repeat queries.
+  // ─────────────────────────────────────────────────────────────────────────
+  const rdCrawlInProgress = new Set<string>();
+
+  async function getCachedBranches(taxId: string): Promise<RdBranch[]> {
+    try {
+      const rows = await db.execute(sql`SELECT branch_number, name, address, branch_label FROM rd_vat_cache WHERE tax_id = ${taxId} ORDER BY branch_number ASC`);
+      return (rows.rows || []).map((r: any) => ({
+        name: r.name as string,
+        address: r.address as string,
+        branch: r.branch_label as string,
+        branchNumber: r.branch_number as number,
+        source: "cache" as const,
+      }));
+    } catch { return []; }
+  }
+
+  async function isCrawlComplete(taxId: string): Promise<boolean> {
+    try {
+      const rows = await db.execute(sql`SELECT completed_at FROM rd_crawl_status WHERE tax_id = ${taxId} LIMIT 1`);
+      const r = (rows.rows || [])[0] as any;
+      return !!(r && r.completed_at);
+    } catch { return false; }
+  }
+
+  async function upsertCacheBranch(taxId: string, branch: RdBranch): Promise<void> {
+    try {
+      await db.execute(sql`
+        INSERT INTO rd_vat_cache (tax_id, branch_number, name, address, branch_label, fetched_at)
+        VALUES (${taxId}, ${branch.branchNumber}, ${branch.name}, ${branch.address}, ${branch.branch}, NOW())
+        ON CONFLICT (tax_id, branch_number) DO UPDATE SET
+          name = EXCLUDED.name,
+          address = EXCLUDED.address,
+          branch_label = EXCLUDED.branch_label,
+          fetched_at = NOW()
+      `);
+    } catch { /* ignore — table may not exist yet during migration startup race */ }
+  }
+
+  async function crawlBranchesSequentially(taxId: string): Promise<void> {
+    if (rdCrawlInProgress.has(taxId)) return;
+    try {
+      // Claim crawl in DB — ON CONFLICT DO NOTHING prevents duplicate crawls
+      await db.execute(sql`INSERT INTO rd_crawl_status (tax_id, started_at) VALUES (${taxId}, NOW()) ON CONFLICT (tax_id) DO NOTHING`);
+    } catch { /* table may not exist yet */ }
+
+    rdCrawlInProgress.add(taxId);
+    let consecutiveNulls = 0;
+    const MAX_CONSECUTIVE_NULLS = 20; // handles gaps in branch numbering (some companies skip numbers)
+    const DELAY_MS = 300;             // one call at a time — avoids sandbox network pressure
+    let totalFound = 0;
+
+    try {
+      for (let i = 1; i <= 999; i++) {
+        // Skip branches already in cache
+        try {
+          const exists = await db.execute(sql`SELECT 1 FROM rd_vat_cache WHERE tax_id = ${taxId} AND branch_number = ${i} LIMIT 1`);
+          if ((exists.rows || []).length > 0) { consecutiveNulls = 0; totalFound++; continue; }
+        } catch { /* ignore */ }
+
+        const branch = await lookupRdVatBranch(taxId, i);
+        if (branch) {
+          await upsertCacheBranch(taxId, branch);
+          consecutiveNulls = 0;
+          totalFound++;
+        } else {
+          consecutiveNulls++;
+          if (consecutiveNulls >= MAX_CONSECUTIVE_NULLS) break;
+        }
+        await new Promise(r => setTimeout(r, DELAY_MS));
+      }
+      try {
+        await db.execute(sql`UPDATE rd_crawl_status SET completed_at = NOW(), total_found = ${totalFound} WHERE tax_id = ${taxId}`);
+      } catch { /* ignore */ }
+      console.log(`[rd-cache] ✅ Crawl complete for ${taxId}: ${totalFound} branches cached`);
+    } finally {
+      rdCrawlInProgress.delete(taxId);
+    }
+  }
+
   async function lookupRdVatAll(taxId: string): Promise<{ branches: RdBranch[]; hasMore: boolean }> {
     if (!taxId || taxId.length !== 13) return { branches: [], hasMore: false };
-    const results = await Promise.all(Array.from({ length: 10 }, (_, i) => lookupRdVatBranch(taxId, i)));
-    const branches = results.filter((r): r is RdBranch => r !== null);
-    const hasMore = results[9] !== null;
-    return { branches, hasMore };
+
+    // 1. Cache hit — return immediately
+    const cached = await getCachedBranches(taxId);
+    if (cached.length > 0) {
+      const crawlDone = await isCrawlComplete(taxId);
+      return { branches: cached, hasMore: !crawlDone };
+    }
+
+    // 2. Cache miss — fetch branch 0 only (single sequential SOAP call, safe in dev sandbox)
+    const branch0 = await lookupRdVatBranch(taxId, 0);
+    if (!branch0) return { branches: [], hasMore: false };
+
+    await upsertCacheBranch(taxId, branch0);
+    // Fire-and-forget background crawl (branches 1, 2, 3... one at a time with 300ms delay)
+    crawlBranchesSequentially(taxId).catch(e => console.error("[rd-cache] crawl error:", e.message));
+    return { branches: [branch0], hasMore: true }; // hasMore=true because crawl just started
   }
 
   app.get("/api/dbd-lookup/:taxId", requireAuth, async (req, res) => {
@@ -1689,8 +1785,18 @@ export function registerPurchaseRoutes(app: Express) {
       const branchNumber = parseInt(String(req.params.branchNumber || ""), 10);
       if (!taxId || taxId.length !== 13) return res.status(400).json({ message: "เลขนิติบุคคลต้องมี 13 หลัก" });
       if (isNaN(branchNumber) || branchNumber < 0) return res.status(400).json({ message: "หมายเลขสาขาไม่ถูกต้อง" });
+      // Check cache first
+      try {
+        const cached = await db.execute(sql`SELECT branch_number, name, address, branch_label FROM rd_vat_cache WHERE tax_id = ${taxId} AND branch_number = ${branchNumber} LIMIT 1`);
+        const cr = (cached.rows || [])[0] as any;
+        if (cr) {
+          return res.json({ name: cr.name, address: cr.address, branch: cr.branch_label, branchNumber: cr.branch_number, source: "cache" });
+        }
+      } catch { /* ignore, fall through to SOAP */ }
+      // Cache miss — SOAP lookup, then store result
       const branch = await lookupRdVatBranch(taxId, branchNumber);
       if (!branch) return res.status(404).json({ message: `ไม่พบสาขาที่ ${branchNumber}` });
+      upsertCacheBranch(taxId, branch).catch(() => {});
       return res.json(branch);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "เกิดข้อผิดพลาด" });

@@ -1211,6 +1211,46 @@ export async function runPaymentTypeColumnMigration(db: any) {
 }
 
 // =============================================================================
+// RD VAT CACHE TABLES (ENTRY #016, 2026-05-22)
+// rd_vat_cache: individual branch data from กรมสรรพากร SOAP lookups
+// rd_crawl_status: tracks background sequential crawl progress per tax_id
+// No backup needed — new tables, no existing data affected
+// History: db/schema-history.md ENTRY #016
+// =============================================================================
+export async function runRdVatCacheMigration(db: any) {
+  const FLAG = "CREATE_RD_VAT_CACHE_TABLES_20260522";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS rd_vat_cache (
+        id SERIAL PRIMARY KEY,
+        tax_id TEXT NOT NULL,
+        branch_number INTEGER NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        address TEXT NOT NULL DEFAULT '',
+        branch_label TEXT NOT NULL DEFAULT '',
+        fetched_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(tax_id, branch_number)
+      )
+    `));
+    await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS idx_rd_vat_cache_tax_id ON rd_vat_cache(tax_id)`));
+    await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS rd_crawl_status (
+        tax_id TEXT PRIMARY KEY,
+        started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        completed_at TIMESTAMP,
+        total_found INTEGER DEFAULT 0
+      )
+    `));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ rd_vat_cache + rd_crawl_status tables created");
+  } catch (e: any) {
+    console.error("[migration] ❌ runRdVatCacheMigration FAILED:", e.message);
+  }
+}
+
+// =============================================================================
 // INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12) — ❌ CANCELLED
 // Approach changed 2026-05-12: user inputs วันที่เริ่มต้นสต๊อก at Excel import
 // time via product-import-export.tsx date picker. Backfill not needed.

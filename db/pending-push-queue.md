@@ -184,6 +184,38 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
+## 📝 N15 — RD VAT Branch Cache (sequential background crawler)
+**วันที่สร้าง:** 2026-05-22
+**อนุมัติ:** พี่ช้าง ✅ (สั่งในเซสชันนี้ 2026-05-22)
+**เหตุผล:** Dev sandbox ยิง SOAP parallel 10 calls พร้อมกันไม่ได้ (network limitation) → sequential one-at-a-time แก้ปัญหาได้ + Production: cache hit หลัง warmup แรก
+
+**สิ่งที่ทำ:**
+1. `rd_vat_cache` table: เก็บ branch data จาก SOAP (tax_id + branch_number unique)
+2. `rd_crawl_status` table: track progress ของ background crawl ต่อ tax_id
+3. `lookupRdVatAll()` ถูกแทนที่: cache-first → ถ้า miss → fetch branch 0 เดี่ยว → ส่งกลับ user → background crawl (branches 1,2,3... ทีละตัว, 300ms delay, หยุดที่ 20 consecutive nulls)
+4. `/api/dbd-branch-lookup/:taxId/:branchNumber` → check cache ก่อน → SOAP ถ้า miss → cache ผล
+
+**Dev status (2026-05-22 04:22):** ✅ tables created — `[migration] ✅ rd_vat_cache + rd_crawl_status tables created`
+
+### ไฟล์ที่ต้อง push
+| File | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `shared/schema-extra.ts` | เพิ่ม `runRdVatCacheMigration()` (ENTRY #016) | 📝 dev — รอพี่ทราย test |
+| `server/migrations-runner.ts` | import + enable `runRdVatCacheMigration` | 📝 dev — รอพี่ทราย test |
+| `server/routes/purchase-routes.ts` | cache logic + sequential background crawler | 📝 dev — รอพี่ทราย test |
+
+### Deploy Command (Production) — ยังไม่ใช้ รอพี่ทราย confirm dev ก่อน
+```bash
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/schema-extra.ts server/migrations-runner.ts server/routes/purchase-routes.ts && npm run build && pm2 start etax-center
+```
+
+### หลัง deploy — ต้องทำทันที
+1. ดู log: ต้องเห็น `[migration] ✅ rd_vat_cache + rd_crawl_status tables created`
+2. ค้นบริษัทใหม่ → ดู log: `[rd-cache] ✅ Crawl complete for XXXXXXXXXXXXX: N branches cached`
+3. ค้นบริษัทเดิมอีกครั้ง → ต้องเร็วทันที (cache hit)
+
+---
+
 ## 📝 N4b — payment_type column migration (รอพี่ทราย test ใน dev)
 **วันที่สร้าง:** 2026-05-22
 **อนุมัติ production:** ยังไม่ push — ย้ายมา test ใน dev ก่อน (พี่ช้าง สั่ง 2026-05-22)

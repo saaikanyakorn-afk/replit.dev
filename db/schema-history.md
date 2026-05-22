@@ -509,6 +509,25 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 
 ---
 
+## 2026-05-22 — RD VAT cache tables (ENTRY #016)
+
+**What changed:**
+- Created new table `rd_vat_cache(id, tax_id, branch_number, name, address, branch_label, fetched_at, UNIQUE(tax_id, branch_number))` + index on `tax_id`
+- Created new table `rd_crawl_status(tax_id PK, started_at, completed_at, total_found)` — tracks background sequential crawl progress per tax_id
+- No existing data affected — purely new tables
+
+**Backup location:** No backup required — new tables, no existing rows
+
+**Migration code:** `shared/schema-extra.ts` → `runRdVatCacheMigration()`
+**Caller:** `server/migrations-runner.ts` (central runner)
+**Flag:** `CREATE_RD_VAT_CACHE_TABLES_20260522` in `system_config`
+**Reason:** N15 — sequential background SOAP crawler to pre-warm branch data from กรมสรรพากร. Fixes unreliable parallel SOAP in dev sandbox; improves production repeat-lookup speed.
+
+**Dev DB verified:** 2026-05-22 04:22 — `[migration] ✅ rd_vat_cache + rd_crawl_status tables created`
+**Status:** 🔄 Active in dev — awaiting push approval from พี่ช้าง
+
+---
+
 ## 2026-05-22 — payment_type column on payment_methods (ENTRY #015)
 
 **What changed:**
