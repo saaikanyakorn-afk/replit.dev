@@ -31,6 +31,100 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ---
 
+## 🚀 Task #2 — 4-Topic Batch Push — 2026-05-22 (37 files)
+**วันที่ push:** 2026-05-22
+**อนุมัติ:** พี่ช้าง ✅ (batch one-push approved 2026-05-22)
+**สถานะ:** ✅ ALL 37 FILES PUSHED — รอพี่ช้าง run deploy command บน production server
+
+### สรุปไฟล์ทั้งหมด
+| กลุ่ม | ไฟล์ | Commit | Status |
+|------|------|--------|--------|
+| app-extra | `client/src/app-extra.tsx` | 5f10818f | ✅ |
+| **Topic 1** Account Combobox (#108-116) | `client/src/components/account-combobox.tsx` (NEW) | 467e90bc | ✅ |
+| | `client/src/pages/purchases/expense.tsx` | df8f1d80 | ✅ |
+| | `client/src/pages/purchases/purchase-deposit-form.tsx` | b3d2c5e8 | ✅ |
+| | `client/src/pages/sales/deposit-form.tsx` | 589cb18f | ✅ |
+| | `client/src/pages/assets/asset-form.tsx` | d59852db | ✅ |
+| **Topic 2** N15 RD VAT Cache | `server/routes/purchase-routes.ts` | 90dfdc54 | ✅ |
+| | `client/src/hooks/use-dbd-lookup.ts` | 52ecfada | ✅ |
+| | `client/src/contexts/branch-select-context.tsx` | 1e87b8a2 | ✅ |
+| **Topic 3** N4b Payment Methods UI | `client/src/pages/settings/payment-methods.tsx` | f8912a78 | ✅ |
+| **Topic 4** N12 Manufacturing | `client/src/components/camera-qr-scanner.tsx` (NEW) | 494f7a30 | ✅ |
+| | `server/routes/manufacturing-routes.ts` | 6954cd36 | ✅ |
+| | `server/routes/products-routes.ts` | 899315c6 | ✅ |
+| | `client/src/pages/manufacturing/dashboard.tsx` | (first push) | ✅ |
+| | `client/src/pages/manufacturing/bom.tsx` | 2f131cbb | ✅ |
+| | `client/src/pages/manufacturing/calibration.tsx` | ef19f823 | ✅ |
+| | `client/src/pages/manufacturing/mes-scan-station.tsx` (NEW) | b78eabf3 | ✅ |
+| | `client/src/pages/manufacturing/mes-unit-detail.tsx` (NEW) | f6bcc83e | ✅ |
+| | `client/src/pages/manufacturing/mes-work-orders.tsx` (NEW) | a7096ded | ✅ |
+| | `client/src/pages/manufacturing/ncr-form.tsx` (NEW) | f69f34e3 | ✅ |
+| | `client/src/pages/manufacturing/ncr-list.tsx` (NEW) | 882be1a9 | ✅ |
+| | `client/src/pages/manufacturing/orders.tsx` | e6b6f2c1 | ✅ |
+| | `client/src/pages/manufacturing/process-scan-station.tsx` (NEW) | 9cca85b0 | ✅ |
+| | `client/src/pages/manufacturing/production-finish-form.tsx` (NEW) | 53629e58 | ✅ |
+| | `client/src/pages/manufacturing/production-finish-list.tsx` (NEW) | cdb19612 | ✅ |
+| | `client/src/pages/manufacturing/serial-numbers.tsx` | 7437d394 | ✅ |
+| | `client/src/pages/manufacturing/traceability.tsx` | a6c62e91 | ✅ |
+| | `client/src/pages/inventory/bom-form.tsx` | 5c0c1bba | ✅ |
+| | `client/src/pages/inventory/employee-qr.tsx` (NEW) | f1092496 | ✅ |
+| | `client/src/pages/inventory/goods-receiving-form.tsx` | 760d869a | ✅ |
+| | `client/src/pages/inventory/goods-receiving-list.tsx` | 5ab1fb32 | ✅ |
+| | `client/src/pages/inventory/goods-requisition-form.tsx` | 4a928b02 | ✅ |
+| | `client/src/pages/inventory/goods-requisition-list.tsx` | 1ce8ef06 | ✅ |
+| | `client/src/pages/inventory/material-issue-form.tsx` (NEW) | 305c5996 | ✅ |
+| | `client/src/pages/inventory/material-issue-list.tsx` (NEW) | b77128aa | ✅ |
+| | `client/src/pages/inventory/product-lots.tsx` | ff46bb63 | ✅ |
+| | `client/src/pages/settings/general-settings.tsx` | 1cc9c98a | ✅ |
+
+### Deploy Command (Production) — พี่ช้าง run บน server ทันที
+```bash
+pm2 stop etax-center && \
+git fetch origin && \
+git checkout origin/main -- \
+  client/src/app-extra.tsx \
+  client/src/components/account-combobox.tsx \
+  client/src/pages/purchases/expense.tsx \
+  client/src/pages/purchases/purchase-deposit-form.tsx \
+  client/src/pages/sales/deposit-form.tsx \
+  client/src/pages/assets/asset-form.tsx \
+  server/routes/purchase-routes.ts \
+  client/src/hooks/use-dbd-lookup.ts \
+  client/src/contexts/branch-select-context.tsx \
+  client/src/pages/settings/payment-methods.tsx \
+  client/src/components/camera-qr-scanner.tsx \
+  server/routes/manufacturing-routes.ts \
+  server/routes/products-routes.ts \
+  client/src/pages/manufacturing/dashboard.tsx \
+  client/src/pages/manufacturing/bom.tsx \
+  client/src/pages/manufacturing/calibration.tsx \
+  client/src/pages/manufacturing/mes-scan-station.tsx \
+  client/src/pages/manufacturing/mes-unit-detail.tsx \
+  client/src/pages/manufacturing/mes-work-orders.tsx \
+  client/src/pages/manufacturing/ncr-form.tsx \
+  client/src/pages/manufacturing/ncr-list.tsx \
+  client/src/pages/manufacturing/orders.tsx \
+  client/src/pages/manufacturing/process-scan-station.tsx \
+  client/src/pages/manufacturing/production-finish-form.tsx \
+  client/src/pages/manufacturing/production-finish-list.tsx \
+  client/src/pages/manufacturing/serial-numbers.tsx \
+  client/src/pages/manufacturing/traceability.tsx \
+  client/src/pages/inventory/bom-form.tsx \
+  client/src/pages/inventory/employee-qr.tsx \
+  client/src/pages/inventory/goods-receiving-form.tsx \
+  client/src/pages/inventory/goods-receiving-list.tsx \
+  client/src/pages/inventory/goods-requisition-form.tsx \
+  client/src/pages/inventory/goods-requisition-list.tsx \
+  client/src/pages/inventory/material-issue-form.tsx \
+  client/src/pages/inventory/material-issue-list.tsx \
+  client/src/pages/inventory/product-lots.tsx \
+  client/src/pages/settings/general-settings.tsx && \
+npm run build && \
+pm2 start etax-center
+```
+
+---
+
 ## 🚀 ACE Batch — Combined Deploy Entry
 **วันที่สร้าง:** 2026-05-21
 **อนุมัติ:** พี่ช้าง ✅ (2026-05-21)
@@ -204,11 +298,11 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 ### ไฟล์ที่ต้อง push
 | File | สิ่งที่แก้ | Status |
 |------|-----------|--------|
-| `shared/schema-extra.ts` | เพิ่ม `runRdVatCacheMigration()` (ENTRY #016) | 📝 dev — รอพี่ทราย test |
-| `server/migrations-runner.ts` | import + enable `runRdVatCacheMigration` | 📝 dev — รอพี่ทราย test |
-| `server/routes/purchase-routes.ts` | cache logic + sequential background crawler | 📝 dev — รอพี่ทราย test |
-| `client/src/hooks/use-dbd-lookup.ts` | fix: `> 1 || hasMore` — เปิด selector เมื่อ hasMore=true | 📝 dev — รอพี่ทราย test |
-| `client/src/contexts/branch-select-context.tsx` | auto-polling 3s + spinner ขณะ crawl ทำงาน | 📝 dev — รอพี่ทราย test |
+| `shared/schema-extra.ts` | เพิ่ม `runRdVatCacheMigration()` (ENTRY #016) | ✅ pushed 2026-05-22 (Task #1) |
+| `server/migrations-runner.ts` | import + enable `runRdVatCacheMigration` | ✅ pushed 2026-05-22 (Task #1) |
+| `server/routes/purchase-routes.ts` | cache logic + sequential background crawler | ✅ pushed 2026-05-22 14:xx (batch) commit 90dfdc54 |
+| `client/src/hooks/use-dbd-lookup.ts` | fix: `> 1 || hasMore` — เปิด selector เมื่อ hasMore=true | ✅ pushed 2026-05-22 14:xx (batch) commit 52ecfada |
+| `client/src/contexts/branch-select-context.tsx` | auto-polling 3s + spinner ขณะ crawl ทำงาน | ✅ pushed 2026-05-22 14:xx (batch) commit 1e87b8a2 |
 
 ### ⚠️ Pre-deploy DB check (ก่อน push production)
 ```sql
@@ -252,9 +346,9 @@ npm run build && pm2 start etax-center
 ### ไฟล์ที่ต้อง push (isolated loop — Rule 3)
 | File | สิ่งที่แก้ | Status |
 |------|-----------|--------|
-| `shared/schema-extra.ts` | เพิ่ม `runPaymentTypeColumnMigration()` (ENTRY #015) | 📝 dev — รอพี่ทราย test |
-| `server/migrations-runner.ts` | import + enable `runPaymentTypeColumnMigration` | 📝 dev — รอพี่ทราย test |
-| `server/routes/payment-methods-routes.ts` | + default PM seeding (visible, editable) | 📝 dev — รอพี่ทราย test |
+| `shared/schema-extra.ts` | เพิ่ม `runPaymentTypeColumnMigration()` (ENTRY #015) | ✅ pushed 2026-05-22 (Task #1) |
+| `server/migrations-runner.ts` | import + enable `runPaymentTypeColumnMigration` | ✅ pushed 2026-05-22 (Task #1) |
+| `client/src/pages/settings/payment-methods.tsx` | UI tabs รับ/จ่าย + ผูกบัญชี (N4b UI) | ✅ pushed 2026-05-22 14:xx (batch) commit f8912a78 |
 
 ### Deploy Command (Production) — ยังไม่ใช้ รอพี่ทราย confirm dev ก่อน
 ```bash
