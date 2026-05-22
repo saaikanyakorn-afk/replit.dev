@@ -164,115 +164,91 @@ export default function AppExtra() {
   const mfgBomEditId = matchMfgBomEdit(location);
   const isPlatformEmailConfig = matchPlatformEmailConfig(location);
 
+  // Determine overlay content based on current route
+  let overlay: React.ReactNode = null;
+
   if (pdfId) {
-    return (
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <CreditNotePdf idProp={pdfId} />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  if (shareToken) {
-    return (
+  } else if (shareToken) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <CreditNoteShare tokenProp={shareToken} />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  if (whtShareToken) {
-    return (
+  } else if (whtShareToken) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <WhtCertShare tokenProp={whtShareToken} />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  if (bnShareToken) {
-    return (
+  } else if (bnShareToken) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <BillingNoteShare tokenProp={bnShareToken} />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  // [exchange-rate] Render exchange rate settings — platformMode=true uses PlatformLayout sidebar
-  if (isExchangeRate) {
-    return (
+  } else if (isExchangeRate) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <ExchangeRateSettings platformMode={true} />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  // [inventory-triggers] Render inventory trigger settings — app-extra module required
-  if (isInventoryTriggers) {
-    return (
+  } else if (isInventoryTriggers) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <InventoryTriggersPage />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  // [mfg-form] Manufacturing order form — create new (inside ManufacturingLayout)
-  if (isMfgOrdersForm) {
-    return (
+  } else if (isMfgOrdersForm) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <ManufacturingForm Wrapper={ManufacturingLayout as any} basePath="/manufacturing/orders" />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  // [mfg-form] Manufacturing order form — edit existing (inside ManufacturingLayout)
-  if (mfgOrdersFormEditId) {
-    return (
+  } else if (mfgOrdersFormEditId) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <ManufacturingForm Wrapper={ManufacturingLayout as any} basePath="/manufacturing/orders" />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  // [mfg-bom] BOM form — create new (inside ManufacturingLayout)
-  if (isMfgBomNew) {
-    return (
+  } else if (isMfgBomNew) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <BomFormPage Wrapper={ManufacturingLayout as any} basePath="/manufacturing/bom" />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  // [mfg-bom] BOM form — edit existing (inside ManufacturingLayout)
-  if (mfgBomEditId) {
-    return (
+  } else if (mfgBomEditId) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <BomFormPage Wrapper={ManufacturingLayout as any} basePath="/manufacturing/bom" editIdProp={mfgBomEditId} />
         </Suspense>
       </FullPageOverlay>
     );
-  }
-
-  // [platform-email-config] SMTP settings page — platform super_admin only
-  if (isPlatformEmailConfig) {
-    return (
+  } else if (isPlatformEmailConfig) {
+    overlay = (
       <FullPageOverlay>
         <Suspense fallback={null}>
           <PlatformEmailConfig />
@@ -281,6 +257,12 @@ export default function AppExtra() {
     );
   }
 
-  // [branch-select] Global portal for multi-branch selector — replaces App.tsx injection
-  return <BranchSelectPortal />;
+  // [branch-select] BranchSelectPortal always mounts (portal renders into document.body)
+  // regardless of which route is active — overlay only shows when a special route matches
+  return (
+    <>
+      <BranchSelectPortal />
+      {overlay}
+    </>
+  );
 }
