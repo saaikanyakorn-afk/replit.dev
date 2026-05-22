@@ -184,6 +184,27 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
+## ⏳ PM-hotfix — payment-methods-routes.ts (ลบ auto-insert fallback ออก)
+**วันที่สร้าง:** 2026-05-22
+**อนุมัติ:** พี่ช้าง ✅ (สั่งให้ลบมาก่อนหน้าแล้ว — agent เก่าไม่ได้ลบจริง พบและแก้ 2026-05-22)
+**เหตุผล:** `GET /api/payment-methods` มี block `if (cnt === 0)` ที่ auto-insert 6 default PM เข้า DB ทันทีที่บริษัทยังไม่ได้ตั้งค่า — ทำให้ระบบลงบัญชีได้โดยใช้ account code ที่อาจผิดพลาด ขัดกับ rule ห้าม fallback และขัดคำสั่งของพี่ช้าง
+
+**สิ่งที่ลบออก:** `DEFAULT_PAYMENT_METHODS` array (6 rows) + `if (cnt === 0)` auto-insert block
+
+**พฤติกรรมหลังแก้:** ถ้าบริษัทยังไม่ตั้งค่า PM → API return `[]` → dropdown ว่าง → บันทึกไม่ได้ → ต้องไปตั้งค่าที่ Settings > วิธีชำระเงิน ก่อน
+
+### ไฟล์ที่ push
+| File | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `server/routes/payment-methods-routes.ts` | ลบ DEFAULT_PAYMENT_METHODS + `if (cnt === 0)` auto-insert block | ✅ pushed 2026-05-22 (commit `72081128`) |
+
+### Deploy Command (Production)
+```bash
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/routes/payment-methods-routes.ts && npm run build && pm2 start etax-center
+```
+
+---
+
 ## ⏳ N8-hotfix2 — platform-layout.tsx (Email menu หายบน production)
 **วันที่สร้าง:** 2026-05-21
 **อนุมัติ:** พี่ช้าง ✅ (2026-05-21 — implied by "update document first")

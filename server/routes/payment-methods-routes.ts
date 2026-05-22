@@ -11,38 +11,11 @@ export function registerPaymentMethodsRoutes(app: Express) {
 runBankInfoToPaymentMethodsMigration(db);
 
 // ========== Payment Methods ==========
-const DEFAULT_PAYMENT_METHODS = [
-  { name: "Cash", nameTh: "เงินสด", accountCode: "1001000", sortOrder: 1, isDefault: true },
-  { name: "Bank Transfer", nameTh: "โอนเงิน/เงินฝากธนาคาร", accountCode: "1011000", sortOrder: 2 },
-  { name: "Cheque", nameTh: "เช็ครับ", accountCode: "1021000", sortOrder: 3 },
-  { name: "Credit Card", nameTh: "บัตรเครดิต", accountCode: "1041000", sortOrder: 4 },
-  { name: "PromptPay", nameTh: "พร้อมเพย์", accountCode: "1011000", sortOrder: 5 },
-  { name: "E-Wallet", nameTh: "กระเป๋าเงินอิเล็กทรอนิกส์", accountCode: "1041000", sortOrder: 6 },
-];
 
 app.get("/api/payment-methods", requireAuth, async (req, res) => {
   try {
     const user = req.user as any;
     const companyId = Number(req.query.companyId) || user.companyId;
-    const countRows = await db.execute(sql`SELECT count(*) AS cnt FROM payment_methods WHERE company_id = ${companyId}`);
-    const cnt = Number((countRows.rows[0] as any)?.cnt || 0);
-    if (cnt === 0) {
-      const allAccounts = await db.select().from(accounts).where(eq(accounts.companyId, companyId));
-      const accountMap = new Map(allAccounts.map(a => [a.code, a]));
-      for (const pm of DEFAULT_PAYMENT_METHODS) {
-        const acc = accountMap.get(pm.accountCode);
-        await db.insert(paymentMethods).values({
-          companyId,
-          name: pm.name,
-          nameTh: pm.nameTh,
-          accountCode: pm.accountCode,
-          accountId: acc?.id || null,
-          active: true,
-          isDefault: pm.isDefault || false,
-          sortOrder: pm.sortOrder,
-        });
-      }
-    }
     const typeFilter = req.query.type ? sql` AND payment_type = ${req.query.type}` : sql``;
     const result = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE company_id = ${companyId}${typeFilter} ORDER BY sort_order`);
     res.json(result.rows);
