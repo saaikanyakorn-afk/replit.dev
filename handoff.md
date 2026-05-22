@@ -102,6 +102,21 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
+## Changes made this session — 2026-05-22 (Kai session) [continued]
+
+### Bug fix — branch select dialog ไม่โชว์เมื่อค้นหาเลขนิติบุคคล (กรมสรรพากร)
+
+**root cause:** `BranchSelectPortal` ไม่เคยถูก render ใน component tree ทำให้ `_setState = null` เสมอ เมื่อ `selectBranch()` เรียก `_setState?.({ open: true, ... })` จึงไม่มีผล dialog ไม่โชว์แม้จะ "พบ 6 สาขา"
+
+**fix:**
+- `client/src/App.tsx` — import `BranchSelectPortal` จาก `branch-select-context` และ render `<BranchSelectPortal />` ข้างๆ `<Toaster />` ใน BranchSelectProvider
+
+**หมายเหตุ dev vs production:**
+- dev (Replit sandbox) — SOAP call ถึง rdws.rd.go.th มีปัญหา ETIMEDOUT บางครั้ง เป็นข้อจำกัดของ sandbox ไม่ใช่ bug ใน code (curl ยังใช้ได้ปกติ, production ไม่กระทบ)
+- production — API ทำงานปกติ (พบข้อมูล 6 สาขา) แต่ dialog ไม่โชว์ → แก้แล้ว
+
+---
+
 ## Changes made this session — 2026-05-22 (Kai session)
 
 ### N4b — payment_type column migration + PM default seed (dev only, รอพี่ทราย test)

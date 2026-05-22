@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { CompanyProvider, useCompany } from "@/lib/company-context";
 import { DateSettingsProvider } from "@/hooks/use-date-settings";
-import { BranchSelectProvider } from "@/contexts/branch-select-context";
+import { BranchSelectProvider, BranchSelectPortal } from "@/contexts/branch-select-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import PageLoader from "@/components/page-loader";
@@ -1157,6 +1157,7 @@ function App() {
             <CompanyProvider>
               <DateSettingsProvider>
                 <BranchSelectProvider>
+                <BranchSelectPortal />
                 <Toaster />
                 <UpgradePrompt />
                 <Router />
