@@ -128,7 +128,7 @@ export function AccountCombobox({
                 return (
                   <CommandItem
                     key={acc.id}
-                    value={`${acc.code} ${acctName(acc)}`}
+                    value={`${acc.code} ${acc.nameTh || ""} ${acc.name || ""}`}
                     onSelect={() => {
                       onSelect(acc);
                       setOpen(false);

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { AccountCombobox } from "@/components/account-combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
@@ -732,51 +733,22 @@ export default function DepositForm() {
                     <tr key={idx} className="border-b border-slate-300 group" data-testid={`row-item-${idx}`}>
                       <td className="text-center text-xs py-1 px-1 text-slate-400">{idx + 1}</td>
                       <td className="py-1 px-1">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn("h-7 w-full justify-between text-xs border-dashed font-normal", !item.accountCode && "text-muted-foreground")}
-                              data-testid={`input-account-code-${idx}`}
-                            >
-                              <span className="truncate">{item.accountCode || "เลือกบัญชี"}</span>
-                              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[320px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="พิมพ์ค้นหารหัส/ชื่อบัญชี..." className="h-8 text-xs" />
-                              <CommandList>
-                                <CommandEmpty>ไม่พบบัญชี</CommandEmpty>
-                                <CommandGroup>
-                                  {accounts.map((acc: any) => (
-                                    <CommandItem
-                                      key={acc.id}
-                                      value={`${acc.code} ${acctName(acc)}`}
-                                      onSelect={() => {
-                                        updateItem(idx, "accountCode", acc.code);
-                                        updateItem(idx, "accountName", acctName(acc) || acc.code);
-                                        const prefix = String(acc.code).charAt(0);
-                                        if (prefix === "1") {
-                                          updateItem(idx, "expenseType", "asset");
-                                        } else if (prefix === "5") {
-                                          updateItem(idx, "expenseType", "expense");
-                                        } else {
-                                          updateItem(idx, "expenseType", "other");
-                                        }
-                                      }}
-                                      className="text-xs"
-                                    >
-                                      <Check className={cn("mr-1 h-3 w-3", item.accountCode === acc.code ? "opacity-100" : "opacity-0")} />
-                                      {acc.code} - {acctName(acc)}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <AccountCombobox
+                          accounts={accounts}
+                          value={item.accountCode}
+                          onSelect={(acc) => {
+                            updateItem(idx, "accountCode", acc.code);
+                            updateItem(idx, "accountName", acctName(acc) || acc.code);
+                            const prefix = String(acc.code).charAt(0);
+                            if (prefix === "1") updateItem(idx, "expenseType", "asset");
+                            else if (prefix === "5") updateItem(idx, "expenseType", "expense");
+                            else updateItem(idx, "expenseType", "other");
+                          }}
+                          testId={`input-account-code-${idx}`}
+                          placeholder="เลือกบัญชี"
+                          size="sm"
+                          className="h-7 border-dashed font-normal"
+                        />
                       </td>
                       <td className="py-1 px-1">
                         <Input

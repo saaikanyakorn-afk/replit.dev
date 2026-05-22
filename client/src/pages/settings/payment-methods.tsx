@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Banknote, Plus, Pencil, Trash2, Save, X, Star, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
 import { useLanguage } from "@/hooks/use-language";
@@ -53,6 +53,17 @@ export default function PaymentMethodSettings() {
     },
     enabled: !!selectedCompanyId,
   });
+
+  useEffect(() => {
+    if (!isLoading && methods.length === 0 && selectedCompanyId) {
+      fetch(`/api/payment-methods/seed-defaults?companyId=${selectedCompanyId}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: selectedCompanyId }),
+      }).then(() => queryClient.invalidateQueries({ queryKey: ["/api/payment-methods", selectedCompanyId] }));
+    }
+  }, [isLoading, methods.length, selectedCompanyId]);
 
   const { data: accountsList = [] } = useQuery<any[]>({
     queryKey: ["/api/accounts", selectedCompanyId],

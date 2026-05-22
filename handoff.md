@@ -136,6 +136,16 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 | `client/src/pages/reports/bank-reconciliation.tsx` | ลบ hardcoded `BANK_ACCOUNTS` const, เพิ่ม `accountsQuery` (useQuery `/api/accounts`), `bankAccountsList` filter code.startsWith("1"), Select → AccountCombobox + `topOption={{ value: "all", label: "ทั้งหมด" }}`; แก้ BANK_ACCOUNTS.find → bankAccountsList.find |
 | `client/src/pages/inventory/product-form.tsx` | Select เลือกบัญชี → AccountCombobox + `topOption={{ value: "__none__", label: "ไม่ระบุ" }}` |
 
+**ไฟล์ที่ replace เพิ่ม (code review round 2):**
+
+| File | Change |
+|------|--------|
+| `client/src/components/account-combobox.tsx` | fix search value — ใช้ `${acc.nameTh} ${acc.name}` ทั้ง TH+EN แทน acctName (language-dependent) เพื่อให้ค้นหาได้ทั้งสองภาษา |
+| `client/src/pages/sales/deposit-form.tsx` | import AccountCombobox; replace inline Popover+Command account picker → AccountCombobox (size sm, className h-7 border-dashed); onSelect ยัง update accountName + expenseType ตาม prefix เหมือนเดิม |
+| `client/src/pages/purchases/purchase-deposit-form.tsx` | เหมือน deposit-form.tsx |
+| `server/routes/payment-methods-routes.ts` | ย้าย seedDefaultPaymentMethods ออกจาก GET (state-changing write ใน GET → CSRF risk); เพิ่ม POST `/api/payment-methods/seed-defaults` endpoint แทน |
+| `client/src/pages/settings/payment-methods.tsx` | add `useEffect` import; add useEffect ที่เรียก POST seed-defaults เมื่อ methods.length === 0 แล้ว invalidate query |
+
 **ไฟล์ที่ SKIP (ไม่ใช่ live COA picker):**
 - `accounting-config.tsx` — static mockup
 - `asset-form.tsx` — hardcoded CATEGORIES array ไม่ใช่ live COA

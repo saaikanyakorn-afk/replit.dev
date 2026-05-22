@@ -81,17 +81,23 @@ app.get("/api/payment-methods", requireAuth, async (req, res) => {
     const companyId = Number(req.query.companyId) || user.companyId;
     const typeFilter = req.query.type ? sql` AND payment_type = ${req.query.type}` : sql``;
 
-    // ตรวจว่ายังไม่มีข้อมูลใด — ถ้าเป็นบริษัทใหม่ให้ seed ตัวอย่างให้เลย
+    const result = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE company_id = ${companyId}${typeFilter} ORDER BY sort_order`);
+    res.json(result.rows);
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+app.post("/api/payment-methods/seed-defaults", requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const companyId = Number(req.body.companyId) || Number(req.query.companyId) || user.companyId;
+    if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
     const countResult = await db.execute(
       sql`SELECT COUNT(*) AS cnt FROM payment_methods WHERE company_id = ${companyId}`
     );
     const cnt = Number((countResult.rows[0] as any)?.cnt ?? 0);
-    if (cnt === 0) {
-      await seedDefaultPaymentMethods(companyId);
-    }
-
-    const result = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE company_id = ${companyId}${typeFilter} ORDER BY sort_order`);
-    res.json(result.rows);
+    if (cnt > 0) return res.json({ seeded: false, message: "มีข้อมูลอยู่แล้ว" });
+    await seedDefaultPaymentMethods(companyId);
+    res.json({ seeded: true });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
