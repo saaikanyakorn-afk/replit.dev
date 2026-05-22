@@ -26,7 +26,7 @@ import {
 import {
   ArrowLeft, Plus, FileText, Save, Trash2, Home, BookOpen, ChevronDown, ChevronUp, Pencil,
   RotateCcw, Copy, AlertCircle, CheckCircle2, XCircle, Check, Warehouse, Search, Loader2,
-  X
+  X, Info
 } from "lucide-react";
 import { cn, toLocalDateStr } from "@/lib/utils";
 import { usePrefixOptions } from "@/hooks/use-prefix-options";
@@ -40,6 +40,7 @@ import { useDbdLookup } from "@/hooks/use-dbd-lookup";
 import MultiFileAttachment from "@/components/multi-file-attachment";
 
 import { useDateSettings } from "@/hooks/use-date-settings";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 interface EXPItemForm {
   accountCode: string;
   accountName: string;
@@ -1225,12 +1226,24 @@ export default function Expense() {
                         />
                       </td>
                       <td className="py-1 px-1">
-                        <div
-                          className="h-7 flex items-center text-xs px-1.5 border border-dashed rounded text-slate-600 truncate"
-                          data-testid={`input-account-name-${idx}`}
-                        >
-                          {item.accountName || <span className="text-muted-foreground">ชื่อบัญชี</span>}
-                        </div>
+                        <TooltipProvider delayDuration={300}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className="h-7 flex items-center gap-1 text-xs px-1.5 border border-dashed rounded text-slate-600 truncate cursor-default select-none"
+                                data-testid={`input-account-name-${idx}`}
+                              >
+                                <span className="truncate flex-1">
+                                  {item.accountName || <span className="text-muted-foreground">ชื่อบัญชี</span>}
+                                </span>
+                                <Info className="h-3 w-3 shrink-0 text-slate-400" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              ชื่อบัญชีกรอกอัตโนมัติเมื่อเลือกรหัสบัญชี
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </td>
                       <td className="py-1 px-1">
                         <textarea
