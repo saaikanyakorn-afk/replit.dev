@@ -1636,10 +1636,12 @@ export function registerPurchaseRoutes(app: Express) {
     } catch { return null; }
   }
 
-  async function lookupRdVatAll(taxId: string): Promise<RdBranch[]> {
-    if (!taxId || taxId.length !== 13) return [];
+  async function lookupRdVatAll(taxId: string): Promise<{ branches: RdBranch[]; hasMore: boolean }> {
+    if (!taxId || taxId.length !== 13) return { branches: [], hasMore: false };
     const results = await Promise.all(Array.from({ length: 10 }, (_, i) => lookupRdVatBranch(taxId, i)));
-    return results.filter((r): r is RdBranch => r !== null);
+    const branches = results.filter((r): r is RdBranch => r !== null);
+    const hasMore = results[9] !== null;
+    return { branches, hasMore };
   }
 
   app.get("/api/dbd-lookup/:taxId", requireAuth, async (req, res) => {
@@ -1653,7 +1655,7 @@ export function registerPurchaseRoutes(app: Express) {
       const userCompanies = await db.select().from(companies).where(eq(companies.tenantId, user.tenantId));
       const companyIds = userCompanies.map(c => c.id);
 
-      const [localContacts, branches] = await Promise.all([
+      const [localContacts, rdResult] = await Promise.all([
         companyIds.length > 0
           ? db.select().from(contacts).where(and(
               sql`${contacts.companyId} IN (${sql.join(companyIds.map(id => sql`${id}`), sql`, `)})`,
@@ -1665,9 +1667,9 @@ export function registerPurchaseRoutes(app: Express) {
 
       const contactId = localContacts.length > 0 ? localContacts[0].id : undefined;
 
-      if (branches.length > 0) {
-        const first = branches[0];
-        return res.json({ ...first, branches, ...(contactId ? { contactId } : {}) });
+      if (rdResult.branches.length > 0) {
+        const first = rdResult.branches[0];
+        return res.json({ ...first, branches: rdResult.branches, hasMore: rdResult.hasMore, ...(contactId ? { contactId } : {}) });
       }
 
       if (localContacts.length > 0) {
@@ -1676,6 +1678,20 @@ export function registerPurchaseRoutes(app: Express) {
       }
 
       return res.status(404).json({ message: "ไม่พบข้อมูลในระบบกรมสรรพากร" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "เกิดข้อผิดพลาด" });
+    }
+  });
+
+  app.get("/api/dbd-branch-lookup/:taxId/:branchNumber", requireAuth, async (req, res) => {
+    try {
+      const taxId = String(req.params.taxId || "");
+      const branchNumber = parseInt(String(req.params.branchNumber || ""), 10);
+      if (!taxId || taxId.length !== 13) return res.status(400).json({ message: "เลขนิติบุคคลต้องมี 13 หลัก" });
+      if (isNaN(branchNumber) || branchNumber < 0) return res.status(400).json({ message: "หมายเลขสาขาไม่ถูกต้อง" });
+      const branch = await lookupRdVatBranch(taxId, branchNumber);
+      if (!branch) return res.status(404).json({ message: `ไม่พบสาขาที่ ${branchNumber}` });
+      return res.json(branch);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "เกิดข้อผิดพลาด" });
     }

@@ -2,7 +2,8 @@ import { useState, useEffect, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Building2, MapPin, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Building2, MapPin, CheckCircle2, Search, Loader2 } from "lucide-react";
 
 export interface RdBranch {
   name: string;
@@ -15,14 +16,20 @@ export interface RdBranch {
 interface BranchSelectState {
   open: boolean;
   branches: RdBranch[];
+  hasMore: boolean;
+  taxId: string;
   resolve: ((b: RdBranch | null) => void) | null;
 }
 
 let _setState: ((s: BranchSelectState) => void) | null = null;
 
-export function selectBranch(branches: RdBranch[]): Promise<RdBranch | null> {
+export function selectBranch(
+  branches: RdBranch[],
+  hasMore = false,
+  taxId = ""
+): Promise<RdBranch | null> {
   return new Promise((resolve) => {
-    _setState?.({ open: true, branches, resolve });
+    _setState?.({ open: true, branches, hasMore, taxId, resolve });
   });
 }
 
@@ -30,24 +37,55 @@ export function BranchSelectPortal() {
   const [state, setState] = useState<BranchSelectState>({
     open: false,
     branches: [],
+    hasMore: false,
+    taxId: "",
     resolve: null,
   });
+  const [searchNum, setSearchNum] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
 
   useEffect(() => {
     _setState = setState;
-    return () => {
-      _setState = null;
-    };
+    return () => { _setState = null; };
   }, []);
 
   const handleSelect = (branch: RdBranch) => {
     state.resolve?.(branch);
-    setState({ open: false, branches: [], resolve: null });
+    setState({ open: false, branches: [], hasMore: false, taxId: "", resolve: null });
+    setSearchNum("");
+    setSearchError("");
   };
 
   const handleCancel = () => {
     state.resolve?.(null);
-    setState({ open: false, branches: [], resolve: null });
+    setState({ open: false, branches: [], hasMore: false, taxId: "", resolve: null });
+    setSearchNum("");
+    setSearchError("");
+  };
+
+  const handleSearchBranch = async () => {
+    const num = parseInt(searchNum, 10);
+    if (isNaN(num) || num < 0) {
+      setSearchError("กรุณากรอกหมายเลขสาขาที่ถูกต้อง (เช่น 10, 25, 100)");
+      return;
+    }
+    setSearching(true);
+    setSearchError("");
+    try {
+      const res = await fetch(`/api/dbd-branch-lookup/${state.taxId}/${num}`, { credentials: "include" });
+      if (res.ok) {
+        const branch: RdBranch = await res.json();
+        handleSelect(branch);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setSearchError(data.message || `ไม่พบสาขาที่ ${num} ในระบบกรมสรรพากร`);
+      }
+    } catch {
+      setSearchError("เกิดข้อผิดพลาดในการค้นหา กรุณาลองใหม่");
+    } finally {
+      setSearching(false);
+    }
   };
 
   if (!state.open) return null;
@@ -61,10 +99,13 @@ export function BranchSelectPortal() {
             เลือกสาขา
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
-            พบ {state.branches.length} สาขาในระบบกรมสรรพากร กรุณาเลือกสาขาที่ต้องการ
+            {state.hasMore
+              ? `พบ ${state.branches.length} สาขาแรกในระบบกรมสรรพากร (อาจมีมากกว่านี้)`
+              : `พบ ${state.branches.length} สาขาในระบบกรมสรรพากร กรุณาเลือกสาขาที่ต้องการ`}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-2 mt-2 max-h-[60vh] overflow-y-auto pr-1">
+
+        <div className="flex flex-col gap-2 mt-2 max-h-[45vh] overflow-y-auto pr-1">
           {state.branches.map((b) => (
             <button
               key={b.branchNumber}
@@ -99,6 +140,39 @@ export function BranchSelectPortal() {
             </button>
           ))}
         </div>
+
+        {state.hasMore && (
+          <div className="mt-3 pt-3 border-t space-y-2">
+            <p className="text-xs text-gray-500 font-medium">ค้นหาสาขาเพิ่มเติม</p>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min={0}
+                placeholder="หมายเลขสาขา เช่น 10, 25, 100"
+                value={searchNum}
+                onChange={(e) => { setSearchNum(e.target.value); setSearchError(""); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSearchBranch(); }}
+                data-testid="input-branch-number-search"
+                className="flex-1 h-9 text-sm"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSearchBranch}
+                disabled={searching || !searchNum}
+                data-testid="button-search-branch-number"
+                className="bg-[#fb9678] hover:bg-[#e8855f] text-white shrink-0"
+              >
+                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                <span className="ml-1">ค้นหา</span>
+              </Button>
+            </div>
+            {searchError && (
+              <p className="text-xs text-red-500" data-testid="text-branch-search-error">{searchError}</p>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end pt-2 border-t">
           <Button variant="outline" size="sm" onClick={handleCancel} data-testid="button-branch-cancel">
             ยกเลิก
