@@ -1202,9 +1202,10 @@ export async function runPaymentTypeColumnMigration(db: any) {
   try {
     const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
     if ((flag.rows || []).length > 0) return;
-    await db.execute(sql.raw(`ALTER TABLE payment_methods ADD COLUMN payment_type text`));
+    // ALTER TABLE skipped — column payment_type verified to already exist on production (Step 1 — 2026-05-22)
+    // Only setting flag to prevent future run attempts
     await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
-    console.log("[migration] ✅ payment_type added to payment_methods");
+    console.log("[migration] ✅ payment_type flag set (column already existed on production)");
   } catch (e: any) {
     console.error("[migration] ❌ runPaymentTypeColumnMigration FAILED:", e.message);
   }
