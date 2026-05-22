@@ -19,6 +19,7 @@ import { formatDate, formatNumber } from "@/lib/format";
 import { ArrowLeft, Save, Calculator, BookOpen, Trash2, AlertTriangle, FileText, ChevronDown } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AccountCombobox } from "@/components/account-combobox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -403,16 +404,13 @@ export default function AssetForm() {
               </div>
               <div>
                 <Label>หมวดหมู่ *</Label>
-                <Select value={form.categoryAccountCode} onValueChange={handleCategoryChange}>
-                  <SelectTrigger data-testid="select-category">
-                    <SelectValue placeholder="เลือกหมวดหมู่" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cats.map((c: any) => (
-                      <SelectItem key={c.accountCode} value={c.accountCode}>{c.accountCode} - {c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <AccountCombobox
+                  accounts={cats.map((c: any) => ({ id: c.id || 0, code: c.accountCode, name: c.name, nameTh: c.name }))}
+                  value={form.categoryAccountCode}
+                  onSelect={(acc) => handleCategoryChange(acc.code)}
+                  testId="select-category"
+                  placeholder="เลือกหมวดหมู่"
+                />
               </div>
             </div>
             <div>

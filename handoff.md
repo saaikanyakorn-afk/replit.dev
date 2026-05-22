@@ -146,9 +146,14 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 | `server/routes/payment-methods-routes.ts` | ย้าย seedDefaultPaymentMethods ออกจาก GET (state-changing write ใน GET → CSRF risk); เพิ่ม POST `/api/payment-methods/seed-defaults` endpoint แทน |
 | `client/src/pages/settings/payment-methods.tsx` | add `useEffect` import; add useEffect ที่เรียก POST seed-defaults เมื่อ methods.length === 0 แล้ว invalidate query |
 
+**ไฟล์ที่ replace เพิ่ม (code review round 3):**
+
+| File | Change |
+|------|--------|
+| `client/src/pages/assets/asset-form.tsx` | import AccountCombobox; หมวดหมู่ Select → AccountCombobox (cats map to AccountOption, onSelect → handleCategoryChange); Select import ยังอยู่เพราะ depreciationMethod ยังใช้ |
+
 **ไฟล์ที่ SKIP (ไม่ใช่ live COA picker):**
 - `accounting-config.tsx` — static mockup
-- `asset-form.tsx` — hardcoded CATEGORIES array ไม่ใช่ live COA
 - `general-ledger.tsx` — custom autocomplete อยู่แล้ว
 - `reconcile-account-type.tsx` — เลือก account TYPE ไม่ใช่ account code
 - `warehouse.tsx` — ไม่มี account code Select
