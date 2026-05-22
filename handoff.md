@@ -1,3 +1,91 @@
+# 📋 SESSION LOG — 2026-05-22 AFTERNOON (CURRENT SESSION — READ THIS FIRST)
+
+## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-22
+
+### สิ่งที่ทำใน session นี้ (2026-05-22 afternoon)
+
+| # | สิ่งที่ทำ | ไฟล์ | Status |
+|---|---------|------|--------|
+| 1 | N15: RD VAT branch cache + sequential background crawler | `shared/schema-extra.ts`, `server/migrations-runner.ts`, `server/routes/purchase-routes.ts` | 📝 dev — พี่ทรายเทสแล้ว มีปัญหา (ดูด้านล่าง) |
+| 2 | N15 bug fix: auto-fill ทันทีที่เจอ 1 สาขา แทนที่จะรอ | `client/src/hooks/use-dbd-lookup.ts` | 📝 dev — แก้แล้ว |
+| 3 | N15 UX: auto-polling branch list ทุก 3 วินาทีขณะ crawl | `client/src/contexts/branch-select-context.tsx` | 📝 dev — แก้แล้ว |
+| 4 | N4b: payment_type column migration + seed default 6 PMs | `shared/schema-extra.ts`, `server/migrations-runner.ts`, `server/routes/payment-methods-routes.ts` | 📝 dev — พี่ทรายยืนยัน N4 ทำงานได้ |
+| 5 | N4b fix: seed per tab (receive/pay แยกกัน) + ปุ่ม "เพิ่มต้นแบบ 6 แบบ" | `server/routes/payment-methods-routes.ts`, `client/src/pages/settings/payment-methods.tsx` | 📝 dev — แก้แล้ว |
+| Tasks #108-#116 | Auto-fill tooltip ชื่อบัญชีบนฟอร์มทุกประเภท | หลายไฟล์ | ✅ MERGED |
+
+---
+
+### N15 Bug Fixes (2026-05-22) — รายละเอียด
+
+**Bug:** `use-dbd-lookup.ts` line 68 เช็ค `branches.length > 1` — N15 return branch 0 เดียว + `hasMore: true` → condition false → auto-fill ทันที ไม่เปิด branch selector
+
+**Fix 1 — `client/src/hooks/use-dbd-lookup.ts`:**
+```
+เปลี่ยน: if (result.branches && result.branches.length > 1)
+เป็น:    if (result.branches && (result.branches.length > 1 || hasMore))
+```
+→ เมื่อ hasMore=true (crawl ยังทำงาน) จะเปิด branch selector เสมอ แม้มีแค่ 1 สาขา
+
+**Fix 2 — `client/src/contexts/branch-select-context.tsx`:**
+- เพิ่ม auto-polling ทุก 3 วินาที เมื่อ dialog เปิด + `hasMore=true`
+- Poll `/api/dbd-lookup/:taxId` → อัปเดต branch list อัตโนมัติ
+- เมื่อ `hasMore=false` (crawl เสร็จ) → polling หยุด
+- แสดง spinner `Loader2` + "กำลังโหลดสาขาเพิ่มเติม... (พบแล้ว N สาขา)" ขณะโหลด
+
+---
+
+### N4b Fix (2026-05-22) — รายละเอียด
+
+**Bug:** `seed-defaults` ตรวจ `COUNT(*) > 0` รวม → ถ้ามีข้อมูลเก่าอยู่แล้ว ไม่ seed → tab "จ่ายเงิน" ว่าง
+
+**Fix — `server/routes/payment-methods-routes.ts`:**
+- `seedDefaultPaymentMethods(companyId, paymentTypeFilter)` รับ param `"receive" | "pay" | "all"`
+- `seed-defaults` endpoint รับ `paymentType` จาก body → check count per type แยกกัน
+- ถ้า receive tab ว่าง → seed receive เท่านั้น (ไม่แตะ pay ที่มีอยู่)
+- ถ้า pay tab ว่าง → seed pay เท่านั้น
+
+**Fix — `client/src/pages/settings/payment-methods.tsx`:**
+- `useEffect` เปลี่ยนจาก check `methods.length === 0` → check แยก per tab
+- ถ้า receive tab ว่าง → `seedDefaults("receive")`; ถ้า pay tab ว่าง → `seedDefaults("pay")`
+- ปุ่ม "เพิ่มต้นแบบ 6 แบบ" โชว์ใน CardHeader เฉพาะเมื่อ tab ปัจจุบันว่างเปล่า
+
+---
+
+### Pending Queue ณ สิ้น session 2026-05-22
+
+| Entry | สิ่งที่แก้ | Status รอ |
+|-------|---------|---------|
+| **N15** | RD VAT cache + crawler + branch dialog fix | 📝 dev — รอพี่ทราย retest หลัง fix |
+| **N4b** | payment_type column + seed per tab | 📝 dev — รอพี่ทราย confirm |
+| **N9** | SMTP migration (all routes) | 📝 dev — ยังไม่ได้เทส |
+| **N10-N12** | Email dialog pages | 📝 dev — ยังไม่ได้เทส |
+| **Shared AccountCombobox** | Tasks #108-#116 merged | ✅ merged — รอ พี่ช้าง push production |
+
+---
+
+### ไฟล์ที่เพิ่ม/แก้ใน session นี้ (ยังไม่ push production)
+
+| File | ทำอะไร | Entry |
+|------|--------|-------|
+| `shared/schema-extra.ts` | `runRdVatCacheMigration()` ENTRY #016 + `runPaymentTypeColumnMigration()` ENTRY #015 | N15 + N4b |
+| `server/migrations-runner.ts` | import + enable ทั้ง 2 migrations | N15 + N4b |
+| `server/routes/purchase-routes.ts` | RD VAT cache logic + sequential background crawler | N15 |
+| `server/routes/payment-methods-routes.ts` | seed per paymentType + PM-hotfix (ลบ auto-insert) | N4b |
+| `client/src/pages/settings/payment-methods.tsx` | seed per tab + "เพิ่มต้นแบบ 6 แบบ" button | N4b |
+| `client/src/hooks/use-dbd-lookup.ts` | fix auto-fill: `> 1 || hasMore` | N15 |
+| `client/src/contexts/branch-select-context.tsx` | auto-polling 3s + spinner ขณะ crawl | N15 |
+
+---
+
+### สิ่งที่ต้องทำถัดไป (next agent)
+
+1. ให้พี่ทรายเทส N15 ใน dev — ค้น taxId ที่มีหลายสาขา → dialog ต้องเปิด + polling อัปเดต list
+2. ให้พี่ทรายเทส N4b ใน dev — tab รับเงิน/จ่ายเงิน มีต้นแบบ 6 แบบครบ
+3. เมื่อพี่ทราย confirm → รอพี่ช้าง อนุมัติ push production
+4. **อย่าลืม:** ก่อน push production ต้อง query prod DB (read-only SELECT) ยืนยัน state ก่อนเสมอ
+
+---
+
 # 📋 SESSION LOG — 2026-05-20 NIGHT (REPLACEMENT AGENT)
 
 ## ⚠️ CRITICAL WARNING TO THE NEXT AGENT — READ THIS FIRST

@@ -194,8 +194,11 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 2. `rd_crawl_status` table: track progress ของ background crawl ต่อ tax_id
 3. `lookupRdVatAll()` ถูกแทนที่: cache-first → ถ้า miss → fetch branch 0 เดี่ยว → ส่งกลับ user → background crawl (branches 1,2,3... ทีละตัว, 300ms delay, หยุดที่ 20 consecutive nulls)
 4. `/api/dbd-branch-lookup/:taxId/:branchNumber` → check cache ก่อน → SOAP ถ้า miss → cache ผล
+5. **Bug fix (2026-05-22):** `use-dbd-lookup.ts` condition `> 1` → `> 1 || hasMore` — เปิด branch selector เมื่อ hasMore=true แม้มีแค่ 1 สาขา
+6. **UX fix (2026-05-22):** `branch-select-context.tsx` — auto-polling ทุก 3 วินาทีขณะ dialog เปิด + hasMore=true, อัปเดต branch list อัตโนมัติ, แสดง spinner "กำลังโหลดสาขาเพิ่มเติม..."
 
-**Dev status (2026-05-22 04:22):** ✅ tables created — `[migration] ✅ rd_vat_cache + rd_crawl_status tables created`
+**Dev status (2026-05-22):** ✅ tables created — `[migration] ✅ rd_vat_cache + rd_crawl_status tables created`
+**Bug fixes status:** ✅ แก้แล้ว — รอพี่ทราย retest
 
 ### ไฟล์ที่ต้อง push
 | File | สิ่งที่แก้ | Status |
@@ -203,16 +206,33 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 | `shared/schema-extra.ts` | เพิ่ม `runRdVatCacheMigration()` (ENTRY #016) | 📝 dev — รอพี่ทราย test |
 | `server/migrations-runner.ts` | import + enable `runRdVatCacheMigration` | 📝 dev — รอพี่ทราย test |
 | `server/routes/purchase-routes.ts` | cache logic + sequential background crawler | 📝 dev — รอพี่ทราย test |
+| `client/src/hooks/use-dbd-lookup.ts` | fix: `> 1 || hasMore` — เปิด selector เมื่อ hasMore=true | 📝 dev — รอพี่ทราย test |
+| `client/src/contexts/branch-select-context.tsx` | auto-polling 3s + spinner ขณะ crawl ทำงาน | 📝 dev — รอพี่ทราย test |
+
+### ⚠️ Pre-deploy DB check (ก่อน push production)
+```sql
+-- ยืนยันว่า rd_vat_cache และ rd_crawl_status ยังไม่มีบน production (READ-ONLY)
+SELECT table_name FROM information_schema.tables
+WHERE table_schema='public' AND table_name IN ('rd_vat_cache','rd_crawl_status');
+-- ผลที่ถูกต้อง: 0 rows (ยืนยันแล้ว 2026-05-22 — ไม่มีทั้งสองตาราง)
+```
 
 ### Deploy Command (Production) — ยังไม่ใช้ รอพี่ทราย confirm dev ก่อน
 ```bash
-pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/schema-extra.ts server/migrations-runner.ts server/routes/purchase-routes.ts && npm run build && pm2 start etax-center
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- \
+  shared/schema-extra.ts \
+  server/migrations-runner.ts \
+  server/routes/purchase-routes.ts \
+  client/src/hooks/use-dbd-lookup.ts \
+  client/src/contexts/branch-select-context.tsx && \
+npm run build && pm2 start etax-center
 ```
 
 ### หลัง deploy — ต้องทำทันที
 1. ดู log: ต้องเห็น `[migration] ✅ rd_vat_cache + rd_crawl_status tables created`
-2. ค้นบริษัทใหม่ → ดู log: `[rd-cache] ✅ Crawl complete for XXXXXXXXXXXXX: N branches cached`
-3. ค้นบริษัทเดิมอีกครั้ง → ต้องเร็วทันที (cache hit)
+2. ค้นบริษัทใหม่ → dialog "เลือกสาขา" ต้องเปิด + เห็น spinner "กำลังโหลดสาขาเพิ่มเติม..."
+3. รอ 30 วินาที → branch list อัปเดตอัตโนมัติ → spinner หายเมื่อ crawl เสร็จ
+4. ค้นบริษัทเดิมอีกครั้ง → ต้องเร็วทันที (cache hit, ไม่มี spinner)
 
 ---
 
