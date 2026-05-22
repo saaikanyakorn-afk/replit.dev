@@ -102,7 +102,54 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
-## Changes made this session — for next agent record
+## Changes made this session — 2026-05-22 (Kai session)
+
+### N4b — payment_type column migration + PM default seed (dev only, รอพี่ทราย test)
+
+| File | Change |
+|------|--------|
+| `shared/schema-extra.ts` | `runPaymentTypeColumnMigration()` — ADD COLUMN payment_type to payment_methods (flag: ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522) |
+| `server/migrations-runner.ts` | import + enable runPaymentTypeColumnMigration |
+| `server/routes/payment-methods-routes.ts` | NEW `seedDefaultPaymentMethods()` — seeds 6 default PMs × receive/pay = 12 rows on first GET when company has 0 PMs; smart COA prefix lookup (Cash→1001/1100/1101, Bank→1011/1102/1110, Cheque→1021/1103, Credit Card→1041/1040, PromptPay→1011, E-Wallet→1041); visible+editable data not silent fallback |
+| `db/pending-push-queue.md` | N4b status: ⏳ awaiting → 📝 dev — รอพี่ทราย test; added payment-methods-routes.ts to file list |
+
+### Task #106 — Shared AccountCombobox (ทุกไฟล์เสร็จ ยกเว้น deposit-form)
+
+**shared component ที่สร้าง/แก้:**
+
+| File | Change |
+|------|--------|
+| `client/src/components/account-combobox.tsx` | NEW shared component — Popover+Command, value by id (number) or code (string), sort by code asc, filter isHeader, `topOption` prop, `size` prop (sm/default), **`label` prop** (renders Label inside component) |
+
+**ไฟล์ที่ replace แล้ว (scratchpad 10 ไฟล์):**
+
+| File | Change |
+|------|--------|
+| `client/src/pages/journal-form.tsx` | ลบ local AccountCombobox function (lines 54-110), remove Popover/Command/ChevronsUpDown/Check imports, import shared, fix `onSelect` signature → `acc.id` |
+| `client/src/pages/settings/payment-methods.tsx` | 2 Select (add form + edit form) → AccountCombobox, `size="sm"`, `onSelect acc.code` |
+| `client/src/pages/petty-cash.tsx` | ลบ local AccountCombobox function (57 lines), remove Search/Check/useRef/useEffect, add `acctName` to main component, 5 usages → shared AccountCombobox with `label` prop (ไม่มี wrapper div) |
+| `client/src/pages/hr/payroll-tax.tsx` | Select บัญชีจ่ายเงิน → AccountCombobox + `topOption={{ value: "auto", label: "อัตโนมัติ" }}` |
+| `client/src/pages/ecommerce/settlement-import.tsx` | Select withdrawal bank account → AccountCombobox |
+| `client/src/pages/ecommerce/withdrawal-import.tsx` | Select bank account → AccountCombobox |
+| `client/src/pages/reports/account-statement.tsx` | Select รหัสบัญชี → AccountCombobox + `topOption={{ value: "", label: "ทุกบัญชี" }}` |
+| `client/src/pages/reports/account-statement-contact.tsx` | Select รหัสบัญชี → AccountCombobox + `topOption={{ value: "", label: "ทุกบัญชี" }}`; แก้ condition `if (accountCode && accountCode !== "all")` → `if (accountCode)` |
+| `client/src/pages/reports/bank-reconciliation.tsx` | ลบ hardcoded `BANK_ACCOUNTS` const, เพิ่ม `accountsQuery` (useQuery `/api/accounts`), `bankAccountsList` filter code.startsWith("1"), Select → AccountCombobox + `topOption={{ value: "all", label: "ทั้งหมด" }}`; แก้ BANK_ACCOUNTS.find → bankAccountsList.find |
+| `client/src/pages/inventory/product-form.tsx` | Select เลือกบัญชี → AccountCombobox + `topOption={{ value: "__none__", label: "ไม่ระบุ" }}` |
+
+**ไฟล์ที่ SKIP (ไม่ใช่ live COA picker):**
+- `accounting-config.tsx` — static mockup
+- `asset-form.tsx` — hardcoded CATEGORIES array ไม่ใช่ live COA
+- `general-ledger.tsx` — custom autocomplete อยู่แล้ว
+- `reconcile-account-type.tsx` — เลือก account TYPE ไม่ใช่ account code
+- `warehouse.tsx` — ไม่มี account code Select
+- `deposit-form.tsx` — มี Popover+Command inline อยู่แล้ว + onSelect logic ซับซ้อน (expenseType update) — **รอ batch ถัดไป**
+- `purchase-deposit-form.tsx` — รอ batch ถัดไป (ตรวจ pattern เดียวกับ deposit-form)
+
+**Server status:** ✅ running port 5000, no errors, `/api/payment-methods` 304 OK
+
+---
+
+## Changes made this session — for next agent record (previous sessions)
 
 | File | Change | Who |
 |------|--------|-----|

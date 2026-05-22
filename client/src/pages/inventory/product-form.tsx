@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccountCombobox } from "@/components/account-combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -616,13 +617,13 @@ export default function ProductForm(props: { Wrapper?: React.ComponentType<{ chi
               </div>
               <div>
                 <Label>{accountLabel}</Label>
-                <Select value={form.accountCode || "__none__"} onValueChange={v => setForm(f => ({ ...f, accountCode: v === "__none__" ? "" : v }))}>
-                  <SelectTrigger data-testid="select-account"><SelectValue placeholder="เลือกบัญชี" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">ไม่ระบุ</SelectItem>
-                    {purchaseAccounts.map(a => <SelectItem key={a.code} value={a.code}>{a.code} - {acctName(a)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <AccountCombobox
+                  accounts={purchaseAccounts}
+                  value={form.accountCode || "__none__"}
+                  onSelect={acc => setForm(f => ({ ...f, accountCode: acc.code === "__none__" ? "" : acc.code }))}
+                  testId="select-account"
+                  topOption={{ value: "__none__", label: "ไม่ระบุ" }}
+                />
               </div>
             </div>
           </CardContent>

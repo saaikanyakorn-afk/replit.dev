@@ -10,6 +10,69 @@ export function registerPaymentMethodsRoutes(app: Express) {
 
 runBankInfoToPaymentMethodsMigration(db);
 
+// ─────────────────────────────────────────────────────────────────────
+// Default payment method seed data (ข้อมูลตัวอย่าง — ใช้งานได้จริง แก้ไขได้เอง)
+// เรียงลำดับ: Cash, Bank Transfer, Cheque, Credit Card, PromptPay, E-Wallet
+// ─────────────────────────────────────────────────────────────────────
+const DEFAULT_PM_TEMPLATES = [
+  { name: "Cash",        nameTh: "เงินสด",                     codePrefixes: ["1001","1100","1101","1010","110"], sortOrder: 10, isDefault: true  },
+  { name: "Bank Transfer", nameTh: "โอนเงิน/เงินฝากธนาคาร",   codePrefixes: ["1011","1102","1110","1020","112"], sortOrder: 20, isDefault: false },
+  { name: "Cheque",      nameTh: "เช็ครับ",                    codePrefixes: ["1021","1103","1030","1120","113"], sortOrder: 30, isDefault: false },
+  { name: "Credit Card", nameTh: "บัตรเครดิต",                 codePrefixes: ["1041","1040","2100","2010","104"], sortOrder: 40, isDefault: false },
+  { name: "PromptPay",   nameTh: "พร้อมเพย์",                  codePrefixes: ["1011","1102","1110","1020","112"], sortOrder: 50, isDefault: false },
+  { name: "E-Wallet",    nameTh: "กระเป๋าเงินอิเล็กทรอนิกส์", codePrefixes: ["1041","1040","2100","2010","104"], sortOrder: 60, isDefault: false },
+];
+
+async function seedDefaultPaymentMethods(companyId: number) {
+  try {
+    // ดึง accounts ของบริษัท (เฉพาะที่ไม่ใช่ header) เพื่อหา account code จริง
+    const acctResult = await db.execute(
+      sql`SELECT id, code FROM accounts WHERE company_id = ${companyId} AND NOT COALESCE(is_header, false) ORDER BY code`
+    );
+    const companyAccounts: { id: number; code: string }[] = acctResult.rows as any[];
+
+    function findBestAccount(prefixes: string[]) {
+      for (const prefix of prefixes) {
+        const found = companyAccounts.find((a) => a.code.startsWith(prefix));
+        if (found) return { code: found.code, id: found.id };
+      }
+      return { code: prefixes[0], id: null as number | null };
+    }
+
+    const rows: Array<{
+      name: string; nameTh: string; code: string; id: number | null;
+      sortOrder: number; isDefault: boolean; paymentType: string;
+    }> = [];
+
+    for (const tpl of DEFAULT_PM_TEMPLATES) {
+      const { code, id } = findBestAccount(tpl.codePrefixes);
+      for (const paymentType of ["receive", "pay"]) {
+        const sortForType = paymentType === "pay" ? tpl.sortOrder + 100 : tpl.sortOrder;
+        rows.push({
+          name: tpl.name,
+          nameTh: tpl.nameTh,
+          code,
+          id,
+          sortOrder: sortForType,
+          isDefault: tpl.isDefault && paymentType === "receive",
+          paymentType,
+        });
+      }
+    }
+
+    for (const r of rows) {
+      await db.execute(sql`
+        INSERT INTO payment_methods
+          (company_id, name, name_th, account_code, account_id, active, is_default, sort_order, payment_type)
+        VALUES
+          (${companyId}, ${r.name}, ${r.nameTh}, ${r.code}, ${r.id}, true, ${r.isDefault}, ${r.sortOrder}, ${r.paymentType})
+      `);
+    }
+  } catch (err: any) {
+    console.error("[seedDefaultPaymentMethods] error:", err.message);
+  }
+}
+
 // ========== Payment Methods ==========
 
 app.get("/api/payment-methods", requireAuth, async (req, res) => {
@@ -17,6 +80,16 @@ app.get("/api/payment-methods", requireAuth, async (req, res) => {
     const user = req.user as any;
     const companyId = Number(req.query.companyId) || user.companyId;
     const typeFilter = req.query.type ? sql` AND payment_type = ${req.query.type}` : sql``;
+
+    // ตรวจว่ายังไม่มีข้อมูลใด — ถ้าเป็นบริษัทใหม่ให้ seed ตัวอย่างให้เลย
+    const countResult = await db.execute(
+      sql`SELECT COUNT(*) AS cnt FROM payment_methods WHERE company_id = ${companyId}`
+    );
+    const cnt = Number((countResult.rows[0] as any)?.cnt ?? 0);
+    if (cnt === 0) {
+      await seedDefaultPaymentMethods(companyId);
+    }
+
     const result = await db.execute(sql`SELECT *, name_th AS "nameTh", account_code AS "accountCode", account_id AS "accountId", is_default AS "isDefault", sort_order AS "sortOrder", company_id AS "companyId", bank_name AS "bankName", bank_account_no AS "bankAccountNo", payment_type AS "paymentType" FROM payment_methods WHERE company_id = ${companyId}${typeFilter} ORDER BY sort_order`);
     res.json(result.rows);
   } catch (err: any) { res.status(500).json({ message: err.message }); }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccountCombobox } from "@/components/account-combobox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -2905,17 +2906,14 @@ export default function PayrollTaxPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">บัญชีจ่ายเงิน</label>
-                  <Select value={selectedPaymentMethodId} onValueChange={setSelectedPaymentMethodId}>
-                    <SelectTrigger data-testid="select-payment-account">
-                      <SelectValue placeholder="อัตโนมัติ (เงินสด/ธนาคาร)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">อัตโนมัติ</SelectItem>
-                      {(companyAccounts || []).filter((a: any) => a.code?.startsWith("1") && !a.isHeader).map((a: any) => (
-                        <SelectItem key={a.id} value={a.code}>{a.code} - {acctName(a)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <AccountCombobox
+                    accounts={(companyAccounts || []).filter((a: any) => a.code?.startsWith("1") && !a.isHeader)}
+                    value={selectedPaymentMethodId}
+                    onSelect={acc => setSelectedPaymentMethodId(acc.code)}
+                    testId="select-payment-account"
+                    placeholder="อัตโนมัติ (เงินสด/ธนาคาร)"
+                    topOption={{ value: "auto", label: "อัตโนมัติ" }}
+                  />
                 </div>
               </div>
               {(() => {

@@ -1,5 +1,6 @@
 import Layout from "@/components/layout";
 import SettingsTabs from "@/components/settings-tabs";
+import { AccountCombobox } from "@/components/account-combobox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -230,16 +231,14 @@ export default function PaymentMethodSettings() {
                           <Input data-testid="input-new-name-th" value={addForm.nameTh} onChange={e => setAddForm(prev => prev ? { ...prev, nameTh: e.target.value } : prev)} placeholder="เงินสด" className="h-8 text-sm" />
                         </td>
                         <td className="px-3 py-2">
-                          <Select value={addForm.accountCode} onValueChange={v => handleAccountSelect(v, true)}>
-                            <SelectTrigger data-testid="select-new-account" className="h-8 text-sm">
-                              <SelectValue placeholder="เลือกบัญชี" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {cashBankAccounts.map((a: any) => (
-                                <SelectItem key={a.id} value={a.code}>{a.code} - {acctName(a)}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <AccountCombobox
+                            accounts={cashBankAccounts}
+                            value={addForm.accountCode}
+                            onSelect={(acc) => handleAccountSelect(acc.code, true)}
+                            testId="select-new-account"
+                            size="sm"
+                            placeholder="เลือกบัญชี"
+                          />
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-col gap-1">
@@ -277,16 +276,14 @@ export default function PaymentMethodSettings() {
                               <Input data-testid={`input-edit-name-th-${m.id}`} value={editForm.nameTh} onChange={e => setEditForm(prev => prev ? { ...prev, nameTh: e.target.value } : prev)} className="h-8 text-sm" />
                             </td>
                             <td className="px-3 py-2">
-                              <Select value={editForm.accountCode} onValueChange={v => handleAccountSelect(v, false)}>
-                                <SelectTrigger data-testid={`select-edit-account-${m.id}`} className="h-8 text-sm">
-                                  <SelectValue placeholder="เลือกบัญชี" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {cashBankAccounts.map((a: any) => (
-                                    <SelectItem key={a.id} value={a.code}>{a.code} - {acctName(a)}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <AccountCombobox
+                                accounts={cashBankAccounts}
+                                value={editForm.accountCode}
+                                onSelect={(acc) => handleAccountSelect(acc.code, false)}
+                                testId={`select-edit-account-${m.id}`}
+                                size="sm"
+                                placeholder="เลือกบัญชี"
+                              />
                             </td>
                             <td className="px-3 py-2 min-w-[160px]">
                               <div className="flex flex-col gap-1">

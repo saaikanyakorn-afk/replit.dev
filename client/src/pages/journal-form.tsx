@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { AccountCombobox } from "@/components/account-combobox";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { useCompany } from "@/lib/company-context";
@@ -15,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useDateSettings } from "@/hooks/use-date-settings";
 import {
-  ArrowLeft, Plus, Home, Save, Trash2, BookOpen, CheckCircle2, XCircle, ChevronsUpDown, Check
+  ArrowLeft, Plus, Home, Save, Trash2, BookOpen, CheckCircle2, XCircle
 } from "lucide-react";
 import { cn, toLocalDateStr } from "@/lib/utils";
 import { useThemeColor } from "@/hooks/use-theme-color";
@@ -51,63 +50,6 @@ function fmt(val: string | number | null | undefined): string {
   return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function AccountCombobox({ accounts, value, onSelect, testId }: {
-  accounts: any[];
-  value: number | undefined;
-  onSelect: (id: number) => void;
-  testId: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const { acctName } = useLanguage();
-  const selected = accounts.find((a: any) => a.id === value);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          role="combobox"
-          aria-expanded={open}
-          data-testid={testId}
-          className={cn(
-            "flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            !value && "text-muted-foreground"
-          )}
-        >
-          <span className="truncate">
-            {selected ? `${selected.code} - ${acctName(selected)}` : "พิมพ์เพื่อค้นหาบัญชี..."}
-          </span>
-          <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="ค้นหารหัสหรือชื่อบัญชี..." className="h-8 text-xs" />
-          <CommandList>
-            <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">ไม่พบบัญชี</CommandEmpty>
-            <CommandGroup className="max-h-[200px] overflow-auto">
-              {accounts.filter((acc: any) => !acc.isHeader).map((acc: any) => (
-                <CommandItem
-                  key={acc.id}
-                  value={`${acc.code} ${acctName(acc)}`}
-                  onSelect={() => {
-                    onSelect(acc.id);
-                    setOpen(false);
-                  }}
-                  className="text-xs"
-                >
-                  <Check className={cn("mr-1.5 h-3 w-3", value === acc.id ? "opacity-100" : "opacity-0")} />
-                  <span className="font-medium text-slate-700 dark:text-slate-200">{acc.code}</span>
-                  <span className="ml-1.5 text-slate-500 dark:text-slate-400">{acctName(acc)}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export default function JournalForm() {
   const [, navigate] = useLocation();
@@ -446,8 +388,9 @@ export default function JournalForm() {
                         <AccountCombobox
                           accounts={accounts}
                           value={line.accountId}
-                          onSelect={(id) => updateLine(idx, "accountId", id)}
+                          onSelect={(acc) => updateLine(idx, "accountId", acc.id)}
                           testId={`select-account-${idx}`}
+                          size="sm"
                         />
                       </TableCell>
                       <TableCell className="border-r border-slate-200 dark:border-slate-600 py-1.5">

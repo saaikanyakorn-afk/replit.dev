@@ -3,7 +3,7 @@ import Layout from "@/components/layout";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccountCombobox } from "@/components/account-combobox";
 import { ArrowLeft, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 import { formatDate } from "@/lib/format";
@@ -56,7 +56,7 @@ export default function AccountStatementContactPage() {
       const p = new URLSearchParams({ companyId });
       if (startDate) p.set("startDate", startDate);
       if (endDate) p.set("endDate", endDate);
-      if (accountCode && accountCode !== "all") p.set("accountCode", accountCode);
+      if (accountCode) p.set("accountCode", accountCode);
       if (contactId && contactId !== "all") p.set("contactId", contactId);
       const r = await fetch(`/api/reports/account-statement?${p}`, { credentials: "include" });
       if (!r.ok) return [];
@@ -93,17 +93,14 @@ export default function AccountStatementContactPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500">รหัสบัญชี</label>
-              <Select value={accountCode} onValueChange={setAccountCode}>
-                <SelectTrigger className="w-64" data-testid="select-account">
-                  <SelectValue placeholder="ทุกบัญชี" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทุกบัญชี</SelectItem>
-                  {detailAccounts.map((a: any) => (
-                    <SelectItem key={a.code} value={a.code}>{a.code} - {a.nameTh || a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AccountCombobox
+                accounts={detailAccounts}
+                value={accountCode}
+                onSelect={acc => setAccountCode(acc.code)}
+                testId="select-account"
+                topOption={{ value: "", label: "ทุกบัญชี" }}
+                className="w-64"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500">คู่ค้า</label>

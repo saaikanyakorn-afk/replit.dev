@@ -184,9 +184,9 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
-## ⏳ N4b — payment_type column migration (PRODUCTION DOWN — PM ใช้ไม่ได้ทั้งหมด)
+## 📝 N4b — payment_type column migration (รอพี่ทราย test ใน dev)
 **วันที่สร้าง:** 2026-05-22
-**อนุมัติ:** รอพี่ช้าง ✋
+**อนุมัติ production:** ยังไม่ push — ย้ายมา test ใน dev ก่อน (พี่ช้าง สั่ง 2026-05-22)
 **เหตุผล:** `payment_methods` table บน production ไม่มี column `payment_type` → ทุก operation (GET/POST/PUT) error ทันที → พี่ทรายเทสไม่ได้ทั้งฝั่งรับและจ่าย
 **Root cause:** ACE Batch deploy (2026-05-21) push `payment-methods-routes.ts` ที่ใช้ `payment_type` ในทุก SQL query แต่ไม่เคยมี migration function สร้าง column นี้บน production DB
 
@@ -195,15 +195,19 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 **Migration:** `ALTER TABLE payment_methods ADD COLUMN payment_type text` — ไม่มี `IF NOT EXISTS`
 **Flag:** `ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522`
 
+**Dev status (2026-05-22):** ✅ column `payment_type` มีอยู่ใน dev DB แล้ว — migration ทำงานสำเร็จ
+→ รอพี่ทราย test payment settings ใน dev → confirm → แล้วค่อย push production
+
 ### ไฟล์ที่ต้อง push (isolated loop — Rule 3)
 | File | สิ่งที่แก้ | Status |
 |------|-----------|--------|
-| `shared/schema-extra.ts` | เพิ่ม `runPaymentTypeColumnMigration()` (ENTRY #015) | ⏳ awaiting |
-| `server/migrations-runner.ts` | import + enable `runPaymentTypeColumnMigration` | ⏳ awaiting |
+| `shared/schema-extra.ts` | เพิ่ม `runPaymentTypeColumnMigration()` (ENTRY #015) | 📝 dev — รอพี่ทราย test |
+| `server/migrations-runner.ts` | import + enable `runPaymentTypeColumnMigration` | 📝 dev — รอพี่ทราย test |
+| `server/routes/payment-methods-routes.ts` | + default PM seeding (visible, editable) | 📝 dev — รอพี่ทราย test |
 
-### Deploy Command (Production)
+### Deploy Command (Production) — ยังไม่ใช้ รอพี่ทราย confirm dev ก่อน
 ```bash
-pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/schema-extra.ts server/migrations-runner.ts && npm run build && pm2 start etax-center
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/schema-extra.ts server/migrations-runner.ts server/routes/payment-methods-routes.ts && npm run build && pm2 start etax-center
 ```
 
 ### หลัง deploy — ต้องทำทันที (Steps 7-9)

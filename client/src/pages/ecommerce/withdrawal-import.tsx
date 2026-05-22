@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccountCombobox } from "@/components/account-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCompany } from "@/lib/company-context";
@@ -237,16 +238,13 @@ export default function WithdrawalImportPage() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">บัญชีธนาคาร (เดบิต - เงินเข้า)</label>
-                  <Select value={bankAccountCode} onValueChange={setBankAccountCode}>
-                    <SelectTrigger data-testid="select-bank-account">
-                      <SelectValue placeholder="เลือกบัญชีธนาคาร" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bankAccounts.map((a: any) => (
-                        <SelectItem key={a.id} value={a.code}>{a.code} - {a.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <AccountCombobox
+                    accounts={bankAccounts}
+                    value={bankAccountCode}
+                    onSelect={acc => setBankAccountCode(acc.code)}
+                    testId="select-bank-account"
+                    placeholder="เลือกบัญชีธนาคาร"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">บัญชี Wallet (เครดิต - ตัดยอด)</label>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccountCombobox } from "@/components/account-combobox";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -2238,16 +2239,13 @@ export default function SettlementImport() {
                         <Landmark className="h-3 w-3 inline mr-1" />
                         บัญชีธนาคาร (เดบิต - เงินเข้า)
                       </label>
-                      <Select value={bankAccountCode} onValueChange={setBankAccountCode}>
-                        <SelectTrigger data-testid="select-withdrawal-bank">
-                          <SelectValue placeholder="เลือกบัญชีธนาคาร" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {bankAccounts.map((a: any) => (
-                            <SelectItem key={a.id} value={a.code}>{a.code} - {a.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <AccountCombobox
+                        accounts={bankAccounts}
+                        value={bankAccountCode}
+                        onSelect={acc => setBankAccountCode(acc.code)}
+                        testId="select-withdrawal-bank"
+                        placeholder="เลือกบัญชีธนาคาร"
+                      />
                     </div>
                     <div className="text-sm">
                       <span className="text-gray-500">เลือก: </span>

@@ -8,74 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Wallet, Plus, ArrowDownCircle, ArrowUpCircle, Trash2, Settings2, ChevronRight, Search, Check, Paperclip, ExternalLink, CalendarIcon, X, Pencil } from "lucide-react";
+import { Wallet, Plus, ArrowDownCircle, ArrowUpCircle, Trash2, Settings2, ChevronRight, Paperclip, ExternalLink, CalendarIcon, X, Pencil } from "lucide-react";
 import ThaiDateInput from "@/components/thai-date-input";
 import { formatDate } from "@/lib/format";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useLanguage } from "@/hooks/use-language";
+import { AccountCombobox } from "@/components/account-combobox";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/lib/company-context";
 import { useToast } from "@/hooks/use-toast";
 import { toLocalDateStr } from "@/lib/utils";
 
 import { useDateSettings } from "@/hooks/use-date-settings";
-function AccountCombobox({ accounts, value, onChange, label, placeholder }: { accounts: any[]; value: string; onChange: (code: string, name: string) => void; label?: string; placeholder?: string }) {
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const { acctName } = useLanguage();
-  const selectedAcc = accounts.find((a: any) => a.code === value);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const filtered = accounts.filter((a: any) => {
-    if (!search) return true;
-    const term = search.toLowerCase();
-    return a.code.toLowerCase().includes(term) || acctName(a).toLowerCase().includes(term);
-  });
-
-  return (
-    <div ref={ref} className="relative">
-      <Label>{label || "หมวดค่าใช้จ่าย"}</Label>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder={placeholder || "พิมพ์ค้นหารหัสหรือชื่อบัญชี..."}
-          value={open ? search : selectedAcc ? `${selectedAcc.code} - ${acctName(selectedAcc)}` : search}
-          onChange={e => { setSearch(e.target.value); if (!open) setOpen(true); }}
-          onFocus={() => { setOpen(true); setSearch(""); }}
-          data-testid="input-txn-account-search"
-        />
-      </div>
-      {open && (
-        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white border rounded-md shadow-lg">
-          {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">ไม่พบบัญชีที่ค้นหา</div>
-          ) : (
-            filtered.map((a: any) => (
-              <div
-                key={a.code}
-                className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent ${a.code === value ? "bg-accent/50" : ""}`}
-                onClick={() => { onChange(a.code, acctName(a) || ""); setSearch(""); setOpen(false); }}
-                data-testid={`option-account-${a.code}`}
-              >
-                {a.code === value && <Check className="h-3.5 w-3.5 text-primary" />}
-                <span className={a.code === value ? "font-medium" : ""}>{a.code} - {acctName(a)}</span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function formatMoney(v: number) {
   return v.toLocaleString("th-TH", { minimumFractionDigits: 2 });
@@ -90,6 +34,7 @@ export default function PettyCash() {
   const { selectedCompanyId } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { acctName } = useLanguage();
 
   const [selectedFundId, setSelectedFundId] = useState<number | null>(null);
   const [fundDialogOpen, setFundDialogOpen] = useState(false);
@@ -583,16 +528,18 @@ export default function PettyCash() {
             <AccountCombobox
               accounts={pettyCashAccounts}
               value={fundForm.pettyCashAccountCode}
-              onChange={(code, _name) => setFundForm(f => ({ ...f, pettyCashAccountCode: code }))}
-              label="บัญชีเงินสดย่อย (Dr)"
+              onSelect={acc => setFundForm(f => ({ ...f, pettyCashAccountCode: acc.code }))}
               placeholder="เช่น 1115 เงินสดย่อย"
+              testId="select-fund-petty-account"
+              label="บัญชีเงินสดย่อย (Dr)"
             />
             <AccountCombobox
               accounts={cashBankAccounts}
               value={fundForm.cashAccountCode}
-              onChange={(code, _name) => setFundForm(f => ({ ...f, cashAccountCode: code }))}
-              label="บัญชีเงินสด/ธนาคารที่จ่าย (Cr)"
+              onSelect={acc => setFundForm(f => ({ ...f, cashAccountCode: acc.code }))}
               placeholder="เช่น 1110 เงินสด"
+              testId="select-fund-cash-account"
+              label="บัญชีเงินสด/ธนาคารที่จ่าย (Cr)"
             />
             <div>
               <Label>หมายเหตุ</Label>
@@ -626,16 +573,18 @@ export default function PettyCash() {
             <AccountCombobox
               accounts={pettyCashAccounts}
               value={editForm.pettyCashAccountCode}
-              onChange={(code, _name) => setEditForm(f => ({ ...f, pettyCashAccountCode: code }))}
-              label="บัญชีเงินสดย่อย (Dr)"
+              onSelect={acc => setEditForm(f => ({ ...f, pettyCashAccountCode: acc.code }))}
               placeholder="เช่น 1115 เงินสดย่อย"
+              testId="select-edit-petty-account"
+              label="บัญชีเงินสดย่อย (Dr)"
             />
             <AccountCombobox
               accounts={cashBankAccounts}
               value={editForm.cashAccountCode}
-              onChange={(code, _name) => setEditForm(f => ({ ...f, cashAccountCode: code }))}
-              label="บัญชีเงินสด/ธนาคารที่จ่าย (Cr)"
+              onSelect={acc => setEditForm(f => ({ ...f, cashAccountCode: acc.code }))}
               placeholder="เช่น 1110 เงินสด"
+              testId="select-edit-cash-account"
+              label="บัญชีเงินสด/ธนาคารที่จ่าย (Cr)"
             />
             <div>
               <Label>หมายเหตุ</Label>
@@ -693,7 +642,8 @@ export default function PettyCash() {
                 <AccountCombobox
                   accounts={expenseAccounts}
                   value={txnForm.expenseAccountCode}
-                  onChange={(code, name) => setTxnForm(f => ({ ...f, expenseAccountCode: code, expenseAccountName: name }))}
+                  onSelect={acc => setTxnForm(f => ({ ...f, expenseAccountCode: acc.code, expenseAccountName: acctName(acc) }))}
+                  testId="input-txn-account-search"
                   label="หมวดค่าใช้จ่าย *"
                 />
               </>

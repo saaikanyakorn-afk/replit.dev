@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccountCombobox } from "@/components/account-combobox";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
 import { useLanguage } from "@/hooks/use-language";
@@ -31,13 +32,6 @@ const MONTHS = [
   { value: "12", label: "ธันวาคม" },
 ];
 
-const BANK_ACCOUNTS = [
-  { code: "1001", name: "เงินสด" },
-  { code: "1011", name: "เงินฝากออมทรัพย์" },
-  { code: "1021", name: "เงินฝากกระแสรายวัน" },
-  { code: "1031", name: "เงินฝากประจำ" },
-  { code: "1032", name: "เงินฝากอื่น" },
-];
 
 function fmt(val: string | number | null | undefined): string {
   const n = parseFloat(String(val || "0"));
@@ -109,6 +103,18 @@ export default function BankReconciliation() {
     enabled: !!companyId,
   });
 
+  const accountsQuery = useQuery<any[]>({
+    queryKey: ["/api/accounts", companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const r = await fetch(`/api/accounts?companyId=${companyId}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!companyId,
+  });
+  const bankAccountsList = (accountsQuery.data || []).filter((a: any) => !a.isHeader && a.code?.startsWith("1"));
+
   const journalQuery = useQuery<JournalEntryWithLines[]>({
     queryKey: ["/api/bank-reconciliation/journal-entries", companyId, startDate, endDate, accountCode],
     queryFn: async () => {
@@ -172,7 +178,7 @@ export default function BankReconciliation() {
           statements: statements.map(s => ({
             ...s,
             accountCode: accountCode !== "all" ? accountCode : s.accountCode || null,
-            accountName: BANK_ACCOUNTS.find(b => b.code === accountCode)?.name || null,
+            accountName: bankAccountsList.find((b: any) => b.code === accountCode)?.nameTh || bankAccountsList.find((b: any) => b.code === accountCode)?.name || null,
           })),
         }),
       });
@@ -337,17 +343,14 @@ export default function BankReconciliation() {
         <div className="flex flex-wrap gap-3 items-end">
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">บัญชีธนาคาร</label>
-            <Select value={accountCode} onValueChange={setAccountCode} data-testid="select-account-code">
-              <SelectTrigger className="w-[220px]" data-testid="trigger-account-code">
-                <SelectValue placeholder="เลือกบัญชี" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">ทั้งหมด</SelectItem>
-                {BANK_ACCOUNTS.map(a => (
-                  <SelectItem key={a.code} value={a.code}>{a.code} - {acctName(a)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <AccountCombobox
+              accounts={bankAccountsList}
+              value={accountCode}
+              onSelect={acc => setAccountCode(acc.code)}
+              testId="select-account-code"
+              topOption={{ value: "all", label: "ทั้งหมด" }}
+              className="w-[220px]"
+            />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">เดือน</label>
