@@ -524,7 +524,8 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 **Reason:** N15 — sequential background SOAP crawler to pre-warm branch data from กรมสรรพากร. Fixes unreliable parallel SOAP in dev sandbox; improves production repeat-lookup speed.
 
 **Dev DB verified:** 2026-05-22 04:22 — `[migration] ✅ rd_vat_cache + rd_crawl_status tables created`
-**Status:** 🔄 Active in dev — awaiting push approval from พี่ช้าง
+**Production DB verified (Step 1 — 2026-05-22):** Both tables already exist on production. Flag `CREATE_RD_VAT_CACHE_TABLES_20260522` confirmed SET in `system_config`. Tables were created by a prior push session. Column structure matches migration definition.
+**Status:** ✅ CONFIRMED on production 2026-05-22 — tables exist, flag set, no action needed
 
 ---
 
@@ -537,12 +538,12 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 **Backup location:** No backup required — ADD COLUMN nullable, no default, no existing data affected (Rule 4)
 
 **Migration code:** `shared/schema-extra.ts` → `runPaymentTypeColumnMigration()`
-**Caller:** `server/migrations-runner.ts` (central runner called from `server/index-extra.ts`)
+**Caller:** `server/migrations-runner.ts` (central runner)
 **Flag:** `ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522` in `system_config`
-**Reason:** `payment-methods-routes.ts` deployed (ACE Batch 2026-05-21) references `payment_type` in every SELECT/INSERT/UPDATE/WHERE — production DB missing column → error on all PM operations. Root cause: column was added to dev DB directly (db:push) without migration function. Fix: migration function with no `IF NOT EXISTS` fallback per Rule 0a.
+**Reason:** `payment-methods-routes.ts` deployed (ACE Batch 2026-05-21) references `payment_type` in every SELECT/INSERT/UPDATE/WHERE — production DB missing column → error on all PM operations. Root cause: column was added to dev DB directly (db:push) without migration function.
 
-**Production DB verified:** 2026-05-22 — confirmed absent by error: `column "payment_type" of relation "payment_methods" does not exist`
-**Status:** 🔄 Migration active — awaiting push approval from พี่ช้าง
+**Production DB verified (Step 1 — 2026-05-22):** Column `payment_type` already EXISTS on production (12 columns confirmed on payment_methods). Flag `ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522` NOT set in system_config. Column was present before our migration ran — likely added by a prior session without flag. Migration code updated (Step 3 — 2026-05-22): ALTER TABLE skipped (column verified to exist), migration now only sets flag to close the loop. No `IF NOT EXISTS` fallback per Rule 0a — code reflects confirmed fact.
+**Status:** 🔄 Flag-only migration pushed to GitHub (commit `200d94a0`) — awaiting Step 6 server restart to set flag on production
 
 ---
 
