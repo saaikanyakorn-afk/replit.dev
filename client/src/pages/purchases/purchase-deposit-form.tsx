@@ -6,6 +6,7 @@ import Layout from "@/components/layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { AccountCombobox } from "@/components/account-combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -756,14 +757,25 @@ export default function PurchaseDepositForm() {
                         />
                       </td>
                       <td className="py-1 px-1">
-                        <Input
-                          data-testid={`input-account-name-${idx}`}
-                          value={item.accountName}
-                          onChange={e => !item.accountCode && updateItem(idx, "accountName", e.target.value)}
-                          readOnly={!!item.accountCode}
-                          className={cn("h-7 text-xs border-dashed", item.accountCode && "bg-slate-50 text-slate-500 cursor-default select-none")}
-                          placeholder="ชื่อบัญชี"
-                        />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Input
+                                data-testid={`input-account-name-${idx}`}
+                                value={item.accountName}
+                                onChange={e => !item.accountCode && updateItem(idx, "accountName", e.target.value)}
+                                readOnly={!!item.accountCode}
+                                className={cn("h-7 text-xs border-dashed", item.accountCode && "bg-slate-50 text-slate-500 cursor-default select-none")}
+                                placeholder="ชื่อบัญชี"
+                              />
+                            </TooltipTrigger>
+                            {item.accountCode && (
+                              <TooltipContent>
+                                ชื่อบัญชีกรอกอัตโนมัติเมื่อเลือกรหัสบัญชี
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       </td>
                       <td className="py-1 px-1">
                         <textarea
