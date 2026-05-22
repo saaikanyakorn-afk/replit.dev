@@ -102,6 +102,17 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
+## Task status update — 2026-05-22
+
+| Task | Status | หมายเหตุ |
+|------|--------|----------|
+| #106 Shared AccountCombobox | ✅ MERGED | เสร็จครบแล้ว |
+| #107 AccountCombobox deposit forms | ✅ MERGED | task agent ลบ unused Popover/Command imports ออกจาก deposit-form + purchase-deposit-form |
+| #108 Auto-fill account name on deposit forms | ⏳ PENDING (blocked) | รอ #107 merge ครบ |
+| #109 AccountCombobox cleanup expense/payment forms | 🔄 IN_PROGRESS | task agent กำลังทำ |
+
+---
+
 ## Changes made this session — 2026-05-22 (Kai session) [continued]
 
 ### Bug fix — branch select dialog ไม่โชว์เมื่อค้นหาเลขนิติบุคคล (กรมสรรพากร)
