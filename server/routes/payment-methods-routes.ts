@@ -91,6 +91,8 @@ app.post("/api/payment-methods/seed-defaults", requireAuth, async (req, res) => 
     const user = req.user as any;
     const companyId = Number(req.body.companyId) || Number(req.query.companyId) || user.companyId;
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
+    const ac = await checkDocOwnership(companyId, req.user);
+    if (!ac.allowed) return res.status(403).json({ message: ac.message });
     const countResult = await db.execute(
       sql`SELECT COUNT(*) AS cnt FROM payment_methods WHERE company_id = ${companyId}`
     );
