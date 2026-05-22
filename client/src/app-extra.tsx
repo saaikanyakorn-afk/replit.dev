@@ -16,10 +16,8 @@
  * differences between wouter <Route> outside <Switch> in dev vs production compiled bundle.
  * Extract id/token from the path string directly and pass as props — no useParams() needed.
  *
- * NOTE (2026-05-21): Manufacturing/doc-import routes (MES, material-issue, production-finish,
- * NCR, process-scan, employee-qr, doc-import pages) are present on dev but NOT YET on
- * production. They are excluded here until those files are pushed to production repo.
- * See handoff.md Group 2 Special Rule and db/pending-push-queue.md ACE Batch Hotfix entry.
+ * NOTE (2026-05-22): Manufacturing routes added — MES, NCR, production-finish, material-issue,
+ * process-scan, employee-qr pages now pushed to production repo (N12 batch 2026-05-22).
  */
 
 import { lazy, Suspense, useEffect } from "react";
@@ -49,6 +47,19 @@ const BomFormPage = lazy(() => import("@/pages/inventory/bom-form"));
 
 // [platform-email-config] SMTP config — platform super_admin only (app-extra bypass)
 const PlatformEmailConfig = lazy(() => import("@/pages/platform/email-config"));
+
+// [N12] Manufacturing routes — pushed to production 2026-05-22
+const MesWorkOrders      = lazy(() => import("@/pages/manufacturing/mes-work-orders"));
+const MesUnitDetail      = lazy(() => import("@/pages/manufacturing/mes-unit-detail"));
+const MesScanStation     = lazy(() => import("@/pages/manufacturing/mes-scan-station"));
+const ProcessScanStation = lazy(() => import("@/pages/manufacturing/process-scan-station"));
+const NcrList            = lazy(() => import("@/pages/manufacturing/ncr-list"));
+const NcrForm            = lazy(() => import("@/pages/manufacturing/ncr-form"));
+const ProductionFinishList = lazy(() => import("@/pages/manufacturing/production-finish-list"));
+const ProductionFinishForm = lazy(() => import("@/pages/manufacturing/production-finish-form"));
+const MaterialIssueList  = lazy(() => import("@/pages/inventory/material-issue-list"));
+const MaterialIssueForm  = lazy(() => import("@/pages/inventory/material-issue-form"));
+const EmployeeQr         = lazy(() => import("@/pages/inventory/employee-qr"));
 
 function FullPageOverlay({ children }: { children: React.ReactNode }) {
   return (
@@ -115,6 +126,22 @@ function matchPlatformEmailConfig(location: string): boolean {
   return location.replace(/\?.*$/, "") === "/platform/email-config";
 }
 
+// [N12] Manufacturing route matchers
+function matchMesWorkOrders(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/mes-work-orders"; }
+function matchMesUnitDetail(l: string): string | null { const m = l.replace(/\?.*$/, "").match(/^\/manufacturing\/mes\/(\d+)$/); return m ? m[1] : null; }
+function matchMesScanStation(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/mes-scan"; }
+function matchProcessScanStation(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/process-scan"; }
+function matchNcrList(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/ncr"; }
+function matchNcrFormNew(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/ncr/form"; }
+function matchNcrFormEdit(l: string): string | null { const m = l.replace(/\?.*$/, "").match(/^\/manufacturing\/ncr\/form\/(\d+)$/); return m ? m[1] : null; }
+function matchProductionFinishList(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/production-finish"; }
+function matchProductionFinishFormNew(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/production-finish/form"; }
+function matchProductionFinishFormEdit(l: string): string | null { const m = l.replace(/\?.*$/, "").match(/^\/manufacturing\/production-finish\/form\/(\d+)$/); return m ? m[1] : null; }
+function matchMaterialIssueList(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/material-issue"; }
+function matchMaterialIssueFormNew(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/material-issue/form"; }
+function matchMaterialIssueFormEdit(l: string): string | null { const m = l.replace(/\?.*$/, "").match(/^\/manufacturing\/material-issue\/form\/(\d+)$/); return m ? m[1] : null; }
+function matchEmployeeQr(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/employee-qr"; }
+
 export default function AppExtra() {
   const { user, loading } = useAuth();
   const [location, setLocation] = useLocation();
@@ -163,6 +190,21 @@ export default function AppExtra() {
   const isMfgBomNew = matchMfgBomNew(location);
   const mfgBomEditId = matchMfgBomEdit(location);
   const isPlatformEmailConfig = matchPlatformEmailConfig(location);
+  // [N12]
+  const isMesWorkOrders = matchMesWorkOrders(location);
+  const mesUnitDetailId = matchMesUnitDetail(location);
+  const isMesScanStation = matchMesScanStation(location);
+  const isProcessScanStation = matchProcessScanStation(location);
+  const isNcrList = matchNcrList(location);
+  const isNcrFormNew = matchNcrFormNew(location);
+  const ncrFormEditId = matchNcrFormEdit(location);
+  const isProductionFinishList = matchProductionFinishList(location);
+  const isProductionFinishFormNew = matchProductionFinishFormNew(location);
+  const productionFinishFormEditId = matchProductionFinishFormEdit(location);
+  const isMaterialIssueList = matchMaterialIssueList(location);
+  const isMaterialIssueFormNew = matchMaterialIssueFormNew(location);
+  const materialIssueFormEditId = matchMaterialIssueFormEdit(location);
+  const isEmployeeQr = matchEmployeeQr(location);
 
   // Determine overlay content based on current route
   let overlay: React.ReactNode = null;
@@ -255,6 +297,35 @@ export default function AppExtra() {
         </Suspense>
       </FullPageOverlay>
     );
+  // [N12] Manufacturing routes
+  } else if (isMesWorkOrders) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MesWorkOrders /></Suspense></FullPageOverlay>);
+  } else if (mesUnitDetailId) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MesUnitDetail idProp={mesUnitDetailId} /></Suspense></FullPageOverlay>);
+  } else if (isMesScanStation) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MesScanStation /></Suspense></FullPageOverlay>);
+  } else if (isProcessScanStation) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><ProcessScanStation /></Suspense></FullPageOverlay>);
+  } else if (isNcrList) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><NcrList /></Suspense></FullPageOverlay>);
+  } else if (isNcrFormNew) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><NcrForm /></Suspense></FullPageOverlay>);
+  } else if (ncrFormEditId) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><NcrForm idProp={ncrFormEditId} /></Suspense></FullPageOverlay>);
+  } else if (isProductionFinishList) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><ProductionFinishList /></Suspense></FullPageOverlay>);
+  } else if (isProductionFinishFormNew) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><ProductionFinishForm /></Suspense></FullPageOverlay>);
+  } else if (productionFinishFormEditId) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><ProductionFinishForm idProp={productionFinishFormEditId} /></Suspense></FullPageOverlay>);
+  } else if (isMaterialIssueList) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueList /></Suspense></FullPageOverlay>);
+  } else if (isMaterialIssueFormNew) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueForm /></Suspense></FullPageOverlay>);
+  } else if (materialIssueFormEditId) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueForm idProp={materialIssueFormEditId} /></Suspense></FullPageOverlay>);
+  } else if (isEmployeeQr) {
+    overlay = (<FullPageOverlay><Suspense fallback={null}><EmployeeQr /></Suspense></FullPageOverlay>);
   }
 
   // [branch-select] BranchSelectPortal always mounts (portal renders into document.body)
