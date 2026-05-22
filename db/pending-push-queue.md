@@ -184,6 +184,35 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
+## ⏳ N4b — payment_type column migration (PRODUCTION DOWN — PM ใช้ไม่ได้ทั้งหมด)
+**วันที่สร้าง:** 2026-05-22
+**อนุมัติ:** รอพี่ช้าง ✋
+**เหตุผล:** `payment_methods` table บน production ไม่มี column `payment_type` → ทุก operation (GET/POST/PUT) error ทันที → พี่ทรายเทสไม่ได้ทั้งฝั่งรับและจ่าย
+**Root cause:** ACE Batch deploy (2026-05-21) push `payment-methods-routes.ts` ที่ใช้ `payment_type` ในทุก SQL query แต่ไม่เคยมี migration function สร้าง column นี้บน production DB
+
+**Step 1 — VERIFY:** ✅ confirmed จาก error บน production: `column "payment_type" of relation "payment_methods" does not exist`
+**Step 2 — BACKUP:** ไม่ต้อง (ADD COLUMN nullable, no default — Rule 4)
+**Migration:** `ALTER TABLE payment_methods ADD COLUMN payment_type text` — ไม่มี `IF NOT EXISTS`
+**Flag:** `ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522`
+
+### ไฟล์ที่ต้อง push (isolated loop — Rule 3)
+| File | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `shared/schema-extra.ts` | เพิ่ม `runPaymentTypeColumnMigration()` (ENTRY #015) | ⏳ awaiting |
+| `server/migrations-runner.ts` | import + enable `runPaymentTypeColumnMigration` | ⏳ awaiting |
+
+### Deploy Command (Production)
+```bash
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- shared/schema-extra.ts server/migrations-runner.ts && npm run build && pm2 start etax-center
+```
+
+### หลัง deploy — ต้องทำทันที (Steps 7-9)
+1. ดู log: ต้องเห็น `[migration] ✅ payment_type added to payment_methods`
+2. Kai verify บน prod DB: `SELECT column_name FROM information_schema.columns WHERE table_name='payment_methods' AND column_name='payment_type'`
+3. Comment out migration line ใน `migrations-runner.ts` → push clean (Round 2)
+
+---
+
 ## ⏳ PM-hotfix — payment-methods-routes.ts (ลบ auto-insert fallback ออก)
 **วันที่สร้าง:** 2026-05-22
 **อนุมัติ:** พี่ช้าง ✅ (สั่งให้ลบมาก่อนหน้าแล้ว — agent เก่าไม่ได้ลบจริง พบและแก้ 2026-05-22)

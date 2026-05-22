@@ -1193,6 +1193,24 @@ export async function runWipWarehouseMigration(db: any) {
 }
 
 // =============================================================================
+// PAYMENT_TYPE COLUMN ON PAYMENT_METHODS (ENTRY #015, 2026-05-22)
+// Adds payment_type column to payment_methods for receive/pay tab filtering (N4)
+// History: db/schema-history.md ENTRY #015
+// =============================================================================
+export async function runPaymentTypeColumnMigration(db: any) {
+  const FLAG = "ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522";
+  try {
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`ALTER TABLE payment_methods ADD COLUMN payment_type text`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ payment_type added to payment_methods");
+  } catch (e: any) {
+    console.error("[migration] ❌ runPaymentTypeColumnMigration FAILED:", e.message);
+  }
+}
+
+// =============================================================================
 // INITIAL STOCK MOVEMENT BACKFILL (ENTRY #010, 2026-05-12) — ❌ CANCELLED
 // Approach changed 2026-05-12: user inputs วันที่เริ่มต้นสต๊อก at Excel import
 // time via product-import-export.tsx date picker. Backfill not needed.

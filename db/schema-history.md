@@ -509,6 +509,24 @@ SELECT company_id, code, COUNT(*) FROM products GROUP BY company_id, code HAVING
 
 ---
 
+## 2026-05-22 — payment_type column on payment_methods (ENTRY #015)
+
+**What changed:**
+- Added `payment_type TEXT` (nullable) to `payment_methods`
+- Enables N4 two-tab UI: รับเงิน / จ่ายเงิน filtering by `payment_type = 'receive' | 'pay'`
+
+**Backup location:** No backup required — ADD COLUMN nullable, no default, no existing data affected (Rule 4)
+
+**Migration code:** `shared/schema-extra.ts` → `runPaymentTypeColumnMigration()`
+**Caller:** `server/migrations-runner.ts` (central runner called from `server/index-extra.ts`)
+**Flag:** `ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522` in `system_config`
+**Reason:** `payment-methods-routes.ts` deployed (ACE Batch 2026-05-21) references `payment_type` in every SELECT/INSERT/UPDATE/WHERE — production DB missing column → error on all PM operations. Root cause: column was added to dev DB directly (db:push) without migration function. Fix: migration function with no `IF NOT EXISTS` fallback per Rule 0a.
+
+**Production DB verified:** 2026-05-22 — confirmed absent by error: `column "payment_type" of relation "payment_methods" does not exist`
+**Status:** 🔄 Migration active — awaiting push approval from พี่ช้าง
+
+---
+
 ## 2026-05-17 — wip_warehouse_id column on manufacturing_orders (ENTRY #014)
 
 **What changed:**

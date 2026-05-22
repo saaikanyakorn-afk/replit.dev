@@ -35,6 +35,7 @@ import {
   runWarehouseColumnsForMfgMigration,
   runBomProcessStepsMigration,
   runWipWarehouseMigration,
+  runPaymentTypeColumnMigration,
 } from "@shared/schema-extra";
 
 function run(name: string, fn: (db: any) => Promise<void>) {
@@ -50,6 +51,7 @@ export function runPendingMigrations() {
   // ──────────────────────────────────────────────────────────────────────────
 
   run("runMaterialIssueMigration",            runMaterialIssueMigration);           // N3  ✅ approved 2026-05-20
+  run("runPaymentTypeColumnMigration",        runPaymentTypeColumnMigration);       // N4b ✅ approved 2026-05-22
 
   // ── N11 — DEPLOYED 2026-05-21 — all 6 flags SET, 3 columns confirmed in prod ─
   // run("runProductionFinishMigration",      runProductionFinishMigration);        // N11 ✅ done 2026-05-21
