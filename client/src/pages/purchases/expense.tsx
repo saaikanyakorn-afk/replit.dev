@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { AccountCombobox } from "@/components/account-combobox";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
 import { useDocDropdowns } from "@/hooks/use-doc-dropdowns";
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Plus, FileText, Save, Trash2, Home, BookOpen, ChevronDown, ChevronUp, Pencil,
-  RotateCcw, Copy, AlertCircle, CheckCircle2, XCircle, ChevronsUpDown, Check, Warehouse, Search, Loader2,
+  RotateCcw, Copy, AlertCircle, CheckCircle2, XCircle, Check, Warehouse, Search, Loader2,
   X
 } from "lucide-react";
 import { cn, toLocalDateStr } from "@/lib/utils";
@@ -59,68 +58,6 @@ function cleanDecimal(val: string | number | null | undefined, fallback = "0"): 
   const n = parseFloat(String(val || fallback));
   if (isNaN(n)) return fallback;
   return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
-}
-
-function AccountPickerDropdown({ value, displayValue, accounts, onChange, mode = "code", className }: {
-  value: string;
-  displayValue?: string;
-  accounts: any[];
-  onChange: (code: string, name: string) => void;
-  mode?: "code" | "name";
-  className?: string;
-}) {
-  const [search, setSearch] = useState(mode === "code" ? value : (displayValue || ""));
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { setSearch(mode === "code" ? value : (displayValue || "")); }, [value, displayValue, mode]);
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-  const q = search.toLowerCase().trim();
-  const filtered = q
-    ? accounts.filter((a: any) =>
-        a.code?.includes(q) || a.name?.toLowerCase().includes(q) ||
-        (a.nameTh && a.nameTh.includes(q))
-      ).slice(0, 50)
-    : accounts.slice(0, 50);
-  return (
-    <div ref={ref} className="relative">
-      <Input
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
-        onFocus={() => { setSearch(""); setOpen(true); }}
-        onBlur={() => { if (!open) setSearch(mode === "code" ? value : (displayValue || "")); }}
-        className={className || (mode === "code" ? "h-7 text-xs font-mono px-1.5 w-24" : "h-7 text-xs px-1.5")}
-        placeholder={mode === "code" ? "รหัส" : "ค้นหาชื่อบัญชี"}
-        data-testid={mode === "code" ? "input-journal-account-code" : "input-journal-account-name"}
-      />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-50 top-full left-0 mt-1 bg-white border rounded-lg shadow-lg max-h-72 overflow-auto w-80"
-             style={{ minWidth: "360px" }}>
-          {filtered.map((a: any) => (
-            <button
-              key={a.code}
-              type="button"
-              className="w-full text-left px-2 py-1.5 hover:bg-blue-50 text-xs flex gap-2 items-baseline"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                onChange(a.code, a.nameTh || a.name || "");
-                setSearch(mode === "code" ? a.code : (a.nameTh || a.name || ""));
-                setOpen(false);
-              }}
-            >
-              <span className="font-mono text-blue-600 shrink-0 w-20">{a.code}</span>
-              <span className="text-gray-700 truncate">{a.nameTh || a.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 
@@ -195,7 +132,6 @@ export default function Expense() {
   const [showVendorCodeDropdown, setShowVendorCodeDropdown] = useState(false);
   const [items, setItems] = useState<EXPItemForm[]>([emptyItem()]);
   const [editingAmountIdx, setEditingAmountIdx] = useState<number | null>(null);
-  const [openAccountPopover, setOpenAccountPopover] = useState<string | null>(null);
   const [discountMode, setDiscountMode] = useState<"amount" | "percent">("amount");
   const [loaded, setLoaded] = useState(false);
   const [manualDueDate, setManualDueDate] = useState(false);
@@ -1273,100 +1209,28 @@ export default function Expense() {
                     <tr key={idx} className="border-b border-slate-300 group" data-testid={`row-item-${idx}`}>
                       <td className="text-center text-xs py-1 px-1 text-slate-400">{idx + 1}</td>
                       <td className="py-1 px-1">
-                        <Popover open={openAccountPopover === `${idx}-code`} onOpenChange={(o) => setOpenAccountPopover(o ? `${idx}-code` : null)}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn("h-7 w-full justify-between text-xs border-dashed font-normal", !item.accountCode && "text-muted-foreground")}
-                              data-testid={`input-account-code-${idx}`}
-                            >
-                              <span className="truncate">{item.accountCode || "เลือกบัญชี"}</span>
-                              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[320px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="พิมพ์ค้นหารหัส/ชื่อบัญชี..." className="h-8 text-xs" />
-                              <CommandList>
-                                <CommandEmpty>ไม่พบบัญชี</CommandEmpty>
-                                <CommandGroup>
-                                  {accountsForSelect.map((acc: any) => (
-                                    <CommandItem
-                                      key={acc.id}
-                                      value={`${acc.code} ${acctName(acc)}`}
-                                      onSelect={() => {
-                                        updateItem(idx, "accountCode", acc.code);
-                                        updateItem(idx, "accountName", acctName(acc) || acc.code);
-                                        const prefix = String(acc.code).charAt(0);
-                                        if (prefix === "1") {
-                                          updateItem(idx, "expenseType", "asset");
-                                        } else if (prefix === "5") {
-                                          updateItem(idx, "expenseType", "expense");
-                                        } else {
-                                          updateItem(idx, "expenseType", "other");
-                                        }
-                                        setOpenAccountPopover(null);
-                                      }}
-                                      className="text-xs"
-                                    >
-                                      <Check className={cn("mr-1 h-3 w-3", item.accountCode === acc.code ? "opacity-100" : "opacity-0")} />
-                                      {acc.code} - {acctName(acc)}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <AccountCombobox
+                          accounts={accountsForSelect.map((a: any) => ({ id: a.id, code: a.code, name: a.name, nameTh: a.nameTh }))}
+                          value={item.accountCode}
+                          onSelect={(acc) => {
+                            const name = acc.nameTh || acc.name || acc.code;
+                            updateItem(idx, "accountCode", acc.code);
+                            updateItem(idx, "accountName", name);
+                            const prefix = String(acc.code).charAt(0);
+                            updateItem(idx, "expenseType", prefix === "1" ? "asset" : prefix === "5" ? "expense" : "other");
+                          }}
+                          size="sm"
+                          testId={`input-account-code-${idx}`}
+                          placeholder="เลือกบัญชี"
+                        />
                       </td>
                       <td className="py-1 px-1">
-                        <Popover open={openAccountPopover === `${idx}-name`} onOpenChange={(o) => setOpenAccountPopover(o ? `${idx}-name` : null)}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn("h-7 w-full justify-between text-xs border-dashed font-normal", !item.accountName && "text-muted-foreground")}
-                              data-testid={`input-account-name-${idx}`}
-                            >
-                              <span className="truncate">{item.accountName || "ค้นหาชื่อบัญชี"}</span>
-                              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[320px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="พิมพ์ค้นหารหัส/ชื่อบัญชี..." className="h-8 text-xs" />
-                              <CommandList>
-                                <CommandEmpty>ไม่พบบัญชี</CommandEmpty>
-                                <CommandGroup>
-                                  {accountsForSelect.map((acc: any) => (
-                                    <CommandItem
-                                      key={acc.id}
-                                      value={`${acc.code} ${acctName(acc)}`}
-                                      onSelect={() => {
-                                        updateItem(idx, "accountCode", acc.code);
-                                        updateItem(idx, "accountName", acctName(acc) || acc.code);
-                                        const prefix = String(acc.code).charAt(0);
-                                        if (prefix === "1") {
-                                          updateItem(idx, "expenseType", "asset");
-                                        } else if (prefix === "5") {
-                                          updateItem(idx, "expenseType", "expense");
-                                        } else {
-                                          updateItem(idx, "expenseType", "other");
-                                        }
-                                        setOpenAccountPopover(null);
-                                      }}
-                                      className="text-xs"
-                                    >
-                                      <Check className={cn("mr-1 h-3 w-3", item.accountCode === acc.code ? "opacity-100" : "opacity-0")} />
-                                      {acc.code} - {acctName(acc)}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <div
+                          className="h-7 flex items-center text-xs px-1.5 border border-dashed rounded text-slate-600 truncate"
+                          data-testid={`input-account-name-${idx}`}
+                        >
+                          {item.accountName || <span className="text-muted-foreground">ชื่อบัญชี</span>}
+                        </div>
                       </td>
                       <td className="py-1 px-1">
                         <textarea
@@ -1577,31 +1441,24 @@ export default function Expense() {
                         <tr key={idx} className="border-b hover:bg-slate-50/50">
                           <td className="px-3 py-1.5 font-mono text-xs">
                             {journalEditing ? (
-                              <AccountPickerDropdown
+                              <AccountCombobox
+                                accounts={detailAccounts.map((a: any) => ({ id: a.id, code: a.code, name: a.name, nameTh: a.nameTh }))}
                                 value={line.accountCode}
-                                accounts={detailAccounts}
-                                mode="code"
-                                onChange={(code, name) => {
+                                onSelect={(acc) => {
                                   const newLines = [...editableLines];
-                                  newLines[idx] = { ...newLines[idx], accountCode: code, accountName: name };
+                                  newLines[idx] = { ...newLines[idx], accountCode: acc.code, accountName: acc.nameTh || acc.name || acc.code };
                                   setEditableLines(newLines);
                                 }}
+                                size="sm"
+                                testId={`input-journal-account-code-${idx}`}
                               />
                             ) : line.accountCode}
                           </td>
                           <td className="px-3 py-1.5">
                             {journalEditing ? (
-                              <AccountPickerDropdown
-                                value={line.accountCode}
-                                displayValue={line.accountName}
-                                accounts={detailAccounts}
-                                mode="name"
-                                onChange={(code, name) => {
-                                  const newLines = [...editableLines];
-                                  newLines[idx] = { ...newLines[idx], accountCode: code, accountName: name };
-                                  setEditableLines(newLines);
-                                }}
-                              />
+                              <div className="h-7 flex items-center text-xs px-1.5 border border-dashed rounded text-slate-600" data-testid={`input-journal-account-name-${idx}`}>
+                                {line.accountName || <span className="text-muted-foreground">ชื่อบัญชี</span>}
+                              </div>
                             ) : line.accountName}
                           </td>
                           <td className="px-3 py-1.5 text-right">
