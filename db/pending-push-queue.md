@@ -828,7 +828,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 | `server/routes/products-routes.ts` | Material issue routes, lot history, goods-receiving delete | 📝 dev |
 | `server/routes/doc-settings-routes.ts` | Low-stock threshold settings (อยู่ใน N8 ด้วย — push ครั้งเดียว) | 📝 dev |
 | `client/src/app-extra.tsx` | Register NCR, production-finish routes | 📝 dev |
-| `client/src/components/manufacturing-layout.tsx` | Layout สำหรับ manufacturing module | 📝 dev |
+| `client/src/components/manufacturing-layout.tsx` | Layout สำหรับ manufacturing module | ✅ pushed 2026-05-22 commit 101cab03 |
 | `client/src/pages/inventory/manufacturing-form.tsx` | MO form — WIP warehouse, navigate-to-list after save | 📝 dev |
 | `client/src/pages/inventory/manufacturing-list.tsx` | MO list page | 📝 dev |
 | `client/src/pages/inventory/bom-form.tsx` | BOM form — process steps (Task #68) | 📝 dev |
@@ -976,7 +976,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 | `server/routes/products-routes.ts` | Material issue routes, lot history, goods-receiving delete | 📝 รอ verify |
 | `server/routes/doc-settings-routes.ts` | Low-stock threshold settings | 📝 รอ verify |
 | `client/src/app-extra.tsx` | Register NCR, production-finish routes | 📝 รอ verify |
-| `client/src/components/manufacturing-layout.tsx` | Layout สำหรับ manufacturing module | 📝 รอ verify |
+| `client/src/components/manufacturing-layout.tsx` | Layout สำหรับ manufacturing module | ✅ pushed 2026-05-22 commit 101cab03 |
 
 ---
 
