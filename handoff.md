@@ -1987,3 +1987,24 @@ Do NOT add new deploys here. All new push activity goes into the queue file.
 | 2026-05-07 | ENTRY #001 — expense currency columns deployed | ✅ |
 | 2026-04-30 | Warehouse column migration (ENTRY v85) | ✅ |
 
+
+---
+
+## 2026-05-22 — ROOT CAUSE: migrations-runner.ts silent failure on production cold start
+
+**Issue:** Migration flag `ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522` was not set after server restart despite correct code.
+
+**Root cause — DB not ready when migrations run:**
+Production server does NOT have `DATABASE_URL` as an env var. The real DB URL comes from config bootstrap (`reinitializeFromConfig()` in `server/index.ts` line 1191). Startup sequence:
+1. Routes register → `registerIndexExtraRoutes()` → `runPendingMigrations()` ← migrations run HERE with empty pool
+2. `await bootstrapConfig()` (index.ts line 1162)
+3. `await reinitializeFromConfig()` (index.ts line 1191) ← DB gets real URL here
+
+When migrations ran (step 1), `_pool` had `connectionString: ""` (Pending config bootstrap). Every `db.execute()` threw an exception → caught silently by try/catch → flag never set.
+
+**Why it never failed before:**
+All N11 migrations (2026-05-17) ran from inside route handlers — db fully bootstrapped by then ✅. When `migrations-runner.ts` was created (2026-05-20), all existing migrations already had their flags set from the old deployment. On cold start: SELECT fails → catch → return (flag already set → migration "skipped" for wrong reason → nobody noticed). N4b was the first truly new migration (flag never set anywhere) → failure became visible for the first time.
+
+**Fix applied 2026-05-22:** `server/index-extra.ts` — replaced immediate `runPendingMigrations()` call with `runMigrationsAfterBootstrap()` which polls `isBootstrapped()` every 500ms (max 30s) before calling migrations. Explicit log: `[migration] DB ready (attempt N) — running pending migrations`.
+
+**Files changed:** `server/index-extra.ts` — pushed to GitHub, requires server restart to take effect.

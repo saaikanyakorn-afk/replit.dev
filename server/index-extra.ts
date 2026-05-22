@@ -12,11 +12,33 @@ import { userSubPermissions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { SUB_MODULES } from "@shared/permissions";
 import { runPendingMigrations } from "./migrations-runner";
+import { isBootstrapped } from "./config-bootstrap";
+
+// Wait for config bootstrap (DB URL from config DB) before running migrations.
+// Root cause documented 2026-05-22: production does not have DATABASE_URL env var —
+// DB URL comes from config bootstrap (reinitializeFromConfig in index.ts line 1191).
+// routes register → runPendingMigrations() → db.execute() fail (empty pool) → silent try/catch → flag never set.
+// All previous migrations appeared to work only because their flags were already set before
+// migrations-runner.ts existed — SELECT fail → catch → return (flag already set → no one noticed).
+// N4b was the first truly new migration → failure became visible.
+// Fix: poll isBootstrapped() before running — explicit, logged, 30s timeout.
+function runMigrationsAfterBootstrap(attempt = 1): void {
+  if (isBootstrapped()) {
+    console.log(`[migration] DB ready (attempt ${attempt}) — running pending migrations`);
+    runPendingMigrations();
+    return;
+  }
+  if (attempt >= 60) {
+    console.error("[migration] ❌ DB bootstrap timed out after 30s — migrations NOT run this startup");
+    return;
+  }
+  setTimeout(() => runMigrationsAfterBootstrap(attempt + 1), 500);
+}
 
 export function registerIndexExtraRoutes(app: Express) {
-  // Run all approved pending migrations at server startup (fire-and-forget)
+  // Run all approved pending migrations AFTER config bootstrap completes (db ready)
   // To enable/disable individual migrations: edit server/migrations-runner.ts
-  runPendingMigrations();
+  setTimeout(() => runMigrationsAfterBootstrap(1), 500);
   /**
    * Override /api/permissions/me — runs BEFORE the protected version in core-routes.ts.
    * Returns modules that include any module the user has explicit sub-permissions for,
