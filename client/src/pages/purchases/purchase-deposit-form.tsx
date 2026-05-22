@@ -759,8 +759,9 @@ export default function PurchaseDepositForm() {
                         <Input
                           data-testid={`input-account-name-${idx}`}
                           value={item.accountName}
-                          onChange={e => updateItem(idx, "accountName", e.target.value)}
-                          className="h-7 text-xs border-dashed"
+                          onChange={e => !item.accountCode && updateItem(idx, "accountName", e.target.value)}
+                          readOnly={!!item.accountCode}
+                          className={cn("h-7 text-xs border-dashed", item.accountCode && "bg-slate-50 text-slate-500 cursor-default select-none")}
                           placeholder="ชื่อบัญชี"
                         />
                       </td>
