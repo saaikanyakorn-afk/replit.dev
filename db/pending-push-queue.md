@@ -184,9 +184,10 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/s
 
 ---
 
-## 📝 N15 — RD VAT Branch Cache (sequential background crawler)
+## ✅ N15 — RD VAT Branch Cache (sequential background crawler) — DONE 2026-05-22
 **วันที่สร้าง:** 2026-05-22
 **อนุมัติ:** พี่ช้าง ✅ (สั่งในเซสชันนี้ 2026-05-22)
+**Production DB confirmed 2026-05-22:** tables `rd_vat_cache` + `rd_crawl_status` existed before this session (created by prior push). Flag `CREATE_RD_VAT_CACHE_TABLES_20260522` SET. Migration loop closed.
 **เหตุผล:** Dev sandbox ยิง SOAP parallel 10 calls พร้อมกันไม่ได้ (network limitation) → sequential one-at-a-time แก้ปัญหาได้ + Production: cache hit หลัง warmup แรก
 
 **สิ่งที่ทำ:**
@@ -236,19 +237,17 @@ npm run build && pm2 start etax-center
 
 ---
 
-## 📝 N4b — payment_type column migration (รอพี่ทราย test ใน dev)
+## ✅ N4b — payment_type column migration — DONE 2026-05-22 09:11 BKK
 **วันที่สร้าง:** 2026-05-22
-**อนุมัติ production:** ยังไม่ push — ย้ายมา test ใน dev ก่อน (พี่ช้าง สั่ง 2026-05-22)
+**อนุมัติ production:** พี่ช้าง ✅ 2026-05-22
 **เหตุผล:** `payment_methods` table บน production ไม่มี column `payment_type` → ทุก operation (GET/POST/PUT) error ทันที → พี่ทรายเทสไม่ได้ทั้งฝั่งรับและจ่าย
 **Root cause:** ACE Batch deploy (2026-05-21) push `payment-methods-routes.ts` ที่ใช้ `payment_type` ในทุก SQL query แต่ไม่เคยมี migration function สร้าง column นี้บน production DB
 
-**Step 1 — VERIFY:** ✅ confirmed จาก error บน production: `column "payment_type" of relation "payment_methods" does not exist`
-**Step 2 — BACKUP:** ไม่ต้อง (ADD COLUMN nullable, no default — Rule 4)
-**Migration:** `ALTER TABLE payment_methods ADD COLUMN payment_type text` — ไม่มี `IF NOT EXISTS`
+**Step 1 — VERIFY (2026-05-22):** column `payment_type` ALREADY EXISTS on production (12 cols confirmed). Flag NOT set. Column pre-existed before our migration session.
+**Step 3 — Migration updated:** ALTER TABLE skipped (column exists per Rule 0a — no fallback). Migration only sets flag.
 **Flag:** `ADD_PAYMENT_TYPE_TO_PAYMENT_METHODS_20260522`
-
-**Dev status (2026-05-22):** ✅ column `payment_type` มีอยู่ใน dev DB แล้ว — migration ทำงานสำเร็จ
-→ รอพี่ทราย test payment settings ใน dev → confirm → แล้วค่อย push production
+**Production confirmed:** Flag SET `done_2026-05-22 09:11:09.970414+00` ✅ Migration loop closed.
+**Root cause of initial failure:** migrations-runner.ts called before DB bootstrap on production cold start — fixed in `server/index-extra.ts` (`runMigrationsAfterBootstrap` polls `isBootstrapped()` before running)
 
 ### ไฟล์ที่ต้อง push (isolated loop — Rule 3)
 | File | สิ่งที่แก้ | Status |
