@@ -23,9 +23,8 @@ const DEFAULT_PM_TEMPLATES = [
   { name: "E-Wallet",    nameTh: "กระเป๋าเงินอิเล็กทรอนิกส์", codePrefixes: ["1041","1040","2100","2010","104"], sortOrder: 60, isDefault: false },
 ];
 
-async function seedDefaultPaymentMethods(companyId: number) {
+async function seedDefaultPaymentMethods(companyId: number, paymentTypeFilter: "receive" | "pay" | "all" = "all") {
   try {
-    // ดึง accounts ของบริษัท (เฉพาะที่ไม่ใช่ header) เพื่อหา account code จริง
     const acctResult = await db.execute(
       sql`SELECT id, code FROM accounts WHERE company_id = ${companyId} AND NOT COALESCE(is_header, false) ORDER BY code`
     );
@@ -39,6 +38,8 @@ async function seedDefaultPaymentMethods(companyId: number) {
       return { code: prefixes[0], id: null as number | null };
     }
 
+    const typesToSeed = paymentTypeFilter === "all" ? ["receive", "pay"] : [paymentTypeFilter];
+
     const rows: Array<{
       name: string; nameTh: string; code: string; id: number | null;
       sortOrder: number; isDefault: boolean; paymentType: string;
@@ -46,7 +47,7 @@ async function seedDefaultPaymentMethods(companyId: number) {
 
     for (const tpl of DEFAULT_PM_TEMPLATES) {
       const { code, id } = findBestAccount(tpl.codePrefixes);
-      for (const paymentType of ["receive", "pay"]) {
+      for (const paymentType of typesToSeed) {
         const sortForType = paymentType === "pay" ? tpl.sortOrder + 100 : tpl.sortOrder;
         rows.push({
           name: tpl.name,
@@ -93,12 +94,19 @@ app.post("/api/payment-methods/seed-defaults", requireAuth, async (req, res) => 
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
     const ac = await checkDocOwnership(companyId, req.user);
     if (!ac.allowed) return res.status(403).json({ message: ac.message });
-    const countResult = await db.execute(
-      sql`SELECT COUNT(*) AS cnt FROM payment_methods WHERE company_id = ${companyId}`
-    );
+
+    const rawType = req.body.paymentType || req.query.paymentType;
+    const paymentTypeFilter: "receive" | "pay" | "all" =
+      rawType === "receive" || rawType === "pay" ? rawType : "all";
+
+    // Check count per paymentType (or total if "all")
+    const countResult = paymentTypeFilter === "all"
+      ? await db.execute(sql`SELECT COUNT(*) AS cnt FROM payment_methods WHERE company_id = ${companyId}`)
+      : await db.execute(sql`SELECT COUNT(*) AS cnt FROM payment_methods WHERE company_id = ${companyId} AND payment_type = ${paymentTypeFilter}`);
     const cnt = Number((countResult.rows[0] as any)?.cnt ?? 0);
     if (cnt > 0) return res.json({ seeded: false, message: "มีข้อมูลอยู่แล้ว" });
-    await seedDefaultPaymentMethods(companyId);
+
+    await seedDefaultPaymentMethods(companyId, paymentTypeFilter);
     res.json({ seeded: true });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });

@@ -54,16 +54,32 @@ export default function PaymentMethodSettings() {
     enabled: !!selectedCompanyId,
   });
 
-  useEffect(() => {
-    if (!isLoading && methods.length === 0 && selectedCompanyId) {
-      fetch(`/api/payment-methods/seed-defaults?companyId=${selectedCompanyId}`, {
+  const [seeding, setSeeding] = useState(false);
+
+  const seedDefaults = async (paymentType: "receive" | "pay") => {
+    if (!selectedCompanyId || seeding) return;
+    setSeeding(true);
+    try {
+      await fetch(`/api/payment-methods/seed-defaults`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId: selectedCompanyId }),
-      }).then(() => queryClient.invalidateQueries({ queryKey: ["/api/payment-methods", selectedCompanyId] }));
+        body: JSON.stringify({ companyId: selectedCompanyId, paymentType }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/payment-methods", selectedCompanyId] });
+    } finally {
+      setSeeding(false);
     }
-  }, [isLoading, methods.length, selectedCompanyId]);
+  };
+
+  // Auto-seed เฉพาะ tab ที่ยังว่างอยู่ (receive หรือ pay แยกกัน)
+  useEffect(() => {
+    if (isLoading || !selectedCompanyId) return;
+    const receiveMethods = methods.filter((m: any) => (m.paymentType || "receive") === "receive");
+    const payMethods = methods.filter((m: any) => m.paymentType === "pay");
+    if (receiveMethods.length === 0) seedDefaults("receive");
+    if (payMethods.length === 0) seedDefaults("pay");
+  }, [isLoading, selectedCompanyId, methods.length]);
 
   const { data: accountsList = [] } = useQuery<any[]>({
     queryKey: ["/api/accounts", selectedCompanyId],
@@ -207,9 +223,24 @@ export default function PaymentMethodSettings() {
         <Card className="flexy-card">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base font-medium">รายการวิธี{tabLabel}</CardTitle>
-            <Button data-testid="button-add-payment-method" size="sm" onClick={startAdd} className="bg-[#fb9678] hover:bg-[#fb9678]/90 text-white rounded-lg">
-              <Plus className="h-4 w-4 mr-1" /> เพิ่มวิธี{tabLabel}
-            </Button>
+            <div className="flex items-center gap-2">
+              {filteredMethods.length === 0 && !isLoading && (
+                <Button
+                  data-testid="button-seed-defaults"
+                  size="sm"
+                  variant="outline"
+                  disabled={seeding}
+                  onClick={() => seedDefaults(activeTab)}
+                  className="text-slate-600 border-slate-300"
+                >
+                  {seeding ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+                  เพิ่มต้นแบบ 6 แบบ
+                </Button>
+              )}
+              <Button data-testid="button-add-payment-method" size="sm" onClick={startAdd} className="bg-[#fb9678] hover:bg-[#fb9678]/90 text-white rounded-lg">
+                <Plus className="h-4 w-4 mr-1" /> เพิ่มวิธี{tabLabel}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
