@@ -65,8 +65,8 @@ export function useDbdLookup() {
         const src = result.source === "local" ? "จากรายชื่อในระบบ"
           : result.source === "rd" ? "จากกรมสรรพากร" : "จากระบบ";
 
-        if (result.branches && result.branches.length > 1) {
-          const hasMore = result.hasMore ?? false;
+        const hasMore = result.hasMore ?? false;
+        if (result.branches && (result.branches.length > 1 || hasMore)) {
           toast({ title: hasMore ? `พบ ${result.branches.length}+ สาขา กรุณาเลือกสาขา` : `พบ ${result.branches.length} สาขา กรุณาเลือกสาขา` });
           const chosen = await selectBranch(result.branches, hasMore, cleanId);
           if (!chosen) return null;

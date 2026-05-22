@@ -1,9 +1,9 @@
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2, MapPin, CheckCircle2, Search, Loader2 } from "lucide-react";
+import { Building2, MapPin, CheckCircle2, Search, Loader2, RefreshCw } from "lucide-react";
 
 export interface RdBranch {
   name: string;
@@ -44,11 +44,38 @@ export function BranchSelectPortal() {
   const [searchNum, setSearchNum] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     _setState = setState;
     return () => { _setState = null; };
   }, []);
+
+  // Auto-poll ทุก 3 วินาทีเมื่อ hasMore=true เพื่ออัปเดต branch list ขณะ background crawl ทำงาน
+  useEffect(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (!state.open || !state.hasMore || !state.taxId) return;
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/dbd-lookup/${state.taxId}`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.branches || data.branches.length === 0) return;
+        const newCount = data.branches.length;
+        const oldCount = state.branches.length;
+        if (newCount > oldCount || !data.hasMore) {
+          setState(prev => prev.open ? { ...prev, branches: data.branches, hasMore: !!data.hasMore } : prev);
+        }
+        if (!data.hasMore) {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+        }
+      } catch { /* ignore */ }
+    }, 3000);
+
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [state.open, state.hasMore, state.taxId]);
 
   const handleSelect = (branch: RdBranch) => {
     state.resolve?.(branch);
@@ -98,10 +125,15 @@ export function BranchSelectPortal() {
             <Building2 className="h-5 w-5 text-[#fb9678]" />
             เลือกสาขา
           </DialogTitle>
-          <DialogDescription className="text-sm text-gray-500">
-            {state.hasMore
-              ? `พบ ${state.branches.length} สาขาแรกในระบบกรมสรรพากร (อาจมีมากกว่านี้)`
-              : `พบ ${state.branches.length} สาขาในระบบกรมสรรพากร กรุณาเลือกสาขาที่ต้องการ`}
+          <DialogDescription className="text-sm text-gray-500 flex items-center gap-2">
+            {state.hasMore ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0 text-[#fb9678]" />
+                <span>กำลังโหลดสาขาเพิ่มเติม... (พบแล้ว {state.branches.length} สาขา)</span>
+              </>
+            ) : (
+              <span>พบ {state.branches.length} สาขาในระบบกรมสรรพากร กรุณาเลือกสาขาที่ต้องการ</span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
