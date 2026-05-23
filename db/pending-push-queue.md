@@ -31,9 +31,9 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ---
 
-## ⏳ Bug Fix — AP PATCH warehouse_id not saved — 2026-05-23 (1 file)
+## ✅ Bug Fix — AP PATCH warehouse_id not saved — DEPLOYED 2026-05-23
 **วันที่สร้าง:** 2026-05-23
-**อนุมัติ:** รอพี่ช้าง
+**อนุมัติ:** พี่ช้าง ✅
 **Schema change:** NO
 **Migration:** NO — `warehouse_id` column มีอยู่แล้วใน `purchase_invoice_items` (POST handler ใช้ได้ปกติ)
 **สิ่งที่แก้:** PATCH handler ลบ items เก่า → insert ใหม่ แต่ไม่เคย patch `warehouse_id` กลับ → เพิ่ม `.returning({ id })` + raw SQL `UPDATE purchase_invoice_items SET warehouse_id = ? WHERE id = ?` หลัง insert แต่ละ item (เหมือน POST handler)

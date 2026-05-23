@@ -27,7 +27,7 @@
 
 | # | Bug | มีใน dev? | Fix แล้วใน dev? | Root cause |
 |---|-----|-----------|----------------|-----------|
-| 1 | คลังไม่บันทึกตอนแก้ไขเอกสาร (AP PATCH) | ✅ มี | ✅ Fixed + pushed github-replit `c0326448` 2026-05-23 | `purchase-routes.ts` PATCH: `.returning({ id })` + raw SQL UPDATE warehouse_id. ✅ pushed github-production commit `2f5a4916` 2026-05-23 — รอ deploy command (Phase 5) |
+| 1 | คลังไม่บันทึกตอนแก้ไขเอกสาร (AP PATCH) | ✅ มี | ✅ DEPLOYED 2026-05-23 | `purchase-routes.ts` PATCH: `.returning({ id })` + raw SQL UPDATE warehouse_id. Build pass 583ms, etax-center online 75.3mb. รอ พี่ทราย verify บน production |
 | 2 | คู่ค้าไม่ขึ้นตอนออกเอกสาร (production มี 2334 ราย) | ❌ ไม่เห็นใน dev (dev มีคู่ค้าน้อย) | ❌ ไม่มีใครแก้ | `purchase-invoice.tsx` โหลด `/api/contacts` ทั้งหมดในครั้งเดียว — production 2334 rows อาจ timeout/ช้า; ต้องเปลี่ยนเป็น server-side search |
 
 **⏳ รอพี่ทรายหา bugs เพิ่ม — ยังไม่ act อะไรทั้งนั้น**
