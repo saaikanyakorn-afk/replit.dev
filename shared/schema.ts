@@ -1113,7 +1113,6 @@ export const stockMovements = pgTable("stock_movements", {
   referenceNo: text("reference_no"),
   notes: text("notes"),
   createdBy: integer("created_by"),
-  warehouseId: integer("warehouse_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
