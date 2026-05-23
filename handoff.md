@@ -27,7 +27,7 @@
 
 | # | Bug | มีใน dev? | Fix แล้วใน dev? | Root cause |
 |---|-----|-----------|----------------|-----------|
-| 1 | คลังไม่บันทึกตอนแก้ไขเอกสาร (AP PATCH) | ✅ มี | ✅ Fixed 2026-05-23 | `purchase-routes.ts` PATCH handler: เพิ่ม `.returning({ id })` + `UPDATE purchase_invoice_items SET warehouse_id = ... WHERE id = ...` หลัง insert แต่ละ item — เหมือน POST handler. Server restart OK ไม่มี error |
+| 1 | คลังไม่บันทึกตอนแก้ไขเอกสาร (AP PATCH) | ✅ มี | ✅ Fixed + pushed github-replit `c0326448` 2026-05-23 | `purchase-routes.ts` PATCH: `.returning({ id })` + raw SQL UPDATE warehouse_id. รอพี่ช้าง approve → Phase 3 (API PUT github-production) → Phase 5 (deploy) |
 | 2 | คู่ค้าไม่ขึ้นตอนออกเอกสาร (production มี 2334 ราย) | ❌ ไม่เห็นใน dev (dev มีคู่ค้าน้อย) | ❌ ไม่มีใครแก้ | `purchase-invoice.tsx` โหลด `/api/contacts` ทั้งหมดในครั้งเดียว — production 2334 rows อาจ timeout/ช้า; ต้องเปลี่ยนเป็น server-side search |
 
 **⏳ รอพี่ทรายหา bugs เพิ่ม — ยังไม่ act อะไรทั้งนั้น**
