@@ -34,6 +34,30 @@
 
 ---
 
+### Workflow สำหรับ bugs จาก production (พี่ช้างสอน 2026-05-23)
+
+1. ทุก bug ที่พี่ทรายพบบน production — ต้อง "รู้" ก่อนว่า bug นั้นมีใน dev ด้วยไหม
+   - ดู address bar ในภาพ: `janeway.replit.dev` = dev, `etaxerp.com` = production
+   - ถ้าดู code แล้วรู้ได้เอง — ไม่ต้องถามพี่ทราย
+   - ถ้า "ไม่รู้จริงๆ" ทั้งๆ ที่ใช้ tools แล้ว — ค่อยถาม
+2. ถ้า bug **ไม่มีใน dev** → อาจ fix แล้วแต่ยังไม่ deploy — แต่เป็นแค่ "เดา"
+3. ยืนยัน "เดา" โดย: `git diff github-production/main..main --name-only` → ดูว่าไฟล์ที่เกี่ยวข้องถูก push ขึ้น production ไปแล้วหรือยัง
+
+### Lesson: อ่าน documents linearly ไม่ใช่ grep
+
+- **ผิด:** grep หาสิ่งที่ต้องการ → ได้ข้อมูลบางส่วน → ตอบผิด
+- **ถูก:** อ่านทั้งไฟล์ จากบนลงล่าง ต่อเนื่อง — ทุก session, ไม่ skip
+- replit.md ต้องอ่านครบ top-to-bottom ทุกบรรทัด (2565 บรรทัด) ไม่ใช่ค้นหา
+- พี่ช้างพิสูจน์ว่า Kai "เสิร์ชหาสิ่งที่ต้องการ" แทนการอ่าน → ตอบผิดถึง 2 รอบ
+
+### Priority ของ Kai (พี่ช้างยืนยัน 2026-05-23)
+
+1. **อันดับ 1:** Update handoff.md ทุกครั้งที่รู้อะไรใหม่ — ก่อน fix code ทุกอย่าง
+2. **อันดับ 2:** รอพี่ทรายหา bugs ให้ครบก่อน act — อย่า jump เข้าไป fix ทีละ bug เพราะจะทำให้ของพังเพิ่ม
+3. **อันดับ 3:** Fix code หลังจากรู้ scope ครบแล้ว
+
+---
+
 # 📋 SESSION LOG — 2026-05-22 AFTERNOON (PREVIOUS SESSION)
 
 ## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-22
