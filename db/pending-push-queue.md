@@ -31,24 +31,6 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ---
 
-## ✅ Bug Fix — AP PATCH warehouse_id not saved — DEPLOYED 2026-05-23
-**วันที่สร้าง:** 2026-05-23
-**อนุมัติ:** พี่ช้าง ✅
-**Schema change:** NO
-**Migration:** NO — `warehouse_id` column มีอยู่แล้วใน `purchase_invoice_items` (POST handler ใช้ได้ปกติ)
-**สิ่งที่แก้:** PATCH handler ลบ items เก่า → insert ใหม่ แต่ไม่เคย patch `warehouse_id` กลับ → เพิ่ม `.returning({ id })` + raw SQL `UPDATE purchase_invoice_items SET warehouse_id = ? WHERE id = ?` หลัง insert แต่ละ item (เหมือน POST handler)
-
-| File | สิ่งที่แก้ | Status |
-|------|-----------|--------|
-| `server/routes/purchase-routes.ts` | PATCH handler: เพิ่ม warehouse_id patch หลัง insert items | ✅ pushed github-production commit `2f5a4916` 2026-05-23 |
-
-### Deploy Command (Production)
-```bash
-pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/routes/purchase-routes.ts && npm run build && pm2 start etax-center
-```
-
----
-
 ## 🚀 Task #2 — 4-Topic Batch Push — 2026-05-22 (37 files)
 **วันที่ push:** 2026-05-22
 **อนุมัติ:** พี่ช้าง ✅ (batch one-push approved 2026-05-22)
@@ -1002,6 +984,7 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 
 | Deploy # | Date | Entry | Files |
 |----------|------|-------|-------|
+| Bug1-warehouse | 2026-05-23 | AP PATCH warehouse_id not saved — code-only fix, no migration | `server/routes/purchase-routes.ts` (github-production commit `2f5a4916`, build pass 583ms, pm2 online 75.3mb) |
 | N11-schema | 2026-05-21 | N11 Manufacturing Schema Migration — 3 ADD COLUMN + 6 flags | migrations-runner.ts (`3e43ad9`, `5cf60e9`), schema-extra.ts (`40accd1`) |
 | #66 | 2026-05-15 | innerJoin migration + 6 other fixes | products-routes.ts, product-import-export.tsx, import-batch-routes.ts, commerce-intelligence.ts, price-calculator.ts, ad-cost-routes.ts, pos-routes.ts, ecommerce-routes.ts, notifications-routes.ts, storage.ts, bundle-management.tsx, inventory-list.tsx, queryClient.ts |
 | #73 | 2026-05-15 | TIV paymentMethod cash/credit toggle fix | (files not recorded — historical gap) |

@@ -5,9 +5,11 @@
 ### สิ่งที่รู้แล้วในเซสชันนี้
 
 **Production vs Dev gap:**
-- Production HEAD: `760888d3` (feat: share PDF DocRaptor)
+- Production HEAD (before today): `760888d3` (feat: share PDF DocRaptor)
+- **2026-05-23 deployed:** `server/routes/purchase-routes.ts` commit `2f5a4916` — Bug 1 fix (warehouse_id PATCH)
 - Dev HEAD: `ed1604a5` (Remove warehouse ID from stock movements schema)
-- **263 files ที่ยังไม่ deploy ขึ้น production** — dev มี 20+ commits ล่วงหน้า
+- dev ยังมี 263 files ที่ยังไม่ deploy (ไม่นับ Bug 1 ที่ deploy แล้ววันนี้)
+- **GITHUB_PAT production (ใน .git/config remote github-production):** token ใหม่จากพี่ช้าง 2026-05-23 — อัปเดตใน remote URL แล้ว
 
 **DB Migration Checklist — Step 10 หายไป:**
 - Checklist ใน replit.md มีแค่ 9 steps แต่ที่จริงต้องมี 10
