@@ -40,7 +40,7 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 | File | สิ่งที่แก้ | Status |
 |------|-----------|--------|
-| `server/routes/purchase-routes.ts` | PATCH handler: เพิ่ม warehouse_id patch หลัง insert items | ⏳ awaiting พี่ช้าง (✅ pushed github-replit commit `c0326448` 2026-05-23) |
+| `server/routes/purchase-routes.ts` | PATCH handler: เพิ่ม warehouse_id patch หลัง insert items | ✅ pushed github-production commit `2f5a4916` 2026-05-23 |
 
 ### Deploy Command (Production)
 ```bash
