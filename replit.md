@@ -634,12 +634,24 @@ git fetch origin && git checkout origin/main -- client/src/components/etax-send-
 **Why:**
 1. When agent switches (Kai won't know it happened), the new agent MUST compare kai's repo against current dev code to find what changed
 
-**Command (run after every file change passes preview test):**
-```bash
-git push github-replit main
+**Command: GitHub API PUT เท่านั้น — ทั้ง kai's repo และ production repo (confirmed 2026-05-23)**
+
 ```
-⚠️ kai's repo = `saaikanyakorn-afk/replit.dev` (git remote: `github-replit`) — push freely after testing
-⚠️ production repo = `saaikanyakorn-afk/etaxcenter` (git remote: `github-production`) — requires พี่ช้าง authorization
+❌ NEVER: git push github-replit main
+❌ NEVER: git push github-production main
+✅ ALWAYS: GitHub API PUT (one file per call) — ใช้กับทุก repo ทุกกรณีไม่มีข้อยกเว้น
+```
+
+เหตุผล: Replit sandbox block git merge/rebase (destructive ops) ถ้า remote มี commits ใหม่กว่า `git push` จะ fail และไม่มีทางแก้ในสภาพแวดล้อมนี้ — API PUT ไม่มีปัญหานี้เลย ใช้ได้ถูกต้องทุกครั้ง
+
+**API PUT procedure (ใช้กับทั้ง 2 repos):**
+1. ดึง token จาก `.git/config`: `git remote get-url <remote>` → extract token จาก URL
+2. GET file SHA: `https://api.github.com/repos/<REPO>/contents/<FILE>`
+3. PUT file: same URL, method PUT, body: `{ message, content (base64), sha, branch: "main" }`
+4. ยืนยัน response 200/201 → commit SHA คือหลักฐาน
+
+⚠️ kai's repo = `saaikanyakorn-afk/replit.dev` (git remote: `github-replit`) — push ได้เลยหลัง test ผ่าน
+⚠️ production repo = `saaikanyakorn-afk/etaxcenter` (git remote: `github-production`) — ต้องขอพี่ช้าง authorize ก่อน
 
 **⚠️ If push to kai's repo is blocked by GitHub Secret Scanning:**
 Ask พี่ช้าง to allow the push — provide the unblock URL(s) from the error message and wait for confirmation before retrying.

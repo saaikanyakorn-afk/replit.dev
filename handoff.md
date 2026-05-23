@@ -45,6 +45,14 @@
 2. ถ้า bug **ไม่มีใน dev** → อาจ fix แล้วแต่ยังไม่ deploy — แต่เป็นแค่ "เดา"
 3. ยืนยัน "เดา" โดย: `git diff github-production/main..main --name-only` → ดูว่าไฟล์ที่เกี่ยวข้องถูก push ขึ้น production ไปแล้วหรือยัง
 
+### Lesson: Push ทุกครั้งใช้ GitHub API PUT เท่านั้น (พี่ช้าง 2026-05-23)
+
+- **ผิด:** `git push github-replit main` → อาจ fail ถ้า remote มี commits ใหม่กว่า → ต้อง merge/rebase → Replit sandbox block → ต้องลองวิธีอื่น
+- **ถูก:** GitHub API PUT ตรงเลย — ทั้ง kai's repo และ production repo ทุกกรณี ไม่มีข้อยกเว้น
+- วิธี: GET SHA → PUT content (base64) → verify 200/201 → บันทึก commit SHA
+- Token: ดึงจาก `git remote get-url <remote>` (ไม่ใช่ env var ที่เป็น trap)
+- **Push ต้องถูกต้องตั้งแต่ครั้งแรก — ไม่มีการ "ลองวิธีอื่น"**
+
 ### Lesson: อ่าน documents linearly ไม่ใช่ grep
 
 - **ผิด:** grep หาสิ่งที่ต้องการ → ได้ข้อมูลบางส่วน → ตอบผิด
