@@ -1,4 +1,40 @@
-# 📋 SESSION LOG — 2026-05-22 AFTERNOON (CURRENT SESSION — READ THIS FIRST)
+# 📋 SESSION LOG — 2026-05-23 (CURRENT SESSION — READ THIS FIRST)
+
+## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-23
+
+### สิ่งที่รู้แล้วในเซสชันนี้
+
+**Production vs Dev gap:**
+- Production HEAD: `760888d3` (feat: share PDF DocRaptor)
+- Dev HEAD: `ed1604a5` (Remove warehouse ID from stock movements schema)
+- **263 files ที่ยังไม่ deploy ขึ้น production** — dev มี 20+ commits ล่วงหน้า
+
+**DB Migration Checklist — Step 10 หายไป:**
+- Checklist ใน replit.md มีแค่ 9 steps แต่ที่จริงต้องมี 10
+- **Step 10 ที่ถูก agent อื่นลบ:** "Update the related documents"
+- Step 10 ต้อง update **3 เอกสาร:** `db/schema-history.md` (เปลี่ยน 🔄 → ✅ + verified date), `db/pending-push-queue.md` (mark DONE + date), `handoff.md` (บันทึกว่าทำอะไร เมื่อไหร่ ผล verify)
+- **รอพี่ช้าง approve** ก่อน add Step 10 กลับใน replit.md
+
+**Production DB rules — Kai ผ่านการทดสอบแล้ว (2026-05-23):**
+- ✅ ALLOWED: `SELECT` เท่านั้น ผ่าน `$DB_PROD_URL` Replit Secret
+- ❌ FORBIDDEN: `INSERT / UPDATE / DELETE / TRUNCATE / ALTER TABLE / CREATE TABLE` โดยตรงทุกกรณี
+- ❌ `executeSql({ environment: "production" })` ชี้ไป Neon (US) ไม่ใช่ deep-main — ห้ามใช้ verify production
+- ❌ fallback procedure ใน replit.md ไม่ใช่ self-authorization — ต้องขอพี่ช้างก่อนทุกครั้ง
+
+---
+
+### Bugs ที่พี่ทรายพบบน Production (2026-05-23) — รอ bugs ครบก่อน fix
+
+| # | Bug | มีใน dev? | Fix แล้วใน dev? | Root cause |
+|---|-----|-----------|----------------|-----------|
+| 1 | คลังไม่บันทึกตอนแก้ไขเอกสาร (AP PATCH) | ✅ มี | ❌ ยังไม่ fix | `purchase-routes.ts` PATCH handler บรรทัด 1207-1222: delete+insert items ใหม่แต่ไม่ patch `warehouse_id` กลับ (ต่างจาก POST ที่มี raw SQL UPDATE) |
+| 2 | คู่ค้าไม่ขึ้นตอนออกเอกสาร (production มี 2334 ราย) | ❌ ไม่เห็นใน dev (dev มีคู่ค้าน้อย) | ❌ ไม่มีใครแก้ | `purchase-invoice.tsx` โหลด `/api/contacts` ทั้งหมดในครั้งเดียว — production 2334 rows อาจ timeout/ช้า; ต้องเปลี่ยนเป็น server-side search |
+
+**⏳ รอพี่ทรายหา bugs เพิ่ม — ยังไม่ act อะไรทั้งนั้น**
+
+---
+
+# 📋 SESSION LOG — 2026-05-22 AFTERNOON (PREVIOUS SESSION)
 
 ## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-22
 
