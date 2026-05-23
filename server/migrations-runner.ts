@@ -37,6 +37,7 @@ import {
   runWipWarehouseMigration,
   runPaymentTypeColumnMigration,
   runRdVatCacheMigration,
+  runStockMovementWarehouseMigration,
 } from "@shared/schema-extra";
 
 function run(name: string, fn: (db: any) => Promise<void>) {
@@ -53,6 +54,7 @@ export function runPendingMigrations() {
 
   run("runMaterialIssueMigration",            runMaterialIssueMigration);           // N3  ✅ done 2026-05-20
   // run("runPaymentTypeColumnMigration",     runPaymentTypeColumnMigration);       // N4b ✅ done 2026-05-22 09:11 BKK — flag set (column already existed, migration set flag only)
+  // run("runStockMovementWarehouseMigration",runStockMovementWarehouseMigration);  // N16 ⏳ PENDING APPROVAL — ADD warehouse_id TO stock_movements
   // run("runRdVatCacheMigration",            runRdVatCacheMigration);              // N15 ✅ done 2026-05-22 — tables+flag already existed before this session
 
   // ── N11 — DEPLOYED 2026-05-21 — all 6 flags SET, 3 columns confirmed in prod ─

@@ -1261,3 +1261,23 @@ export async function runRdVatCacheMigration(db: any) {
 /*
 export async function runInitialStockMovementBackfill(db: any) { ... }
 */
+
+// =============================================================================
+// ENTRY #016 — ADD warehouse_id TO stock_movements (2026-05-23)
+// Reason: สต๊อกการ์ดต้องแสดงตามคลังได้ — stock_movements ไม่มี warehouse_id column
+// เพิ่ม nullable column ก่อน แล้ว code pass ค่าเมื่อมี warehouseId
+// Safe: nullable column, ไม่กระทบ existing rows (warehouse_id = NULL = ทุกคลัง)
+// =============================================================================
+export async function runStockMovementWarehouseMigration(db: any) {
+  const FLAG = "ADD_WAREHOUSE_ID_TO_STOCK_MOVEMENTS_20260523";
+  try {
+    const { sql } = await import("drizzle-orm");
+    const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
+    if ((flag.rows || []).length > 0) return;
+    await db.execute(sql.raw(`ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS warehouse_id INTEGER`));
+    await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
+    console.log("[migration] ✅ stock_movements.warehouse_id column added");
+  } catch (e: any) {
+    console.error("[migration] ❌ runStockMovementWarehouseMigration FAILED:", e.message);
+  }
+}
