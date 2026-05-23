@@ -32,7 +32,9 @@
 | 1 | คลังไม่บันทึกตอนแก้ไขเอกสาร (AP PATCH) | ✅ มี | ✅ DEPLOYED 2026-05-23 | `purchase-routes.ts` PATCH: `.returning({ id })` + raw SQL UPDATE warehouse_id. Build pass 583ms, etax-center online 75.3mb. รอ พี่ทราย verify บน production |
 | 2 | คู่ค้าไม่ขึ้นตอนออกเอกสาร (production มี 2334 ราย) | ❌ ไม่เห็นใน dev (dev มีคู่ค้าน้อย) | ❌ ไม่มีใครแก้ | `purchase-invoice.tsx` โหลด `/api/contacts` ทั้งหมดในครั้งเดียว — production 2334 rows อาจ timeout/ช้า; ต้องเปลี่ยนเป็น server-side search |
 
-**⏳ รอพี่ทรายหา bugs เพิ่ม — ยังไม่ act อะไรทั้งนั้น**
+| 3 | หน้ารายการสินค้า "แยกตามคลัง" แสดง "online" แทนชื่อคลังจริง (แต่สต๊อกการ์ดถูกต้อง) | กำลัง diagnose | กำลัง diagnose | สินค้า 5ST-6-CCTV300B (ID 7058) production companyId=3684 — stock card row 2 AP6905230001 goods_in แสดงถูก แต่ inventory list แสดง "online 1.00" |
+
+**⏳ Bug 3 กำลัง diagnose**
 
 ---
 
