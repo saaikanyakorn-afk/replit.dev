@@ -96,3 +96,9 @@ id = "L9HEhP3v6mq7beJ0oeBSK"
 uri = "file://db/pending-production-changes.txt"
 type = "text"
 title = "Pending Production DB Changes (ต้องขออนุมัติก่อน deploy)"
+
+[[outputs]]
+id = "V9xVPiarU4mvSbFNd11-q"
+uri = "file://etaxcenter-workstation-20260524.zip"
+type = "unspecified"
+title = "E-Tax Center — Workstation Package (9.4MB)"
