@@ -102,3 +102,9 @@ id = "V9xVPiarU4mvSbFNd11-q"
 uri = "file://etaxcenter-workstation-20260524.zip"
 type = "unspecified"
 title = "E-Tax Center — Workstation Package (9.4MB)"
+
+[[outputs]]
+id = "fwXPiLs0ejmTIieQZojFl"
+uri = "file://kai-source-20260524.tar.gz"
+type = "unspecified"
+title = "Kai Source Code (18MB) — client/ server/ shared/ + configs + .env"
