@@ -172,6 +172,7 @@ export default function TaxInvoiceList() {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
       queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-stock/levels"] });
       toast({ title: "ลบใบกำกับภาษีสำเร็จ", variant: "success" as any });
     },
     onError: (err: any) => toast({ title: "ไม่สามารถลบได้", description: err.message, variant: "destructive" }),
@@ -188,6 +189,7 @@ export default function TaxInvoiceList() {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
       queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-stock/levels"] });
       toast({ title: "เปลี่ยนสถานะสำเร็จ", variant: "success" as any });
     },
   });

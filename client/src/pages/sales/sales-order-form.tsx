@@ -435,6 +435,10 @@ export default function SalesOrderForm() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-stock/levels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       if (fromQuoteId && data?.id) {
         fetch(`/api/quotations/${fromQuoteId}`, {
           method: "PATCH",
@@ -456,6 +460,10 @@ export default function SalesOrderForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-stock/levels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       toast({ title: "อัพเดทใบสั่งขายสำเร็จ", variant: "success" as any });
       navigate("/sales/order");
     },
@@ -469,6 +477,10 @@ export default function SalesOrderForm() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-stock/levels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       const newStatus = data.status || "approved";
       setForm(p => ({ ...p, status: newStatus }));
       toast({ title: newStatus === "approved" ? "อนุมัติใบสั่งขายสำเร็จ" : "อัพเดทสถานะสำเร็จ", variant: "success" as any });

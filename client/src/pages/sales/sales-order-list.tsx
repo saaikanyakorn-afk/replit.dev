@@ -123,6 +123,10 @@ export default function SalesOrderList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-stock/levels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       toast({ title: "ลบใบสั่งขายสำเร็จ", variant: "success" as any });
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
@@ -135,6 +139,10 @@ export default function SalesOrderList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouse-stock/levels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       toast({ title: "เปลี่ยนสถานะสำเร็จ", variant: "success" as any });
     },
   });
