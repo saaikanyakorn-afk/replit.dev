@@ -38,28 +38,28 @@
 | F1 | เพิ่มคอลัมน์ "คลัง" ในสต๊อกการ์ด | ✅ แก้แล้ว — stock-card.tsx มีคอลัมน์คลังแล้ว |
 | F2 | แสดงสต๊อกคงเหลือแต่ละคลังในหน้าออกใบกำกับ | ✅ แก้แล้ว — dropdown คลังแสดงจำนวน + ใต้ dropdown แสดง "คงเหลือ X (จอง Y)" |
 
-#### ไฟล์ที่แก้ (2026-05-25)
-- `server/index.ts` — migration: `ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS warehouse_id INTEGER`
-- `server/storage.ts` — `adjustStock` extra.warehouseId → save ใน stock_movements
-- `server/route-helpers.ts` — `deductStockBundleAware` ส่ง warehouseId → adjustStock
-- `server/routes/purchase-routes.ts` — insert stockMovements (CREATE+UPDATE) + UPDATE warehouse_id
-- `server/inventory-costing.ts` — `MovementWithCost` type + `getStockCardWithCost` fetch warehouse name
-- `client/src/pages/inventory/stock-card.tsx` — เพิ่มคอลัมน์ "คลัง"
-- `server/routes/products-routes.ts` — เพิ่ม API `/api/warehouse-stock/levels`
-- `client/src/pages/sales/tax-invoice-form.tsx` — F2: dropdown option แสดงจำนวน + ข้อความ "คงเหลือ X"
+#### ไฟล์ที่แก้ + PUSHED TO PRODUCTION (2026-05-25) — Stock warehouse_id features
+| ไฟล์ | สิ่งที่แก้ | สถานะ |
+|------|-----------|-------|
+| `server/storage.ts` | `adjustStock` extra.warehouseId → save ใน stock_movements | ✅ PUSHED |
+| `server/route-helpers.ts` | `deductStockBundleAware` ส่ง warehouseId → adjustStock | ✅ PUSHED |
+| `server/routes/purchase-routes.ts` | insert stockMovements (CREATE+UPDATE) + UPDATE warehouse_id | ✅ PUSHED |
+| `server/inventory-costing.ts` | `MovementWithCost` type + `getStockCardWithCost` fetch warehouse name | ✅ PUSHED |
+| `server/routes/products-routes.ts` | เพิ่ม API `/api/warehouse-stock/levels` | ✅ PUSHED |
+| `client/src/pages/inventory/stock-card.tsx` | เพิ่มคอลัมน์ "คลัง" | ✅ PUSHED |
+| `client/src/pages/sales/tax-invoice-form.tsx` | F2: dropdown แสดงจำนวน + invalidateQueries | ✅ PUSHED |
+| `client/src/pages/sales/tax-invoice-list.tsx` | invalidateQueries stock | ✅ PUSHED |
+| `client/src/pages/purchases/purchase-invoice.tsx` | invalidateQueries stock | ✅ PUSHED |
+| `client/src/pages/purchases/purchase-invoice-list.tsx` | invalidateQueries stock | ✅ PUSHED |
+| `client/src/pages/inventory/goods-receiving-form.tsx` | invalidateQueries stock | ✅ PUSHED |
 
-#### ไฟล์ที่แก้ (2026-05-25 รอบ 2) — Fix auto-refresh inventory-list หลัง create/edit/delete
-| ไฟล์ | mutation ที่แก้ |
-|------|----------------|
-| `client/src/pages/sales/tax-invoice-form.tsx` | createMutation, updateMutation, statusMutation → เพิ่ม invalidate `/api/products`, `/api/inventory/stock-by-warehouse`, `/api/product-stock` |
-| `client/src/pages/sales/tax-invoice-list.tsx` | deleteMutation, statusMutation → เพิ่ม invalidate เดียวกัน |
-| `client/src/pages/purchases/purchase-invoice.tsx` | createMutation, updateMutation, statusMutation → เพิ่ม invalidate เดียวกัน |
-| `client/src/pages/purchases/purchase-invoice-list.tsx` | deleteMutation, statusMutation → เพิ่ม invalidate เดียวกัน |
-| `client/src/pages/inventory/goods-receiving-form.tsx` | createMutation, updateMutation → เพิ่ม invalidate เดียวกัน |
-
-**ผลลัพธ์:** หน้า inventory-list จะ refresh สต๊อกทันทีหลัง save/delete TIV, AP, GR โดยไม่ต้อง reload หน้า
+**พี่ทราย confirm (2026-05-25):** จุด 1-5 ผ่านทั้งหมด ✅
+**พี่ช้าง approve push (2026-05-25):** ✅
+**Deploy:** รอพี่ช้าง `git fetch origin && git checkout origin/main -- <files> && npm run build && pm2 start etax-center`
 
 > **หมายเหตุ B3**: ถ้า company ตั้ง `stockEntrySource = "gr"` (default) → AP ไม่ trigger stock — ต้อง approve GR แทน ตรวจดูใน Settings → ระบบสินค้าคงคลัง
+
+> **หมายเหตุ SO (จุด 6-7):** พี่ทราย ยังต้องทดสอบ SO reserve/release stock — pending หลัง deploy 11 ไฟล์นี้
 
 ---
 
