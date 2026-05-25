@@ -1,5 +1,23 @@
 # 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
 
+## ✅ FIX: Payment Methods — isDefault clear ข้าม payment_type — 2026-05-25
+
+**อาการ:** ตั้งค่าเริ่มต้น (ดาว ⭐) แล้วไม่ทำงาน — หรือ set default ฝั่งหนึ่งแล้วล้างอีกฝั่ง
+
+**Root cause:** 2 จุด ใน `payment-methods-routes.ts`
+- **POST line 122 (เดิม):** `UPDATE ... WHERE company_id = X` — ไม่ filter payment_type, pmType ถูก define หลัง UPDATE
+- **PATCH line 150 (เดิม):** `db.update().where(companyId)` — ไม่ filter payment_type เช่นกัน
+
+**แก้:** เพิ่ม `AND payment_type = ${pmType}` ทั้ง 2 จุด + ย้าย pmType ก่อน UPDATE
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| ไฟล์ | `server/routes/payment-methods-routes.ts` line 124–127, 152–154 |
+| Push | commit `004331d` |
+| สถานะ | ⏳ รอ deploy production |
+
+---
+
 ## ✅ FIX: Product Import ไม่ save warehouse_id → stock_movements — 2026-05-25
 
 **Root cause:** `products-routes.ts` line 566 — `db.insert(stockMovements)` ไม่ได้ใส่ `warehouse_id` เพราะ column นั้นเป็น raw SQL (N16) Drizzle ไม่รู้จัก

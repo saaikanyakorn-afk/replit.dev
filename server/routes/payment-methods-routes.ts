@@ -118,10 +118,10 @@ app.post("/api/payment-methods", requireAuth, async (req, res) => {
     const companyId = Number(bodyCompanyId) || Number(req.query.companyId);
     if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
     if (!name || !accountCode) return res.status(400).json({ message: "กรุณาระบุชื่อและรหัสบัญชี" });
-    if (isDefault) {
-      await db.execute(sql`UPDATE payment_methods SET is_default = false WHERE company_id = ${companyId}`);
-    }
     const pmType = (paymentType === "pay" ? "pay" : "receive");
+    if (isDefault) {
+      await db.execute(sql`UPDATE payment_methods SET is_default = false WHERE company_id = ${companyId} AND payment_type = ${pmType}`);
+    }
     const inserted = await db.execute(sql`
       INSERT INTO payment_methods (company_id, name, name_th, account_code, account_id, active, is_default, sort_order, bank_name, bank_account_no, payment_type)
       VALUES (${companyId}, ${name}, ${nameTh || null}, ${accountCode}, ${accountId ? Number(accountId) : null}, ${active !== false}, ${isDefault || false}, ${sortOrder || 0}, ${bankName || null}, ${bankAccountNo || null}, ${pmType})
@@ -147,7 +147,8 @@ app.patch("/api/payment-methods/:id", requireAuth, async (req, res) => {
     }
     const { name, nameTh, accountCode, accountId, active, isDefault, sortOrder, bankName, bankAccountNo, paymentType } = req.body;
     if (isDefault) {
-      await db.update(paymentMethods).set({ isDefault: false }).where(eq(paymentMethods.companyId, existing.companyId!));
+      const pmTypeForClear = paymentType ?? existing.paymentType ?? "receive";
+      await db.execute(sql`UPDATE payment_methods SET is_default = false WHERE company_id = ${existing.companyId} AND payment_type = ${pmTypeForClear}`);
     }
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
