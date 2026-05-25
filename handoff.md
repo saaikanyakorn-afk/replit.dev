@@ -1,4 +1,65 @@
-# 📋 SESSION LOG — 2026-05-23 (CURRENT SESSION — READ THIS FIRST)
+# 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
+
+## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-25
+
+### 🖥️ พี่ช้าง Workstation Setup — COMPLETED 2026-05-25
+
+พี่ช้างตั้ง local workstation (Windows, `F:\SSD-Worrk\Kai_replit_project`) เพื่อ investigate bugs โดยตรงจาก code — **พี่ช้างจะ READ ONLY ไม่แก้ code** จะชี้ให้ Kai เห็นว่าผิดตรงไหน
+
+**Workstation config ที่ต้องรู้:**
+| Item | ค่า |
+|------|-----|
+| OS | Windows 10 (Build 19044) |
+| Path | `F:\SSD-Worrk\Kai_replit_project` |
+| DB | PostgreSQL 16, DB name = `helium_replit`, port 5432 |
+| Server port | 5010 (`PORT=5010` ใน .env) |
+| URL | `http://localhost:5010` |
+| NODE_ENV | development |
+
+**`.env` workstation — keys สำคัญ:**
+```
+REPL_SLUG=local-dev-workstation   ← bypass encryption check, bind localhost (ไม่ใช่ REPL_ID เพราะ REPL_ID → 0.0.0.0 + reusePort → ENOTSUP บน Windows)
+PORT=5010
+LINE_CHANNEL_ACCESS_TOKEN=<ดึงจาก companies WHERE id=4>
+RECAPTCHA_SITE_KEY=6LcVKfssAAAAABMctkahM0WOaLzQxhRXP1GBYkW7   ← ใน system_config DB
+RECAPTCHA_SECRET_KEY=6LcVKfssAAAAAPSYd49NHY1lBqk0kTZGdlLFSdlu  ← ใน system_config DB
+SESSION_SECRET=<มีอยู่แล้วใน .env>
+DATABASE_URL=postgresql://postgres:<pass>@localhost:5432/helium_replit
+```
+
+**ไฟล์พิเศษที่ต้องมีบน workstation (ไม่อยู่ใน tar):**
+- `F:\SSD-Worrk\Kai_replit_project\vite-plugin-meta-images.ts` — ต้องสร้างเอง (content อยู่ใน handoff นี้ section ล่าง หรือ copy จาก Replit root)
+
+**การแก้ไขที่ทำในเซสชันนี้ (2026-05-25) — มีผลบน Replit Dev ด้วย:**
+| ไฟล์ | สิ่งที่แก้ | เหตุผล |
+|------|-----------|--------|
+| `server/auth.ts` | reCAPTCHA: reverted dev bypass กลับเป็น full verify | พี่ช้างต้องการ workstation ทำงานเหมือน Replit dev เต็มรูปแบบ |
+
+**RECAPTCHA keys ใน workstation DB (system_config):**
+- ต้อง INSERT เข้า `helium_replit.system_config` บน workstation แล้ว:
+  - `RECAPTCHA_SITE_KEY` = `6LcVKfssAAAAABMctkahM0WOaLzQxhRXP1GBYkW7`
+  - `RECAPTCHA_SECRET_KEY` = `6LcVKfssAAAAAPSYd49NHY1lBqk0kTZGdlLFSdlu`
+  - Domains registered: `localhost` + `etaxerp.com` (Google reCAPTCHA v2 checkbox)
+  - **⚠️ keys เหล่านี้ยังไม่ได้ INSERT ใน Replit dev DB** — ต้องทำด้วยถ้าต้องการให้ Replit dev login ผ่าน reCAPTCHA ด้วย (ปัจจุบัน Replit dev ไม่มี reCAPTCHA key → widget ไม่โหลด → login ไม่ได้ผ่าน widget แต่ยังมี dev path อื่น)
+
+**สถานะ Investigation:**
+- พี่ช้าง workstation พร้อมแล้ว login ได้
+- พี่ช้างกำลังถามพี่ทรายว่า bug ไหน urgent ที่สุด — จะเริ่ม investigate จาก priority ของพี่ทราย
+- **Kai standby รอรับผล investigation จากพี่ช้าง**
+
+---
+
+### Bugs ยังค้างอยู่ (ณ 2026-05-25)
+
+| # | Bug | Status |
+|---|-----|--------|
+| 1 | คลังไม่บันทึกตอนแก้ไขเอกสาร (AP PATCH) | ✅ DEPLOYED 2026-05-23 — รอพี่ทราย verify production |
+| 2 | คู่ค้าไม่ขึ้นตอนออกเอกสาร (production 2334 ราย) | ❌ ยังไม่แก้ — ต้องเปลี่ยนเป็น server-side search |
+| 3 | หน้า inventory list แสดง "online" แทนชื่อคลังจริง | ❌ diagnosed แล้ว root cause = `warehouse_stock_levels` ไม่ถูก upsert สำหรับ AP6905230001 (side effect Bug 1). Workaround: พี่ทราย re-save AP6905230001. Code fix ยังไม่ได้ทำ |
+
+---
+
+# 📋 SESSION LOG — 2026-05-23 (PREVIOUS SESSION)
 
 ## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-23
 
