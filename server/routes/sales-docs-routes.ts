@@ -2495,10 +2495,15 @@ app.delete("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecom
     if (blockers.length > 0) {
       return res.status(400).json({ message: `ไม่สามารถลบได้ เนื่องจากมีเอกสารเชื่อมอยู่:\n${blockers.join("\n")}\nกรุณาลบเอกสารที่เชื่อมก่อน` });
     }
-    const tiItems = await fetchTaxInvoiceItems(existing.id);
-    const hadStockMovements = (await db.select({ id: stockMovements.id }).from(stockMovements).where(
-      and(eq(stockMovements.referenceType, "tax_invoice"), eq(stockMovements.referenceId, existing.id))
-    )).length > 0;
+    // ดึง movements จาก DB ก่อน delete เพื่อ reverse ถูกต้อง (รวม warehouse_id จาก raw SQL)
+    const tiDelMovementsRaw = await db.execute(sql`
+      SELECT product_id AS "productId", warehouse_id AS "warehouseId",
+             SUM(quantity::numeric) AS "netQty"
+      FROM stock_movements
+      WHERE reference_type = 'tax_invoice' AND reference_id = ${existing.id}
+      GROUP BY product_id, warehouse_id
+    `);
+    const hadStockMovements = tiDelMovementsRaw.rows.length > 0;
     await db.transaction(async (tx) => {
       await tx.update(liveCfOrders).set({ taxInvoiceId: null }).where(eq(liveCfOrders.taxInvoiceId, existing.id));
       await deleteJournalEntriesForDoc(tx, "tax_invoice", existing.id);
@@ -2507,7 +2512,24 @@ app.delete("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecom
       await tx.delete(taxInvoices).where(eq(taxInvoices.id, existing.id));
     });
     const tiDelTriggers = await getInventoryTriggers(existing.companyId);
-    if (tiDelTriggers.invoice_deduct && hadStockMovements) await reverseWarehouseStockBundleAware(tiItems, existing.companyId);
+    if (tiDelTriggers.invoice_deduct && hadStockMovements) {
+      for (const row of tiDelMovementsRaw.rows as any[]) {
+        const netQty = Number(row.netQty || 0);
+        if (netQty >= 0 || !row.productId) continue; // ไม่มีการ deduct ไม่ต้อง reverse
+        const restoreQty = Math.abs(netQty);
+        const pid = Number(row.productId);
+        const wid = row.warehouseId ? Number(row.warehouseId) : null;
+        if (wid) {
+          await upsertWarehouseStockLevel(existing.companyId, pid, wid, restoreQty);
+        }
+        // sync productStock.quantity โดยตรง (ไม่สร้าง orphan stock_movement)
+        await db.execute(sql`
+          UPDATE product_stock
+          SET quantity = (quantity::numeric + ${restoreQty})::text, updated_at = NOW()
+          WHERE company_id = ${existing.companyId} AND product_id = ${pid}
+        `);
+      }
+    }
     if (existing.invoiceId) {
       try { await recomputePaymentStatus("invoice", existing.invoiceId); } catch (e: any) { console.error(`[TIV-DELETE] recomputePaymentStatus invoice#${existing.invoiceId} failed:`, e.message); }
     }
