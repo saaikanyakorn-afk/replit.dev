@@ -5,6 +5,25 @@ Each entry must include: what changed, backup location, datetime, and reason.
 
 ---
 
+## 2026-05-25 — warehouse_id column on stock_movements (ENTRY #017)
+
+**What changed:**
+- Added `warehouse_id INTEGER` (nullable) to `stock_movements`
+- Enables stock card to show per-warehouse movements — code passes warehouseId when creating stock_movements rows
+
+**Backup location:** No backup required — ADD COLUMN nullable, no default, no existing data affected
+
+**Production DB verified (Step 1 — 2026-05-25):** Column `warehouse_id` confirmed NOT present on production before migration. Table had 14 columns, 1,306 rows. Baseline saved in `db/prod-stock-baseline-20260525.md`.
+
+**Migration code:** `shared/schema-extra.ts` → `runStockMovementWarehouseMigration()`
+**Caller:** `server/migrations-runner.ts` (central runner)
+**Flag:** `ADD_WAREHOUSE_ID_TO_STOCK_MOVEMENTS_20260523` in `system_config`
+**Reason:** N16 — stock card (`stock-card.tsx`) needs to display which warehouse each movement came from. `storage.ts` `adjustStock()` and `route-helpers.ts` `deductStockBundleAware()` now pass `warehouseId` to `stock_movements` INSERT. Column must exist before these code files can be deployed to production.
+
+**Status:** 🔄 Migration pushed 2026-05-25 — awaiting Step 6 server restart to run ALTER TABLE on production
+
+---
+
 ## 2026-04-30 — Warehouse Column Migration (commits 3b274b63, c94edb4e, 78c5efa6)
 
 **What changed:**
