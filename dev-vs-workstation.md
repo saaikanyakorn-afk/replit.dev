@@ -55,11 +55,20 @@ git pull
 
 ---
 
+## กฎการอัปเดต status (พี่ช้าง 2026-05-25)
+
+> **status เป็น "done" ได้เฉพาะเมื่อพี่ทรายยืนยันว่า "working on production" เท่านั้น**
+> ถ้ายังไม่ได้รับการยืนยัน → status คือ "⏳ in progress"
+
+---
+
 ## Log การเปลี่ยนแปลงสะสม (ต่อเนื่องจาก session นี้ไปเรื่อยๆ)
 
-| วันที่ | ไฟล์ | สิ่งที่แก้ | สถานะ |
-|--------|------|-----------|-------|
-| 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES fix | ✅ dev verified พี่ทราย — รอ push prod |
-| 2026-05-25 | `server/routes/core-routes.ts` | cleanup exceptions | ✅ dev verified พี่ทราย — รอ push prod |
-| 2026-05-25 | `client/src/app-extra.tsx` | material-issue routes: singular → plural (`/material-issue` → `/material-issues`) | ✅ dev — รอ verify |
-| 2026-05-25 | `client/src/components/manufacturing-layout.tsx` | NAV_KEY_MAP form path: `/material-issue/form` → `/material-issues/form` | ✅ dev — รอ verify |
+| วันที่ | ไฟล์ | สิ่งที่แก้ | Pushed | สถานะ |
+|--------|------|-----------|--------|-------|
+| 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES: ลดเหลือ `["firm-mgmt","etax-hub"]` | ✅ `cea43be4` | ⏳ in progress |
+| 2026-05-25 | `server/routes/core-routes.ts` | cleanup managerExceptions/accountantExceptions/empCashierExceptions | ✅ `71705e7a` | ⏳ in progress |
+| 2026-05-25 | `client/src/app-extra.tsx` | urlBase="/manufacturing" + support singular+plural material-issue routes | ✅ `d2822970` | ⏳ in progress |
+| 2026-05-25 | `client/src/components/manufacturing-layout.tsx` | NAV_KEY_MAP: `/material-issue/form` → `/material-issues/form` | ✅ `37024ab7` | ⏳ in progress |
+| 2026-05-25 | `client/src/pages/inventory/material-issue-list.tsx` | เพิ่มปุ่ม ← กลับ + แก้ navigate URLs singular → plural | ✅ `ceead1af` | ⏳ in progress |
+| 2026-05-25 | `client/src/pages/inventory/material-issue-form.tsx` | แก้ post-save MO navigate: ลบ double `/manufacturing/` | ✅ `ebcf2cbd` | ⏳ in progress |
