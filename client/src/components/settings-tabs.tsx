@@ -29,7 +29,7 @@ const SETTINGS_TABS: SettingsTab[] = [
   { label: "ข้อมูลบริษัท", href: "/settings/company-info", icon: Building2, adminOnly: true },
   { label: "แผนก/สาขา", href: "/settings/dept-branch", icon: GitBranch, adminOnly: true },
   { label: "เอกสาร", href: "/settings/document-templates", icon: FileText, adminOnly: true },
-  { label: "วิธีรับเงิน", href: "/settings/payment-methods", icon: Banknote, adminOnly: true },
+  { label: "วิธีรับ/จ่ายเงิน", href: "/settings/payment-methods", icon: Banknote, adminOnly: true },
   { label: "White Label", href: "/settings/white-label", icon: Palette, adminOnly: true, requirePlan: "hasWhiteLabel" },
   { label: "FTP Archive", href: "/settings/ftp-archive", icon: HardDrive, adminOnly: true },
   { label: "e-Tax Invoice", href: "/settings/etax", icon: Receipt, adminOnly: true },
