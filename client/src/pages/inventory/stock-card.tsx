@@ -165,6 +165,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
       return res.json();
     },
     enabled: !!companyId && !!productId,
+    refetchOnMount: "always",
   });
 
   const { data: costingData, isLoading: isCostingLoading } = useQuery<{ method: string; movements: any[]; balanceBF?: { qty: number; value: number; unitCost: number } }>({
@@ -178,6 +179,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
       return res.json();
     },
     enabled: !!companyId && !!productId,
+    refetchOnMount: "always",
   });
 
   const selectedProduct = products.find(p => p.id === productId);
