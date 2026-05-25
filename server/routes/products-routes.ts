@@ -1608,6 +1608,59 @@ app.post("/api/inventory/recalculate", requireAuth, requireModule("inventory"), 
   }
 });
 
+// Recalculate warehouse_stock_levels + product_stock from stock_movements (source of truth)
+app.post("/api/inventory/recalculate-warehouse-stock", requireAuth, requireModule("inventory"), async (req, res) => {
+  try {
+    const companyId = Number(req.body.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+
+    // 1) Recalculate warehouse_stock_levels from stock_movements grouped by product+warehouse
+    const warehouseSums = await db.execute(sql`
+      SELECT product_id, warehouse_id, SUM(quantity::numeric) AS total
+      FROM stock_movements
+      WHERE company_id = ${companyId} AND warehouse_id IS NOT NULL
+      GROUP BY product_id, warehouse_id
+    `);
+
+    // Delete all existing warehouse_stock_levels for this company
+    await db.execute(sql`DELETE FROM warehouse_stock_levels WHERE company_id = ${companyId}`);
+
+    // Re-insert from aggregated movements
+    let warehouseRows = 0;
+    for (const row of warehouseSums.rows as any[]) {
+      const qty = Number(row.total || 0);
+      await db.execute(sql`
+        INSERT INTO warehouse_stock_levels (company_id, product_id, warehouse_id, quantity, reserved_qty, updated_at)
+        VALUES (${companyId}, ${Number(row.product_id)}, ${Number(row.warehouse_id)}, ${String(qty)}, '0', NOW())
+      `);
+      warehouseRows++;
+    }
+
+    // 2) Recalculate product_stock.quantity from ALL stock_movements (any warehouse or none)
+    const productSums = await db.execute(sql`
+      SELECT product_id, SUM(quantity::numeric) AS total
+      FROM stock_movements
+      WHERE company_id = ${companyId}
+      GROUP BY product_id
+    `);
+
+    let productRows = 0;
+    for (const row of productSums.rows as any[]) {
+      const qty = Number(row.total || 0);
+      await db.execute(sql`
+        UPDATE product_stock
+        SET quantity = ${String(qty)}, updated_at = NOW()
+        WHERE company_id = ${companyId} AND product_id = ${Number(row.product_id)}
+      `);
+      productRows++;
+    }
+
+    res.json({ success: true, warehouseRows, productRows, message: `Recalculated ${warehouseRows} warehouse levels, ${productRows} product stocks` });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.post("/api/inventory/update-cost-journals", requireAuth, requireModule("inventory"), async (req, res) => {
   try {
     const companyId = Number(req.body.companyId);
