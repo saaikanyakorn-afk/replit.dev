@@ -777,6 +777,7 @@ export default function TaxInvoiceForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
       queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       toast({ title: "สร้างใบกำกับภาษีสำเร็จ", variant: "success" as any });
       navigate("/sales/tax-invoice");
     },
@@ -805,6 +806,7 @@ export default function TaxInvoiceForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
       queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       toast({ title: "อัพเดทใบกำกับภาษีสำเร็จ", variant: "success" as any });
       setDepositDeductions([]);
       navigate("/sales/tax-invoice");
@@ -822,6 +824,7 @@ export default function TaxInvoiceForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
       queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-reports/stock-card"] });
       const newStatus = data.status || "issued";
       setForm(p => ({ ...p, status: newStatus }));
       if (data.journalResult && !data.journalResult.skipped) {
