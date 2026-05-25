@@ -55,7 +55,8 @@
 
 **พี่ทราย confirm (2026-05-25):** จุด 1-5 ผ่านทั้งหมด ✅
 **พี่ช้าง approve push (2026-05-25):** ✅
-**Deploy:** รอพี่ช้าง `git fetch origin && git checkout origin/main -- <files> && npm run build && pm2 start etax-center`
+**Deploy:** ✅ DEPLOYED — Done in 457ms, etax-center online 84.7mb (2026-05-25)
+**หมายเหตุ:** push `client/src/components/send-email-dialog.tsx` ไปด้วย เพราะ tax-invoice-list.tsx import — ไม่เคยมีบน GitHub production มาก่อน
 
 > **หมายเหตุ B3**: ถ้า company ตั้ง `stockEntrySource = "gr"` (default) → AP ไม่ trigger stock — ต้อง approve GR แทน ตรวจดูใน Settings → ระบบสินค้าคงคลัง
 
