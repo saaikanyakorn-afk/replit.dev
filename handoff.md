@@ -2,6 +2,44 @@
 
 ## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-25
 
+### ✅ FIX DONE TODAY (2026-05-25) — PRIMARY_ONLY_MODULES
+
+**ปัญหา:** manufacturing, hr, settings ถูก lock เฉพาะ primary company โดยไม่มี business reason
+**ผู้อนุมัติ:** พี่ทราย (2026-05-25)
+**ไฟล์ที่แก้:**
+
+| ไฟล์ | สิ่งที่แก้ |
+|------|-----------|
+| `shared/permissions.ts` line 262 | PRIMARY_ONLY_MODULES: `["hr","firm-mgmt","etax-hub","settings","manufacturing"]` → `["firm-mgmt","etax-hub"]` |
+| `server/routes/core-routes.ts` lines 480-505 | ลบ managerExceptions / accountantExceptions / empCashierExceptions ออก เพราะไม่มีความหมายแล้ว — simplify เป็น filter เดียวสำหรับทุก non-admin role |
+
+**ผล:** ระบบผลิต (manufacturing), HR, ตั้งค่า ใช้ได้ทุกบริษัทในเครือแล้ว / firm-mgmt และ etax-hub ยังคง lock เฉพาะ primary company
+**สถานะ:** ✅ dev — รอพี่ช้าง verify + push production
+
+---
+
+### 📋 Diff: Replit Dev vs พี่ช้าง Workstation (ณ 2026-05-25)
+
+สิ่งที่อยู่บน **Replit Dev** แต่ยังไม่อยู่บน **Workstation** ของพี่ช้าง:
+
+| # | ไฟล์ | การเปลี่ยนแปลง |
+|---|------|---------------|
+| 1 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES ลดเหลือ ["firm-mgmt","etax-hub"] |
+| 2 | `server/routes/core-routes.ts` | ลบ exceptions ที่ไม่ใช้ / simplify non-primary filter |
+
+สิ่งที่อยู่บน **Workstation** แต่ไม่ใช่ Replit Dev:
+
+| # | รายการ | หมายเหตุ |
+|---|--------|---------|
+| 1 | reCAPTCHA keys ใน `system_config` | Workstation มี — Replit Dev DB ยังไม่มี → login ผ่าน reCAPTCHA widget ใน dev ยังไม่ได้ |
+| 2 | `.env` REPL_SLUG=local-dev-workstation | เฉพาะ Windows — bypass encryption check + bind localhost |
+| 3 | `.env` PORT=5010 | เฉพาะ workstation — Replit dev ใช้ port ที่ระบบกำหนด |
+| 4 | `vite-plugin-meta-images.ts` | สร้างไว้บน workstation แยกต่างหาก |
+
+**Workflow ที่พี่ทรายสั่ง:** Dev test → พี่ช้าง review → push production GitHub (ไม่ใช้ GitHub ตอนนี้)
+
+---
+
 ### 🖥️ พี่ช้าง Workstation Setup — COMPLETED 2026-05-25
 
 พี่ช้างตั้ง local workstation (Windows, `F:\SSD-Worrk\Kai_replit_project`) เพื่อ investigate bugs โดยตรงจาก code — **พี่ช้างจะ READ ONLY ไม่แก้ code** จะชี้ให้ Kai เห็นว่าผิดตรงไหน
