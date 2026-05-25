@@ -67,7 +67,7 @@ Column must be added before any code that writes `warehouse_id` to `stock_moveme
 
 | Item | Status | Action needed |
 |------|--------|---------------|
-| `stock_movements.warehouse_id` | ❌ NOT on production | Must run migration (N16) before deploying code that writes this column |
+| `stock_movements.warehouse_id` | ✅ EXISTS on production since 2026-05-25 20:41 BKK | N16 migration complete — FLAG set in system_config |
 | `warehouse_stock_levels` table | ✅ Exists, correct schema | No migration needed |
 
 ---

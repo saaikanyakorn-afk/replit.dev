@@ -20,7 +20,8 @@ Each entry must include: what changed, backup location, datetime, and reason.
 **Flag:** `ADD_WAREHOUSE_ID_TO_STOCK_MOVEMENTS_20260523` in `system_config`
 **Reason:** N16 — stock card (`stock-card.tsx`) needs to display which warehouse each movement came from. `storage.ts` `adjustStock()` and `route-helpers.ts` `deductStockBundleAware()` now pass `warehouseId` to `stock_movements` INSERT. Column must exist before these code files can be deployed to production.
 
-**Status:** 🔄 Migration pushed 2026-05-25 — awaiting Step 6 server restart to run ALTER TABLE on production
+**Production DB verified (Step 7 — 2026-05-25 20:41 BKK):** Column `warehouse_id INTEGER` confirmed present on `stock_movements` (15 columns total). FLAG `ADD_WAREHOUSE_ID_TO_STOCK_MOVEMENTS_20260523` = `done_2026-05-25 20:41:38.743863+07` confirmed in `system_config`.
+**Status:** ✅ COMPLETE — column verified on production 2026-05-25 20:41 BKK. Migration re-commented (clean push commit `6aa7c2e5`). Both DB loop and Code loop closed.
 
 ---
 

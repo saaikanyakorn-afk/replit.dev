@@ -1,5 +1,24 @@
 # 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
 
+## ✅ N16 MIGRATION COMPLETE — 2026-05-25 20:41 BKK
+
+**`stock_movements.warehouse_id` column** — ✅ ADD COLUMN ผ่านแล้วบน production
+
+| Step | Result |
+|------|--------|
+| Step 1 VERIFY FIRST | Column ไม่มีบน production (verified ด้วยตาจาก deep-main.hopto.org) |
+| Step 3 Migration code | `runStockMovementWarehouseMigration()` ใน schema-extra.ts — `ALTER TABLE stock_movements ADD COLUMN warehouse_id INTEGER` (ไม่มี IF NOT EXISTS ตาม Rule 0a) |
+| Step 6 Deploy | Push `server/migrations-runner.ts` + `shared/schema-extra.ts` → server restart → migration ran |
+| Step 7 Verify | Column ✅ 15 columns confirmed. FLAG `ADD_WAREHOUSE_ID_TO_STOCK_MOVEMENTS_20260523` = `done_2026-05-25 20:41:38.743863+07` |
+| Step 8+9 Clean | Re-commented N16 line → Push clean (commit `6aa7c2e5`) |
+| Step 10 Docs | `db/schema-history.md` ENTRY #017 ✅, `db/prod-stock-baseline-20260525.md` updated |
+
+**Rule 0a violation noted:** Previous migration had `IF NOT EXISTS` — ลบออกแล้ว + บันทึก rule ถาวรใน migrations-runner.ts header (พี่ช้าง 2026-05-25)
+
+**⏭️ ถัดไป:** Stock code files (storage.ts, route-helpers.ts, purchase-routes.ts, sales-docs-routes.ts, inventory-costing.ts, stock-card.tsx, products-routes.ts, tax-invoice-form.tsx, etc.) รอ พี่ช้าง approve push production แยกต่างหาก
+
+---
+
 ## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-25
 
 ### 🐛 Bugs + Features รอแก้ — สต๊อกคลัง (พี่ทราย รายงาน 2026-05-25)

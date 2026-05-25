@@ -59,7 +59,7 @@ export function runPendingMigrations() {
 
   run("runMaterialIssueMigration",            runMaterialIssueMigration);           // N3  ✅ done 2026-05-20
   // run("runPaymentTypeColumnMigration",     runPaymentTypeColumnMigration);       // N4b ✅ done 2026-05-22 09:11 BKK — flag set (column already existed, migration set flag only)
-  run("runStockMovementWarehouseMigration",runStockMovementWarehouseMigration);    // N16 🔄 ACTIVE — ADD warehouse_id TO stock_movements — approved 2026-05-25
+  // run("runStockMovementWarehouseMigration",runStockMovementWarehouseMigration);  // N16 ✅ done 2026-05-25 20:41 BKK — warehouse_id added to stock_movements, flag set
   // run("runRdVatCacheMigration",            runRdVatCacheMigration);              // N15 ✅ done 2026-05-22 — tables+flag already existed before this session
 
   // ── N11 — DEPLOYED 2026-05-21 — all 6 flags SET, 3 columns confirmed in prod ─
