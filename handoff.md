@@ -1,5 +1,18 @@
 # 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
 
+## ✅ FIX: Settings tab rename + add form paymentType selector — 2026-05-25
+
+**รายการ:**
+- `settings-tabs.tsx` line 35: เปลี่ยน label "วิธีรับเงิน" → "วิธีรับ/จ่ายเงิน" (commit `eba0309`)
+- `payment-methods.tsx`: เพิ่ม dropdown รับ/จ่ายเงินใน add form row — ไม่ต้องสลับ tab ก่อนเพิ่ม (commit `90bc3b6`)
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| Push | `eba0309` + `90bc3b6` |
+| สถานะ | ✅ push แล้ว — รอ deploy production |
+
+---
+
 ## ⚠️ KNOWN ISSUE: Production ไม่มี pay methods (รอ deploy) — 2026-05-25
 
 **อาการ:** production (etaxerp.com) หน้า Settings → วิธีการชำระเงิน → tab จ่ายเงิน — "ยังไม่มีวิธีจ่ายเงิน"
