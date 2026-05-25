@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
-import { Plus, Trash2, Eye, ClipboardList } from "lucide-react";
+import { Plus, Trash2, Eye, ClipboardList, ArrowLeft } from "lucide-react";
 
 interface MaterialIssue {
   id: number;
@@ -63,10 +63,13 @@ export default function MaterialIssueList({ urlBase = "/inventory" }: { urlBase?
     <div className="container mx-auto py-6 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate(`${urlBase}/dashboard`)} data-testid="button-back-list">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <ClipboardList className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold" data-testid="title-material-issue-list">ใบเบิกวัตถุดิบ</h1>
         </div>
-        <Button data-testid="button-create-material-issue" onClick={() => navigate(`${urlBase}/material-issue/form`)}>
+        <Button data-testid="button-create-material-issue" onClick={() => navigate(`${urlBase}/material-issues/form`)}>
           <Plus className="h-4 w-4 mr-2" />
           สร้างใบเบิกใหม่
         </Button>
@@ -116,7 +119,7 @@ export default function MaterialIssueList({ urlBase = "/inventory" }: { urlBase?
                         <Button
                           size="sm" variant="ghost"
                           data-testid={`button-view-${issue.id}`}
-                          onClick={() => navigate(`${urlBase}/material-issue/form/${issue.id}`)}
+                          onClick={() => navigate(`${urlBase}/material-issues/form/${issue.id}`)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>

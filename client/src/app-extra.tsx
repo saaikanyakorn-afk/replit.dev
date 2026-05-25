@@ -319,11 +319,11 @@ export default function AppExtra() {
   } else if (productionFinishFormEditId) {
     overlay = (<FullPageOverlay><Suspense fallback={null}><ProductionFinishForm idProp={productionFinishFormEditId} /></Suspense></FullPageOverlay>);
   } else if (isMaterialIssueList) {
-    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueList /></Suspense></FullPageOverlay>);
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueList urlBase="/manufacturing" /></Suspense></FullPageOverlay>);
   } else if (isMaterialIssueFormNew) {
-    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueForm /></Suspense></FullPageOverlay>);
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueForm urlBase="/manufacturing" /></Suspense></FullPageOverlay>);
   } else if (materialIssueFormEditId) {
-    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueForm idProp={materialIssueFormEditId} /></Suspense></FullPageOverlay>);
+    overlay = (<FullPageOverlay><Suspense fallback={null}><MaterialIssueForm idProp={materialIssueFormEditId} urlBase="/manufacturing" /></Suspense></FullPageOverlay>);
   } else if (isEmployeeQr) {
     overlay = (<FullPageOverlay><Suspense fallback={null}><EmployeeQr /></Suspense></FullPageOverlay>);
   }

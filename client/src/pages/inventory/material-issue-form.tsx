@@ -357,7 +357,7 @@ export default function MaterialIssueForm({ idProp, urlBase = "/inventory" }: Pr
       toast({ title: "บันทึกใบเบิกสำเร็จ", description: `เลขที่ ${data.issueNo || data.issue_no}` });
       queryClient.invalidateQueries({ queryKey: ["/api/material-issues"] });
       if (urlMoId) {
-        navigate(`${urlBase}/manufacturing/form/${urlMoId}`);
+        navigate(`/manufacturing/form/${urlMoId}`);
       } else {
         navigate(`${urlBase}/material-issues`);
       }
