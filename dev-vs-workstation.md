@@ -122,7 +122,7 @@ git pull
 
 | วันที่ | ไฟล์ | สิ่งที่แก้ | Pushed | สถานะ |
 |--------|------|-----------|--------|-------|
-| ก่อนหน้า | `client/src/lib/mock-data.ts` | เพิ่มเมนู "ใบรับสินค้า (GR)" + "เบิกวัตถุดิบ" ใน sidebar ควบคุมสินค้า | ❌ ยังไม่ push | ⏳ รอพี่ช้าง approve |
+| ก่อนหน้า | `client/src/lib/mock-data.ts` | เพิ่มเมนู "ใบรับสินค้า (GR)" + "เบิกวัตถุดิบ" ใน sidebar ควบคุมสินค้า | ✅ `fd105271` | ⏳ in progress — รอ deploy + พี่ทราย verify |
 | 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES: ลดเหลือ `["firm-mgmt","etax-hub"]` | ✅ `cea43be4` | ⏳ in progress |
 | 2026-05-25 | `server/routes/core-routes.ts` | cleanup managerExceptions/accountantExceptions/empCashierExceptions | ✅ `71705e7a` | ⏳ in progress |
 | 2026-05-25 | `client/src/app-extra.tsx` | urlBase="/manufacturing" + support singular+plural material-issue routes | ✅ `d2822970` | ⏳ in progress |
