@@ -134,7 +134,7 @@ git pull
 | 2026-05-25 | `server/routes/purchase-routes.ts` | AP stock movements + UPDATE warehouse_id | ✅ `369ab7e7` | ⏳ in progress — รอพี่ทราย verify production |
 | 2026-05-25 | `server/inventory-costing.ts` | MovementWithCost type + fetch warehouse name ใน stock card | ✅ `6ea481fb` | ⏳ in progress — รอพี่ทราย verify production |
 | 2026-05-25 | `server/routes/products-routes.ts` | เพิ่ม API `/api/warehouse-stock/levels` | ✅ `b75184d4` | ⏳ in progress — รอพี่ทราย verify production |
-| 2026-05-25 | `client/src/pages/inventory/stock-card.tsx` | เพิ่มคอลัมน์ "คลัง" | ✅ `e115e3af` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/inventory/stock-card.tsx` | เพิ่มคอลัมน์ "คลัง" | ✅ `e115e3af` | ✅ done — พี่ทราย verified production (2026-05-25) |
 | 2026-05-25 | `client/src/pages/sales/tax-invoice-form.tsx` | dropdown คลังแสดงจำนวน + invalidateQueries stock | ✅ `f2e4a95f` | ⏳ in progress — รอพี่ทราย verify production |
 | 2026-05-25 | `client/src/pages/sales/tax-invoice-list.tsx` | invalidateQueries stock หลัง save/delete | ✅ `57e82fc5` | ⏳ in progress — รอพี่ทราย verify production |
 | 2026-05-25 | `client/src/pages/purchases/purchase-invoice.tsx` | invalidateQueries stock หลัง save/delete | ✅ `2ef10d5b` | ⏳ in progress — รอพี่ทราย verify production |
