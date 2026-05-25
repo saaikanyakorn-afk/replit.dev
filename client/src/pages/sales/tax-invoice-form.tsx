@@ -393,7 +393,7 @@ export default function TaxInvoiceForm() {
   });
 
   useEffect(() => {
-    if (!editingId && activePaymentMethods.length > 0 && !form.paymentMethod) {
+    if (!editingId && activePaymentMethods.length > 0 && (!form.paymentMethod || form.paymentMethod === "เครดิต")) {
       const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
       if (defaultPm) {
         setForm(p => ({ ...p, paymentMethod: defaultPm.accountCode }));
