@@ -14,6 +14,7 @@
 | 8 | Settings tab "วิธีรับ/จ่ายเงิน" + dropdown รับ/จ่ายใน add form | `eba0309` + `90bc3b6` |
 | 9 | Fix: AP duplicate key — reset sequence (purchase_invoice_items_id_seq) | — |
 | 10 | Fix: TIV default payment method ไม่ขึ้น — condition auto-fill | — |
+| 11 | Fix: stock-card ต้องกด refresh หลังออก TIV — เพิ่ม refetchOnMount: "always" | — |
 
 ---
 
