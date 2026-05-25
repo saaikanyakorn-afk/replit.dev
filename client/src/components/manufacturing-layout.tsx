@@ -21,7 +21,7 @@ const HREF_TO_SUB_KEY: Record<string, string> = {
   "/manufacturing/mes/work-orders": "manufacturing/mes/work-orders",
   "/manufacturing/mes/scan": "manufacturing/mes/scan",
   "/manufacturing/material-issues": "manufacturing/material-issues",
-  "/manufacturing/material-issue/form": "manufacturing/material-issues",
+  "/manufacturing/material-issues/form": "manufacturing/material-issues",
   "/manufacturing/employee-qr": "manufacturing/employee-qr",
   "/manufacturing/production-finish": "manufacturing/production-finish",
   "/manufacturing/production-finish/form": "manufacturing/production-finish",

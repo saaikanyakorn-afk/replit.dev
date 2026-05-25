@@ -61,3 +61,5 @@ git pull
 |--------|------|-----------|-------|
 | 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES fix | ✅ dev verified พี่ทราย — รอ push prod |
 | 2026-05-25 | `server/routes/core-routes.ts` | cleanup exceptions | ✅ dev verified พี่ทราย — รอ push prod |
+| 2026-05-25 | `client/src/app-extra.tsx` | material-issue routes: singular → plural (`/material-issue` → `/material-issues`) | ✅ dev — รอ verify |
+| 2026-05-25 | `client/src/components/manufacturing-layout.tsx` | NAV_KEY_MAP form path: `/material-issue/form` → `/material-issues/form` | ✅ dev — รอ verify |
