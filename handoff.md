@@ -155,6 +155,11 @@ DATABASE_URL=postgresql://postgres:<pass>@localhost:5432/helium_replit
 - **เหตุผล:** command ผิดบน production = ความเสียหายจริง — ไม่มีการ undo
 - **ตัวอย่างที่ผิด:** ผม suggest `pm2 start ecosystem.config.cjs` โดยไม่รู้ว่า server ใช้ ecosystem file หรือเปล่า
 
+**✅ Deploy command จริง (พี่ช้างใช้ 2026-05-25) — C:\GitApp\etaxcenter>:**
+```
+git fetch origin && git checkout origin/main -- <files...> && npm run build && pm2 start etax-center
+```
+
 ---
 
 ### Lesson: Push ทุกครั้งใช้ GitHub API PUT เท่านั้น (พี่ช้าง 2026-05-23)
