@@ -17,7 +17,15 @@ if (mv?.id && warehouseId) {
 |--------|-----------|
 | ไฟล์ | `server/routes/products-routes.ts` line 569–583 |
 | Push | commit `30c6149` |
-| สถานะ | ⏳ รอ พี่ช้าง deploy + พี่ทราย verify |
+| สถานะ | ⏳ รอ พี่ช้าง deploy production + พี่ทราย verify |
+
+### 🔍 Debug session (2026-05-25 22:43 BKK)
+- พี่ช้างทดสอบบน **dev** — import ใหม่ 22:42 แต่ stock card ยังว่าง
+- ตรวจ DB พบ `warehouse_id IS NULL` ทุก row — แม้ว่า fix ถูก deploy บน dev แล้ว
+- สาเหตุ: `tsx` server ยังใช้ code เก่า — hot reload ไม่ trigger
+- **แก้:** restart workflow "Start application" ✅ (2026-05-25 ~15:45 UTC)
+- หลัง restart พี่ช้างลบ batch แล้ว DB company 3653 ว่างหมด รอ re-import ใหม่
+- **⏭️ ถัดไป:** พี่ช้าง import Excel ใหม่ → ตรวจ stock card ว่าคอลัมน์คลังแสดงไหม
 
 ---
 
