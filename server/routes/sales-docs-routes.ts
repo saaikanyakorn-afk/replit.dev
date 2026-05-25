@@ -1945,7 +1945,7 @@ app.get("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecommer
     const [doc] = await db.select().from(taxInvoices).where(eq(taxInvoices.id, Number(req.params.id)));
     if (!doc) return res.status(404).json({ message: "ไม่พบใบกำกับภาษี" });
     { const ac = await checkDocOwnership(doc.companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
-    const items = await db.select().from(taxInvoiceItems).where(eq(taxInvoiceItems.taxInvoiceId, doc.id));
+    const items = await fetchTaxInvoiceItems(doc.id);
     let createdByName = "-";
     let updatedByName = "-";
     if (doc.createdBy) { const u = await storage.getUser(doc.createdBy); if (u) createdByName = u.fullName; }
