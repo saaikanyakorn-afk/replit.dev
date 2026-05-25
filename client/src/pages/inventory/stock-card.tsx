@@ -491,8 +491,8 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                           <TableHead className="text-xs w-10 text-center">#</TableHead>
                           <TableHead className="text-xs w-[100px]">วันที่</TableHead>
                           <TableHead className="text-xs w-[80px]">ประเภท</TableHead>
-                          <TableHead className="text-xs w-[120px]">เอกสารอ้างอิง</TableHead>
                           <TableHead className="text-xs w-[90px]">คลัง</TableHead>
+                          <TableHead className="text-xs w-[120px]">เอกสารอ้างอิง</TableHead>
                           <TableHead className="text-xs" colSpan={3}>
                             <div className="text-center bg-emerald-50 rounded px-2 py-1 text-emerald-700 font-semibold">รับเข้า</div>
                           </TableHead>
