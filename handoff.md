@@ -1,5 +1,26 @@
 # 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
 
+## ✅ FIX: Product Import ไม่ save warehouse_id → stock_movements — 2026-05-25
+
+**Root cause:** `products-routes.ts` line 566 — `db.insert(stockMovements)` ไม่ได้ใส่ `warehouse_id` เพราะ column นั้นเป็น raw SQL (N16) Drizzle ไม่รู้จัก
+
+**แก้:** เปลี่ยน insert → `.returning()` แล้ว UPDATE warehouse_id ด้วย raw SQL ทันทีหลัง insert
+
+```ts
+const [mv] = await db.insert(stockMovements).values({...}).returning();
+if (mv?.id && warehouseId) {
+  await db.execute(sql`UPDATE stock_movements SET warehouse_id = ${warehouseId} WHERE id = ${mv.id}`);
+}
+```
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| ไฟล์ | `server/routes/products-routes.ts` line 569–583 |
+| Push | commit `30c6149` |
+| สถานะ | ⏳ รอ พี่ช้าง deploy + พี่ทราย verify |
+
+---
+
 ## ✅ RECALCULATE WAREHOUSE STOCK UI — 2026-05-25
 
 **`inventory-triggers.tsx`** — เพิ่ม Card "คำนวณยอดคลังใหม่ทั้งหมด" ใน Settings → ทริกเกอร์สต๊อกสินค้า

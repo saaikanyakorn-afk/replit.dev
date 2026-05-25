@@ -563,7 +563,7 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
         const delta = qty - prevQty;
         if (delta !== 0) {
           try {
-            await db.insert(stockMovements).values({
+            const [mv] = await db.insert(stockMovements).values({
               companyId,
               productId,
               movementType: "initial",
@@ -574,7 +574,10 @@ app.post("/api/products/import/execute", requireAuth, requireModule("inventory")
               unitCost: String(Number(entry.cost) || 0),
               totalCost: String((Number(entry.cost) || 0) * Math.abs(delta)),
               ...(stockOpenDate ? { createdAt: new Date(stockOpenDate) } : {}),
-            });
+            }).returning();
+            if (mv?.id && warehouseId) {
+              await db.execute(sql`UPDATE stock_movements SET warehouse_id = ${warehouseId} WHERE id = ${mv.id}`);
+            }
           } catch (mvErr: any) {
             console.error(`[ProductImport] stock_movement insert failed pid=${productId}:`, mvErr.message);
           }
