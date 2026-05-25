@@ -84,11 +84,12 @@ export default function InventoryList(props: { Wrapper?: React.ComponentType<{ c
   const { data: stockByWarehouse = {} } = useQuery<Record<number, { warehouseName: string; qty: number }[]>>({
     queryKey: ["/api/inventory/stock-by-warehouse", selectedCompanyId],
     queryFn: async () => {
-      const r = await fetch(`/api/inventory/stock-by-warehouse?companyId=${selectedCompanyId}`, { credentials: "include" });
+      const r = await fetch(`/api/inventory/stock-by-warehouse?companyId=${selectedCompanyId}`, { credentials: "include", cache: "no-store" });
       if (!r.ok) return {};
       return r.json();
     },
     enabled: !!selectedCompanyId,
+    staleTime: 0,
   });
 
   const { data: companySettings } = useQuery<{ lotLowStockThreshold?: number }>({
