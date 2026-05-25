@@ -1043,6 +1043,7 @@ export default function TaxInvoiceForm() {
       customerId: newContact ? newContact.id : (form.customerId ? Number(form.customerId) : null),
       customerCode: newContact ? newContact.code : (form.customerCode || ""),
       companyId,
+      salesOrderId: fromSalesOrderId ? Number(fromSalesOrderId) : null,
       quotationId: fromQuotationId ? Number(fromQuotationId) : (form as any).quotationId || null,
       invoiceId: fromInvoiceId ? Number(fromInvoiceId) : (form as any).invoiceId || null,
       priceMode,

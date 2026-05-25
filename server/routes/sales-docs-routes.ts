@@ -2110,16 +2110,18 @@ app.post("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce"
         }
       }
     }
-    // ถ้า TIV สร้างจาก SO โดยตรง (refDoc ขึ้นต้นด้วย SO) → release การจองสต๊อกของ SO นั้น
-    if (body.refDoc && String(body.refDoc).startsWith("SO")) {
+    // ถ้า TIV สร้างจาก SO → release การจองสต๊อกของ SO นั้น
+    // ใช้ salesOrderId ก่อน (robust กว่า) ถ้าไม่มีให้ fallback จาก refDoc
+    const releaseSoId = body.salesOrderId
+      ? Number(body.salesOrderId)
+      : (body.refDoc && String(body.refDoc).startsWith("SO")
+          ? Number(((await db.execute(sql`SELECT id FROM sales_orders WHERE company_id = ${companyId} AND order_no = ${String(body.refDoc)} LIMIT 1`).catch(() => ({ rows: [] }))).rows as any[])[0]?.id || 0)
+          : 0);
+    if (releaseSoId) {
       try {
-        const soRows = await db.execute(sql`SELECT id FROM sales_orders WHERE company_id = ${companyId} AND order_no = ${String(body.refDoc)} LIMIT 1`);
-        const soId = (soRows.rows as any[])[0]?.id;
-        if (soId) {
-          const soItems = await fetchSalesOrderItems(soId);
-          await releaseSOStock(soItems, companyId);
-          console.log(`[TIV-CREATE] Released SO#${body.refDoc} reservation (${soItems.length} items)`);
-        }
+        const soItems = await fetchSalesOrderItems(releaseSoId);
+        await releaseSOStock(soItems, companyId);
+        console.log(`[TIV-CREATE] Released SO#${releaseSoId} reservation (${soItems.length} items)`);
       } catch (e: any) { console.error("[TIV-CREATE] release SO reservation failed:", e.message); }
     }
     logActivity({ companyId, userId: user.id, userName: user.username, action: "create", entityType: "tax_invoice", entityId: String(result.id), entityName: taxInvoiceNo }).catch(() => {});
