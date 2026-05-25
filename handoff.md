@@ -18,25 +18,10 @@
 
 ---
 
-### 📋 Diff: Replit Dev vs พี่ช้าง Workstation (ณ 2026-05-25)
+### 📋 Diff: Replit Dev vs พี่ช้าง Workstation
 
-สิ่งที่อยู่บน **Replit Dev** แต่ยังไม่อยู่บน **Workstation** ของพี่ช้าง:
-
-| # | ไฟล์ | การเปลี่ยนแปลง |
-|---|------|---------------|
-| 1 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES ลดเหลือ ["firm-mgmt","etax-hub"] |
-| 2 | `server/routes/core-routes.ts` | ลบ exceptions ที่ไม่ใช้ / simplify non-primary filter |
-
-สิ่งที่อยู่บน **Workstation** แต่ไม่ใช่ Replit Dev:
-
-| # | รายการ | หมายเหตุ |
-|---|--------|---------|
-| 1 | reCAPTCHA keys ใน `system_config` | Workstation มี — Replit Dev DB ยังไม่มี → login ผ่าน reCAPTCHA widget ใน dev ยังไม่ได้ |
-| 2 | `.env` REPL_SLUG=local-dev-workstation | เฉพาะ Windows — bypass encryption check + bind localhost |
-| 3 | `.env` PORT=5010 | เฉพาะ workstation — Replit dev ใช้ port ที่ระบบกำหนด |
-| 4 | `vite-plugin-meta-images.ts` | สร้างไว้บน workstation แยกต่างหาก |
-
-**Workflow ที่พี่ทรายสั่ง:** Dev test → พี่ช้าง review → push production GitHub (ไม่ใช้ GitHub ตอนนี้)
+> ดูรายละเอียดทั้งหมดได้ที่ **`dev-vs-workstation.md`** — อัปเดตแยกต่างหากเพื่อให้ติดตามง่าย
+> Workflow: **Replit Dev → พี่ช้าง review → push production**
 
 ---
 
