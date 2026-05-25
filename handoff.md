@@ -2,6 +2,24 @@
 
 ## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-25
 
+### ✅ FIX DONE TODAY (2026-05-25) — Material Issue: back button + 404 URLs
+
+**ปัญหา:** หน้าใบเบิกวัตถุดิบ (material-issue-list) ไม่มีปุ่มกลับ + กดลูกตา/สร้างใบเบิก → 404
+**ผู้อนุมัติ:** พี่ทราย (2026-05-25)
+**ไฟล์ที่แก้:**
+
+| ไฟล์ | สิ่งที่แก้ |
+|------|-----------|
+| `client/src/app-extra.tsx` | ส่ง `urlBase="/manufacturing"` ให้ MaterialIssueList และ MaterialIssueForm ทุก instance |
+| `client/src/app-extra.tsx` | เพิ่ม match function รองรับทั้ง singular (`/material-issue/form`) และ plural (`/material-issues/form`) |
+| `client/src/pages/inventory/material-issue-list.tsx` | เพิ่มปุ่ม ← กลับที่ header; แก้ navigate URL create/view จาก singular → plural |
+| `client/src/pages/inventory/material-issue-form.tsx` | แก้ navigate หลัง save (กรณีมี MO): `${urlBase}/manufacturing/form/...` → `/manufacturing/form/...` |
+
+**ผล:** สร้างใบเบิก, ดูใบเบิก, กลับหน้า dashboard ทำงานได้ทั้งหมด
+**สถานะ:** ✅ dev verified by พี่ทราย (2026-05-25) — รอพี่ช้าง review + push production
+
+---
+
 ### ✅ FIX DONE TODAY (2026-05-25) — PRIMARY_ONLY_MODULES
 
 **ปัญหา:** manufacturing, hr, settings ถูก lock เฉพาะ primary company โดยไม่มี business reason
