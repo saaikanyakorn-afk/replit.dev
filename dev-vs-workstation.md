@@ -122,10 +122,22 @@ git pull
 
 | วันที่ | ไฟล์ | สิ่งที่แก้ | Pushed | สถานะ |
 |--------|------|-----------|--------|-------|
-| ก่อนหน้า | `client/src/lib/mock-data.ts` | เพิ่มเมนู "ใบรับสินค้า (GR)" + "เบิกวัตถุดิบ" ใน sidebar ควบคุมสินค้า | ✅ `fd105271` | ⏳ in progress — รอ deploy + พี่ทราย verify |
-| 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES: ลดเหลือ `["firm-mgmt","etax-hub"]` | ✅ `cea43be4` | ⏳ in progress |
-| 2026-05-25 | `server/routes/core-routes.ts` | cleanup managerExceptions/accountantExceptions/empCashierExceptions | ✅ `71705e7a` | ⏳ in progress |
-| 2026-05-25 | `client/src/app-extra.tsx` | urlBase="/manufacturing" + support singular+plural material-issue routes | ✅ `d2822970` | ⏳ in progress |
-| 2026-05-25 | `client/src/components/manufacturing-layout.tsx` | NAV_KEY_MAP: `/material-issue/form` → `/material-issues/form` | ✅ `37024ab7` | ⏳ in progress |
-| 2026-05-25 | `client/src/pages/inventory/material-issue-list.tsx` | เพิ่มปุ่ม ← กลับ + แก้ navigate URLs singular → plural | ✅ `ceead1af` | ⏳ in progress |
-| 2026-05-25 | `client/src/pages/inventory/material-issue-form.tsx` | แก้ post-save MO navigate: ลบ double `/manufacturing/` | ✅ `ebcf2cbd` | ⏳ in progress |
+| ก่อนหน้า | `client/src/lib/mock-data.ts` | เพิ่มเมนู "ใบรับสินค้า (GR)" + "เบิกวัตถุดิบ" ใน sidebar ควบคุมสินค้า | ✅ `fd105271` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES: ลดเหลือ `["firm-mgmt","etax-hub"]` | ✅ `cea43be4` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `server/routes/core-routes.ts` | cleanup managerExceptions/accountantExceptions/empCashierExceptions | ✅ `71705e7a` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/app-extra.tsx` | urlBase="/manufacturing" + support singular+plural material-issue routes | ✅ `d2822970` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/components/manufacturing-layout.tsx` | NAV_KEY_MAP: `/material-issue/form` → `/material-issues/form` | ✅ `37024ab7` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/inventory/material-issue-list.tsx` | เพิ่มปุ่ม ← กลับ + แก้ navigate URLs singular → plural | ✅ `ceead1af` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/inventory/material-issue-form.tsx` | แก้ post-save MO navigate: ลบ double `/manufacturing/` | ✅ `ebcf2cbd` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `server/storage.ts` | adjustStock: save warehouse_id ใน stock_movements | ✅ `621705e3` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `server/route-helpers.ts` | deductStockBundleAware: ส่ง warehouseId → adjustStock | ✅ `1fb4076c` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `server/routes/purchase-routes.ts` | AP stock movements + UPDATE warehouse_id | ✅ `369ab7e7` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `server/inventory-costing.ts` | MovementWithCost type + fetch warehouse name ใน stock card | ✅ `6ea481fb` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `server/routes/products-routes.ts` | เพิ่ม API `/api/warehouse-stock/levels` | ✅ `b75184d4` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/inventory/stock-card.tsx` | เพิ่มคอลัมน์ "คลัง" | ✅ `e115e3af` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/sales/tax-invoice-form.tsx` | dropdown คลังแสดงจำนวน + invalidateQueries stock | ✅ `f2e4a95f` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/sales/tax-invoice-list.tsx` | invalidateQueries stock หลัง save/delete | ✅ `57e82fc5` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/purchases/purchase-invoice.tsx` | invalidateQueries stock หลัง save/delete | ✅ `2ef10d5b` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/purchases/purchase-invoice-list.tsx` | invalidateQueries stock หลัง delete | ✅ `fc8de039` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/pages/inventory/goods-receiving-form.tsx` | invalidateQueries stock หลัง save | ✅ `c0fba5f7` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-25 | `client/src/components/send-email-dialog.tsx` | ไฟล์ใหม่ — dependency ของ tax-invoice-list.tsx ที่ไม่เคยมีบน GitHub | ✅ `4ec457c4` | ⏳ in progress — รอพี่ทราย verify production |
