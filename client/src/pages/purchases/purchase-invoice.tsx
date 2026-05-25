@@ -678,6 +678,7 @@ export default function PurchaseInvoice() {
         accountCode: productAccountCode,
         accountName: matchedAcc ? (matchedAcc.nameTh || matchedAcc.name || "") : "",
         total: calcItemTotal(newItems[idx].qty || "1", costPrice, "0"),
+        warehouseId: newItems[idx].warehouseId || (warehouses.length > 0 ? warehouses[0].id : undefined),
       };
       setItems(newItems);
     }
@@ -691,7 +692,7 @@ export default function PurchaseInvoice() {
     setItems(newItems);
   }
 
-  function addItem() { setItems([...items, { ...emptyItem(), vatType: defaultVatType }]); }
+  function addItem() { setItems([...items, { ...emptyItem(), vatType: defaultVatType, warehouseId: warehouses.length > 0 ? warehouses[0].id : undefined }]); }
   function duplicateItem(idx: number) {
     const copy = { ...items[idx], productId: items[idx].productId };
     const newItems = [...items];
