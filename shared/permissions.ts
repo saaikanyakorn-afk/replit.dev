@@ -256,7 +256,7 @@ export function canAccessRoute(role: string, path: string): boolean {
   return hasPermission(role, moduleKey);
 }
 
-export const PRIMARY_ONLY_MODULES = ["hr", "firm-mgmt", "etax-hub", "settings", "manufacturing"];
+export const PRIMARY_ONLY_MODULES = ["firm-mgmt", "etax-hub"];
 export const FIRM_ONLY_MODULES = ["firm-mgmt"];
 
 export const CONFIDENTIAL_SUB_MODULES = [

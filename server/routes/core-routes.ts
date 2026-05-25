@@ -477,28 +477,10 @@ app.get("/api/permissions/me", requireAuth, async (req, res) => {
       case "admin":
       case "super_admin":
         break;
-      case "accountant": {
-        const accountantExceptions = isAccountingFirm ? ["hr", "firm-mgmt", "settings"] : ["settings"];
-        allowedModules = allowedModules.filter(m =>
-          !PRIMARY_ONLY_MODULES.includes(m) || accountantExceptions.includes(m)
-        );
-        break;
-      }
-      case "manager": {
-        const managerExceptions = isAccountingFirm ? ["hr", "settings"] : ["settings"];
-        allowedModules = allowedModules.filter(m =>
-          !PRIMARY_ONLY_MODULES.includes(m) || managerExceptions.includes(m)
-        );
-        break;
-      }
+      case "accountant":
+      case "manager":
       case "employee":
-      case "cashier": {
-        const empCashierExceptions = isAccountingFirm ? ["hr"] : [];
-        allowedModules = allowedModules.filter(m =>
-          !PRIMARY_ONLY_MODULES.includes(m) || empCashierExceptions.includes(m)
-        );
-        break;
-      }
+      case "cashier":
       case "client":
       case "client_external":
         allowedModules = allowedModules.filter(m => !PRIMARY_ONLY_MODULES.includes(m));
