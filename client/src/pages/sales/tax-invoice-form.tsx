@@ -774,6 +774,9 @@ export default function TaxInvoiceForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/tax-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/deposit-receipts/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "สร้างใบกำกับภาษีสำเร็จ", variant: "success" as any });
       navigate("/sales/tax-invoice");
     },
@@ -799,6 +802,9 @@ export default function TaxInvoiceForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/tax-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/deposit-receipts/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "อัพเดทใบกำกับภาษีสำเร็จ", variant: "success" as any });
       setDepositDeductions([]);
       navigate("/sales/tax-invoice");
@@ -813,6 +819,9 @@ export default function TaxInvoiceForm() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tax-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       const newStatus = data.status || "issued";
       setForm(p => ({ ...p, status: newStatus }));
       if (data.journalResult && !data.journalResult.skipped) {

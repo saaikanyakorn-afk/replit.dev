@@ -574,6 +574,9 @@ export default function PurchaseInvoice() {
     onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-deposits/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "สร้างเอกสารซื้อสำเร็จ", variant: "success" as any });
       if (result?.journalResult?.skipped) {
         toast({ title: "ไม่ได้สร้างรายการบัญชี", description: result.journalResult.reason, variant: "destructive" });
@@ -601,6 +604,9 @@ export default function PurchaseInvoice() {
     onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-deposits/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "อัพเดทเอกสารซื้อสำเร็จ", variant: "success" as any });
       if (result?.journalResult?.skipped) {
         toast({ title: "ไม่ได้สร้างรายการบัญชี", description: result.journalResult.reason, variant: "destructive" });
@@ -617,6 +623,9 @@ export default function PurchaseInvoice() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       const newStatus = data.status || "approved";
       setForm(p => ({ ...p, status: newStatus }));
       const statusLabels: Record<string, string> = { approved: "อนุมัติแล้ว", cancelled: "ยกเลิกแล้ว", paid: "ชำระแล้ว" };

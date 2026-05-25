@@ -29,6 +29,17 @@
 - `server/routes/products-routes.ts` — เพิ่ม API `/api/warehouse-stock/levels`
 - `client/src/pages/sales/tax-invoice-form.tsx` — F2: dropdown option แสดงจำนวน + ข้อความ "คงเหลือ X"
 
+#### ไฟล์ที่แก้ (2026-05-25 รอบ 2) — Fix auto-refresh inventory-list หลัง create/edit/delete
+| ไฟล์ | mutation ที่แก้ |
+|------|----------------|
+| `client/src/pages/sales/tax-invoice-form.tsx` | createMutation, updateMutation, statusMutation → เพิ่ม invalidate `/api/products`, `/api/inventory/stock-by-warehouse`, `/api/product-stock` |
+| `client/src/pages/sales/tax-invoice-list.tsx` | deleteMutation, statusMutation → เพิ่ม invalidate เดียวกัน |
+| `client/src/pages/purchases/purchase-invoice.tsx` | createMutation, updateMutation, statusMutation → เพิ่ม invalidate เดียวกัน |
+| `client/src/pages/purchases/purchase-invoice-list.tsx` | deleteMutation, statusMutation → เพิ่ม invalidate เดียวกัน |
+| `client/src/pages/inventory/goods-receiving-form.tsx` | createMutation, updateMutation → เพิ่ม invalidate เดียวกัน |
+
+**ผลลัพธ์:** หน้า inventory-list จะ refresh สต๊อกทันทีหลัง save/delete TIV, AP, GR โดยไม่ต้อง reload หน้า
+
 > **หมายเหตุ B3**: ถ้า company ตั้ง `stockEntrySource = "gr"` (default) → AP ไม่ trigger stock — ต้อง approve GR แทน ตรวจดูใน Settings → ระบบสินค้าคงคลัง
 
 ---

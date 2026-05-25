@@ -121,6 +121,9 @@ export default function PurchaseInvoiceList() {
     },
     onSuccess: () => {
       invalidateDocCaches(queryClient, [["/api/purchase-invoices"]]);
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "ลบเอกสารซื้อสำเร็จ", variant: "success" as any });
     },
     onError: (err: any) => toast({ title: "เกิดข้อผิดพลาด", description: err.message, variant: "destructive" }),
@@ -133,6 +136,9 @@ export default function PurchaseInvoiceList() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchase-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "เปลี่ยนสถานะสำเร็จ", variant: "success" as any });
       if (data?.journalResult?.skipped) {
         toast({ title: "ไม่ได้สร้างรายการบัญชี", description: data.journalResult.reason, variant: "destructive" });

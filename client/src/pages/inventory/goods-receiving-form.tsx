@@ -234,6 +234,9 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "สร้างใบรับสินค้าสำเร็จ" });
       navigate(recvBasePath);
     },
@@ -249,6 +252,9 @@ export default function GoodsReceivingForm(props: { Wrapper?: React.ComponentTyp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goods-receivings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/stock-by-warehouse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/product-stock"] });
       toast({ title: "อัปเดตใบรับสินค้าสำเร็จ" });
       navigate(recvBasePath);
     },
