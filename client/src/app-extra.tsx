@@ -138,8 +138,8 @@ function matchProductionFinishList(l: string): boolean { return l.replace(/\?.*$
 function matchProductionFinishFormNew(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/production-finish/form"; }
 function matchProductionFinishFormEdit(l: string): string | null { const m = l.replace(/\?.*$/, "").match(/^\/manufacturing\/production-finish\/form\/(\d+)$/); return m ? m[1] : null; }
 function matchMaterialIssueList(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/material-issues"; }
-function matchMaterialIssueFormNew(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/material-issues/form"; }
-function matchMaterialIssueFormEdit(l: string): string | null { const m = l.replace(/\?.*$/, "").match(/^\/manufacturing\/material-issues\/form\/(\d+)$/); return m ? m[1] : null; }
+function matchMaterialIssueFormNew(l: string): boolean { const p = l.replace(/\?.*$/, ""); return p === "/manufacturing/material-issues/form" || p === "/manufacturing/material-issue/form"; }
+function matchMaterialIssueFormEdit(l: string): string | null { const m = l.replace(/\?.*$/, "").match(/^\/manufacturing\/material-issues?\/form\/(\d+)$/); return m ? m[1] : null; }
 function matchEmployeeQr(l: string): boolean { return l.replace(/\?.*$/, "") === "/manufacturing/employee-qr"; }
 
 export default function AppExtra() {
