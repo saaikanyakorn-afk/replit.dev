@@ -149,6 +149,14 @@ DATABASE_URL=postgresql://postgres:<pass>@localhost:5432/helium_replit
 2. ถ้า bug **ไม่มีใน dev** → อาจ fix แล้วแต่ยังไม่ deploy — แต่เป็นแค่ "เดา"
 3. ยืนยัน "เดา" โดย: `git diff github-production/main..main --name-only` → ดูว่าไฟล์ที่เกี่ยวข้องถูก push ขึ้น production ไปแล้วหรือยัง
 
+### ⛔ Lesson: ห้ามเดา server command (พี่ช้าง 2026-05-25)
+
+- **กฎ:** ถ้าไม่รู้ command ที่ถูกต้องบน production server → บอกตรงๆ ว่า "ไม่รู้" แล้วให้พี่ช้างบอกมา — ห้ามเดาเด็ดขาด
+- **เหตุผล:** command ผิดบน production = ความเสียหายจริง — ไม่มีการ undo
+- **ตัวอย่างที่ผิด:** ผม suggest `pm2 start ecosystem.config.cjs` โดยไม่รู้ว่า server ใช้ ecosystem file หรือเปล่า
+
+---
+
 ### Lesson: Push ทุกครั้งใช้ GitHub API PUT เท่านั้น (พี่ช้าง 2026-05-23)
 
 - **ผิด:** `git push github-replit main` → อาจ fail ถ้า remote มี commits ใหม่กว่า → ต้อง merge/rebase → Replit sandbox block → ต้องลองวิธีอื่น
