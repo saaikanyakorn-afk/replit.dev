@@ -639,7 +639,7 @@ export default function TaxInvoiceForm() {
               contactPerson: src.contactPerson || "", contactPhone: src.contactPhone || "",
               contactEmail: src.contactEmail || "", creditDays: src.creditDays ? String(src.creditDays) : "",
               notes: src.notes || "", internalNotes: src.internalNotes || "",
-              status: (src.paymentMethod && src.paymentMethod !== "เครดิต") ? "cash" : "debtor", paymentStatus: "unpaid",
+              status: isCashMethod(src.paymentMethod) ? "cash" : "debtor", paymentStatus: "unpaid",
               salesperson: src.salesperson || "", department: src.department || "",
               project: src.project || "", refDoc: src.refDoc || "",
               paymentTerms: src.paymentTerms || "",
@@ -1035,7 +1035,7 @@ export default function TaxInvoiceForm() {
     const totals = calcTotals();
     const computedStatus = (() => {
       if (editingId && ["issued", "cancelled", "voided"].includes(form.status)) return form.status;
-      return (form.paymentMethod && form.paymentMethod !== "เครดิต") ? "cash" : "debtor";
+      return isCashMethod(form.paymentMethod) ? "cash" : "debtor";
     })();
     const payload = {
       ...form,
