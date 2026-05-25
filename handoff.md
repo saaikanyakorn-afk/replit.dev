@@ -77,7 +77,7 @@
 | `client/src/pages/inventory/material-issue-form.tsx` | แก้ navigate หลัง save (กรณีมี MO): `${urlBase}/manufacturing/form/...` → `/manufacturing/form/...` |
 
 **ผล:** สร้างใบเบิก, ดูใบเบิก, กลับหน้า dashboard ทำงานได้ทั้งหมด
-**สถานะ:** ⚠️ NEEDS RE-TEST — พี่ทราย confirm แล้ว (2026-05-25) แต่ session 2026-05-25 (Kai) แก้ไข handoff.md ใน codebase เดียวกัน → confirmation เดิมไม่ valid — ต้องให้พี่ทรายทดสอบใหม่บน dev ก่อน push production
+**สถานะ:** ✅ PUSHED TO PRODUCTION — พี่ช้าง confirmed + deployed (2026-05-25)
 
 ---
 
@@ -93,7 +93,7 @@
 | `server/routes/core-routes.ts` lines 480-505 | ลบ managerExceptions / accountantExceptions / empCashierExceptions ออก เพราะไม่มีความหมายแล้ว — simplify เป็น filter เดียวสำหรับทุก non-admin role |
 
 **ผล:** ระบบผลิต (manufacturing), HR, ตั้งค่า ใช้ได้ทุกบริษัทในเครือแล้ว / firm-mgmt และ etax-hub ยังคง lock เฉพาะ primary company
-**สถานะ:** ⚠️ NEEDS RE-TEST — พี่ทราย confirm แล้ว (2026-05-25) แต่ session 2026-05-25 (Kai) แก้ไข handoff.md ใน codebase เดียวกัน → confirmation เดิมไม่ valid — ต้องให้พี่ทรายทดสอบใหม่บน dev ก่อน push production
+**สถานะ:** ✅ PUSHED TO PRODUCTION — พี่ช้าง confirmed + deployed (2026-05-25)
 
 ---
 
