@@ -2,6 +2,28 @@
 
 ## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-25
 
+### ✅ PUSH TO GITHUB-REPLIT — 2026-05-25 (รอพี่ช้าง review)
+
+| Item | ค่า |
+|------|-----|
+| Remote | `github-replit` (saaikanyakorn-afk/replit.dev) |
+| Branch | `main` |
+| Commit SHA | `f9c918759337bd51df50e5c4dcb4fe40344dff0c` |
+| วิธี | `git push github-replit HEAD:main --force` (remote มี commits ใหม่กว่า dev) |
+| สถานะ | ✅ SHA verified ตรงกัน — **รอพี่ช้าง review ก่อน push production** |
+
+**ไฟล์หลักที่ push รอบนี้ (stock bugs fix):**
+- `client/src/pages/sales/sales-order-form.tsx` — warehouseStockLevels + dropdown qty
+- `client/src/pages/sales/tax-invoice-form.tsx` — salesOrderId ใน payload + invalidateQueries ครบ
+- `client/src/pages/sales/tax-invoice-list.tsx` — invalidateQueries ครบ
+- `client/src/pages/sales/sales-order-list.tsx` — invalidateQueries ครบ
+- `server/routes/sales-docs-routes.ts` — Number() fix + TIV POST release SO reservation
+- `server/routes/products-routes.ts` — `/api/warehouse-stock/levels` endpoint
+
+---
+
+## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-25
+
 ### 🐛 Bugs + Features รอแก้ — สต๊อกคลัง (พี่ทราย รายงาน 2026-05-25)
 
 > ทดสอบบน **dev** (companyId=3684 บริษัท พลังแสง จำกัด) | ยังไม่ได้ investigate root cause
