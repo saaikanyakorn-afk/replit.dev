@@ -8,13 +8,20 @@
 - **POST line 122 (เดิม):** `UPDATE ... WHERE company_id = X` — ไม่ filter payment_type, pmType ถูก define หลัง UPDATE
 - **PATCH line 150 (เดิม):** `db.update().where(companyId)` — ไม่ filter payment_type เช่นกัน
 
-**แก้:** เพิ่ม `AND payment_type = ${pmType}` ทั้ง 2 จุด + ย้าย pmType ก่อน UPDATE
+**แก้ รอบแรก** (commit `004331d`): เพิ่ม `AND payment_type = ${pmType}` ทั้ง POST + PATCH + ย้าย pmType ก่อน UPDATE
+
+**แก้ รอบสอง** (commit `6d7e7d7`): พบว่า `payment_type` ไม่อยู่ใน Drizzle schema → `existing.paymentType` = undefined → fallback ผิดเป็น `"receive"` เสมอ → PATCH route แก้เป็น query `payment_type` ตรงจาก DB ก่อน clear
+
+```ts
+const pmTypeRow = await db.execute(sql`SELECT payment_type FROM payment_methods WHERE id = ${id} LIMIT 1`);
+const pmTypeForClear = (pmTypeRow.rows[0] as any)?.payment_type ?? paymentType ?? "receive";
+```
 
 | รายการ | รายละเอียด |
 |--------|-----------|
-| ไฟล์ | `server/routes/payment-methods-routes.ts` line 124–127, 152–154 |
-| Push | commit `004331d` |
-| สถานะ | ⏳ รอ deploy production |
+| ไฟล์ | `server/routes/payment-methods-routes.ts` line 123–127, 152–155 |
+| Push | commit `004331d` + `6d7e7d7` |
+| สถานะ | ✅ พี่ช้าง verify dev ผ่านแล้ว — รอ deploy production |
 
 ---
 
