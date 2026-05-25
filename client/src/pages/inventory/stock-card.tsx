@@ -492,6 +492,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                           <TableHead className="text-xs w-[100px]">วันที่</TableHead>
                           <TableHead className="text-xs w-[80px]">ประเภท</TableHead>
                           <TableHead className="text-xs w-[120px]">เอกสารอ้างอิง</TableHead>
+                          <TableHead className="text-xs w-[90px]">คลัง</TableHead>
                           <TableHead className="text-xs" colSpan={3}>
                             <div className="text-center bg-emerald-50 rounded px-2 py-1 text-emerald-700 font-semibold">รับเข้า</div>
                           </TableHead>
@@ -509,6 +510,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                           </TableHead>
                         </TableRow>
                         <TableRow className="bg-slate-50/50 border-b">
+                          <TableHead></TableHead>
                           <TableHead></TableHead>
                           <TableHead></TableHead>
                           <TableHead></TableHead>
@@ -567,6 +569,13 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                                 <Badge variant="outline" className={`text-[10px] ${ml.color} ${ml.bgColor}`}>
                                   {ml.label}
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-slate-500 whitespace-nowrap" data-testid={`text-warehouse-${m.id}`}>
+                                {m.warehouseName ? (
+                                  <span className="inline-flex items-center gap-1 text-violet-700 bg-violet-50 rounded px-1.5 py-0.5 text-[10px] font-medium">
+                                    {m.warehouseName}
+                                  </span>
+                                ) : <span className="text-slate-300 text-[10px]">-</span>}
                               </TableCell>
                               <TableCell>
                                 {refLabel ? (

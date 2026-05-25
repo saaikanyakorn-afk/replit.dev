@@ -381,6 +381,17 @@ export default function TaxInvoiceForm() {
     enabled: !!companyId,
   });
 
+  const { data: warehouseStockLevels = [] } = useQuery<any[]>({
+    queryKey: ["/api/warehouse-stock/levels", companyId],
+    queryFn: async () => {
+      if (!companyId || warehouses.length <= 1) return [];
+      const res = await fetch(`/api/warehouse-stock/levels?companyId=${companyId}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!companyId && warehouses.length > 1,
+  });
+
   useEffect(() => {
     if (!editingId && activePaymentMethods.length > 0 && !form.paymentMethod) {
       const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
@@ -1544,10 +1555,31 @@ export default function TaxInvoiceForm() {
                             onChange={e => { const newItems = [...items]; newItems[idx] = { ...newItems[idx], warehouseId: e.target.value ? Number(e.target.value) : undefined }; setItems(newItems); }}
                           >
                             <option value="">-- คลัง --</option>
-                            {warehouses.map((w: any) => (
-                              <option key={w.id} value={w.id}>{w.name}</option>
-                            ))}
+                            {warehouses.map((w: any) => {
+                              const wStock = item.productId
+                                ? warehouseStockLevels.find((s: any) => s.productId === item.productId && s.warehouseId === w.id)
+                                : null;
+                              const qty = wStock ? parseFloat(wStock.quantity || "0") : null;
+                              return (
+                                <option key={w.id} value={w.id}>
+                                  {w.name}{qty !== null ? ` (${qty % 1 === 0 ? qty : qty.toFixed(2)})` : ""}
+                                </option>
+                              );
+                            })}
                           </select>
+                          {item.productId && item.warehouseId && (() => {
+                            const wStock = warehouseStockLevels.find((s: any) => s.productId === item.productId && s.warehouseId === item.warehouseId);
+                            if (!wStock) return null;
+                            const qty = parseFloat(wStock.quantity || "0");
+                            const reserved = parseFloat(wStock.reservedQty || "0");
+                            const available = qty - reserved;
+                            return (
+                              <div className="text-[10px] text-slate-500 mt-0.5 px-0.5">
+                                คงเหลือ: <span className={`font-medium ${available < 0 ? "text-red-600" : "text-emerald-700"}`}>{available % 1 === 0 ? available : available.toFixed(2)}</span>
+                                {reserved > 0 && <span className="ml-1 text-orange-500">(จอง {reserved % 1 === 0 ? reserved : reserved.toFixed(2)})</span>}
+                              </div>
+                            );
+                          })()}
                         </td>
                       )}
                       <td className="text-right pt-3 px-1">

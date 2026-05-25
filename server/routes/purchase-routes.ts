@@ -1116,7 +1116,7 @@ export function registerPurchaseRoutes(app: Express) {
             if (qty <= 0) continue;
             const uc = parseFloat(item.unitPrice || "0") || 0;
             const tc = qty * uc;
-            await db.insert(stockMovements).values({
+            const [piSmInserted] = await db.insert(stockMovements).values({
               companyId,
               productId: item.productId,
               movementType: "goods_in",
@@ -1127,7 +1127,10 @@ export function registerPurchaseRoutes(app: Express) {
               referenceId: result.id,
               referenceNo: result.apNo,
               createdBy: (req.user as any)?.id,
-            });
+            }).returning({ id: stockMovements.id });
+            if ((item as any).warehouseId && piSmInserted?.id) {
+              try { await db.execute(sql`UPDATE stock_movements SET warehouse_id = ${Number((item as any).warehouseId)} WHERE id = ${piSmInserted.id}`); } catch {}
+            }
             const [existingStock] = await db.select().from(productStock).where(and(eq(productStock.companyId, companyId), eq(productStock.productId, item.productId)));
             if (existingStock) {
               await db.update(productStock).set({ quantity: sql`CAST(${productStock.quantity} AS numeric) + ${qty}` }).where(eq(productStock.id, existingStock.id));
@@ -1380,7 +1383,7 @@ export function registerPurchaseRoutes(app: Express) {
               if (qty <= 0) continue;
               const uc = parseFloat(item.unitPrice || "0") || 0;
               const tc = qty * uc;
-              await db.insert(stockMovements).values({
+              const [piSmUpdInserted] = await db.insert(stockMovements).values({
                 companyId: existing.companyId,
                 productId: item.productId,
                 movementType: "goods_in",
@@ -1391,7 +1394,10 @@ export function registerPurchaseRoutes(app: Express) {
                 referenceId: existing.id,
                 referenceNo: updated.apNo,
                 createdBy: user.id,
-              });
+              }).returning({ id: stockMovements.id });
+              if ((item as any).warehouseId && piSmUpdInserted?.id) {
+                try { await db.execute(sql`UPDATE stock_movements SET warehouse_id = ${Number((item as any).warehouseId)} WHERE id = ${piSmUpdInserted.id}`); } catch {}
+              }
               const [existingStock] = await db.select().from(productStock).where(and(eq(productStock.companyId, existing.companyId), eq(productStock.productId, item.productId)));
               if (existingStock) {
                 await db.update(productStock).set({ quantity: sql`CAST(${productStock.quantity} AS numeric) + ${qty}` }).where(eq(productStock.id, existingStock.id));

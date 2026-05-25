@@ -1690,6 +1690,22 @@ app.get("/api/stock-movements", requireAuth, requireModule("inventory"), async (
   } catch (err: any) { res.status(400).json({ message: err.message }); }
 });
 
+app.get("/api/warehouse-stock/levels", requireAuth, async (req, res) => {
+  try {
+    const companyId = Number(req.query.companyId);
+    if (!companyId) return res.status(400).json({ message: "companyId required" });
+    const rows = await db.execute(sql`
+      SELECT wsl.product_id AS "productId", wsl.warehouse_id AS "warehouseId",
+             w.name AS "warehouseName", wsl.quantity, wsl.reserved_qty AS "reservedQty"
+      FROM warehouse_stock_levels wsl
+      LEFT JOIN warehouses w ON w.id = wsl.warehouse_id
+      WHERE wsl.company_id = ${companyId}
+      ORDER BY w.name
+    `);
+    res.json(rows.rows);
+  } catch (err: any) { res.status(400).json({ message: err.message }); }
+});
+
 app.get("/api/inventory-reports/stock-card", requireAuth, requireAnyModule("inventory", "accounting"), async (req, res) => {
   try {
     const companyId = Number(req.query.companyId);

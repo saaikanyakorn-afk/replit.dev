@@ -7,19 +7,29 @@
 > ทดสอบบน **dev** (companyId=3684 บริษัท พลังแสง จำกัด) | ยังไม่ได้ investigate root cause
 
 #### Bugs
-| # | อาการ | จุดที่ใช้ | สถานะ |
-|---|-------|----------|-------|
-| B1 | ออกใบกำกับ (TIV) เลือกคลังฝาก → **สต๊อกการ์ดไม่มีรายการเคลื่อนไหว** (สต๊อกไม่ลด) | `sales/tax-invoice` → stock movement | ❌ ยังไม่แก้ |
-| B2 | แก้ไขเอกสาร TIV → **ข้อมูลคลังหาย** (ช่อง "คลัง" ใน line items ว่าง ไม่ load warehouse_id เดิม) | `sales-docs-routes.ts` GET invoice | ❌ ยังไม่แก้ |
-| B3 | บันทึกซื้อ (AP/GR) → **สต๊อกไม่เคลื่อนไหว** จำนวนสินค้าไม่อัปเดตในหน้ารายการสินค้า | `purchase-routes.ts` → stock movement | ❌ ยังไม่แก้ |
+| # | อาการ | สถานะ |
+|---|-------|-------|
+| B1 | TIV เลือกคลัง → สต๊อกการ์ดไม่แสดงคลัง | ✅ แก้แล้ว — warehouse_id ถูก save ใน stock_movements แล้ว |
+| B2 | แก้ไข TIV → ข้อมูลคลังหาย | ✅ แก้แล้ว — TIV ใหม่ save warehouse_id ถูก (TIV เก่าที่สร้างก่อน fix อาจยังไม่มี) |
+| B3 | บันทึกซื้อ AP → สต๊อกไม่เคลื่อนไหว | ⚠️ ต้องตรวจ `stockEntrySource` ของ company — ถ้า "gr" → ต้องออก GR ไม่ใช่ AP |
 
 #### Feature Requests
 | # | ความต้องการ | สถานะ |
 |---|------------|-------|
-| F1 | **เพิ่มคอลัมน์ "คลัง"** ในหน้าสต๊อกการ์ด — แสดงว่าแต่ละ movement เกิดที่คลังไหน | ❌ ยังไม่แก้ |
-| F2 | **แสดงสต๊อกคงเหลือแต่ละคลัง** ในหน้าออกใบกำกับ — ตอนเลือกสินค้าให้เห็นว่าคลัง A เหลือเท่าไหร่, คลัง B เหลือเท่าไหร่ | ❌ ยังไม่แก้ |
+| F1 | เพิ่มคอลัมน์ "คลัง" ในสต๊อกการ์ด | ✅ แก้แล้ว — stock-card.tsx มีคอลัมน์คลังแล้ว |
+| F2 | แสดงสต๊อกคงเหลือแต่ละคลังในหน้าออกใบกำกับ | ✅ แก้แล้ว — dropdown คลังแสดงจำนวน + ใต้ dropdown แสดง "คงเหลือ X (จอง Y)" |
 
-> **หมายเหตุ:** B1 + B3 อาจเกี่ยวกับ `warehouse_id` ไม่ถูก save หรือ stock trigger ไม่ทำงาน — ต้องดู `purchase-routes.ts` และ `sales-docs-routes.ts`
+#### ไฟล์ที่แก้ (2026-05-25)
+- `server/index.ts` — migration: `ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS warehouse_id INTEGER`
+- `server/storage.ts` — `adjustStock` extra.warehouseId → save ใน stock_movements
+- `server/route-helpers.ts` — `deductStockBundleAware` ส่ง warehouseId → adjustStock
+- `server/routes/purchase-routes.ts` — insert stockMovements (CREATE+UPDATE) + UPDATE warehouse_id
+- `server/inventory-costing.ts` — `MovementWithCost` type + `getStockCardWithCost` fetch warehouse name
+- `client/src/pages/inventory/stock-card.tsx` — เพิ่มคอลัมน์ "คลัง"
+- `server/routes/products-routes.ts` — เพิ่ม API `/api/warehouse-stock/levels`
+- `client/src/pages/sales/tax-invoice-form.tsx` — F2: dropdown option แสดงจำนวน + ข้อความ "คงเหลือ X"
+
+> **หมายเหตุ B3**: ถ้า company ตั้ง `stockEntrySource = "gr"` (default) → AP ไม่ trigger stock — ต้อง approve GR แทน ตรวจดูใน Settings → ระบบสินค้าคงคลัง
 
 ---
 

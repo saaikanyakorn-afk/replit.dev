@@ -28,6 +28,8 @@ export interface MovementWithCost {
   sellPrice?: number;
   totalSell?: number;
   grossProfit?: number;
+  warehouseId?: number | null;
+  warehouseName?: string | null;
 }
 
 export interface ProductValuation {
@@ -417,10 +419,32 @@ export async function getStockCardWithCost(
     .where(and(...conditions))
     .orderBy(asc(stockMovements.createdAt));
 
+  // Fetch warehouse_id + warehouse name for each movement (column not in Drizzle schema)
+  let warehouseInfoMap: Record<number, { warehouseId: number | null; warehouseName: string | null }> = {};
+  if (allMovements.length > 0) {
+    try {
+      const mvIds = allMovements.map(m => m.id).join(",");
+      const whRows = await db.execute(sql.raw(`
+        SELECT sm.id, sm.warehouse_id AS "warehouseId", w.name AS "warehouseName"
+        FROM stock_movements sm
+        LEFT JOIN warehouses w ON w.id = sm.warehouse_id
+        WHERE sm.id IN (${mvIds})
+      `));
+      for (const r of whRows.rows as any[]) {
+        warehouseInfoMap[r.id] = { warehouseId: r.warehouseId ?? null, warehouseName: r.warehouseName ?? null };
+      }
+    } catch {}
+  }
+
   const calculated = calculateCost(allMovements, method);
   const enriched = await enrichMovements(calculated, productId);
+  const enrichedWithWarehouse = enriched.map(m => ({
+    ...m,
+    warehouseId: warehouseInfoMap[m.id]?.warehouseId ?? null,
+    warehouseName: warehouseInfoMap[m.id]?.warehouseName ?? null,
+  }));
 
-  let filtered = enriched;
+  let filtered = enrichedWithWarehouse;
   let balanceBF: { qty: number; value: number; unitCost: number } | undefined;
 
   if (startDate || endDate) {
@@ -428,7 +452,7 @@ export async function getStockCardWithCost(
 
     if (startDate) {
       const startD = new Date(startDate);
-      const beforeStart = enriched.filter(m => getEffectiveDate(m) < startD);
+      const beforeStart = enrichedWithWarehouse.filter(m => getEffectiveDate(m) < startD);
       if (beforeStart.length > 0) {
         const last = beforeStart[beforeStart.length - 1];
         balanceBF = {
@@ -441,7 +465,7 @@ export async function getStockCardWithCost(
       }
     }
 
-    filtered = enriched.filter(m => {
+    filtered = enrichedWithWarehouse.filter(m => {
       const d = getEffectiveDate(m);
       if (startDate && d < new Date(startDate)) return false;
       if (endDate) {

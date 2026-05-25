@@ -1957,18 +1957,23 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async adjustStock(companyId: number, productId: number, delta: string, movementType: string, notes?: string, referenceType?: string, referenceId?: number, extra?: { unitCost?: string; totalCost?: string; referenceNo?: string; createdBy?: number }): Promise<ProductStock> {
+  async adjustStock(companyId: number, productId: number, delta: string, movementType: string, notes?: string, referenceType?: string, referenceId?: number, extra?: { unitCost?: string; totalCost?: string; referenceNo?: string; createdBy?: number; warehouseId?: number | null }): Promise<ProductStock> {
     const [existing] = await db.select().from(productStock)
       .where(and(eq(productStock.companyId, companyId), eq(productStock.productId, productId)));
     const currentQty = Number(existing?.quantity || "0");
     const newQty = String(currentQty + Number(delta));
-    await db.insert(stockMovements).values({
+    const [inserted] = await db.insert(stockMovements).values({
       companyId, productId, movementType, quantity: delta, notes, referenceType, referenceId,
       unitCost: extra?.unitCost || "0",
       totalCost: extra?.totalCost || "0",
       referenceNo: extra?.referenceNo || null,
       createdBy: extra?.createdBy || null,
-    });
+    }).returning({ id: stockMovements.id });
+    if (extra?.warehouseId && inserted?.id) {
+      try {
+        await db.execute(sql`UPDATE stock_movements SET warehouse_id = ${extra.warehouseId} WHERE id = ${inserted.id}`);
+      } catch {}
+    }
     return this.upsertProductStock(companyId, productId, newQty);
   }
 

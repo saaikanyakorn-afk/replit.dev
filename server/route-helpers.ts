@@ -1568,7 +1568,7 @@ export async function deductStockBundleAware(
             companyId, comp.componentProductId, String(-compQty), "sale_deduct",
             `${docNo} (ชุด ${item.productName || pid})`,
             referenceType, referenceId,
-            { referenceNo: docNo, createdBy }
+            { referenceNo: docNo, createdBy, warehouseId: wid }
           );
           if (wid) await upsertWarehouseStockLevel(companyId, comp.componentProductId, wid, -compQty);
           results.push({ productId: comp.componentProductId, deducted: String(-compQty), stock });
@@ -1583,7 +1583,7 @@ export async function deductStockBundleAware(
         const stock = await storage.adjustStock(
           companyId, pid, String(-item.qty), "sale_deduct",
           docNo, referenceType, referenceId,
-          { unitCost: unitPrice, totalCost, referenceNo: docNo, createdBy }
+          { unitCost: unitPrice, totalCost, referenceNo: docNo, createdBy, warehouseId: wid }
         );
         if (wid) await upsertWarehouseStockLevel(companyId, pid, wid, -item.qty);
         results.push({ productId: pid, deducted: String(-item.qty), stock });

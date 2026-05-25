@@ -452,6 +452,7 @@ async function ensureCriticalColumns() {
     { table: "bid_comparisons", column: "seller_branch_id", ddl: "ALTER TABLE bid_comparisons ADD COLUMN IF NOT EXISTS seller_branch_id TEXT" },
     { table: "payroll_records", column: "commission_amount", ddl: "ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS commission_amount DECIMAL(12,2) DEFAULT '0'" },
     { table: "users", column: "allowed_company_ids", ddl: "ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_company_ids INTEGER[]" },
+    { table: "stock_movements", column: "warehouse_id", ddl: "ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS warehouse_id INTEGER" },
   ];
   let fixed = 0;
   for (const c of checks) {
