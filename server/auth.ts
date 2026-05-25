@@ -258,22 +258,25 @@ export function setupAuth(app: Express) {
 
   app.post("/api/auth/login", async (req, res, next) => {
     const { recaptchaToken } = req.body;
-    if (!recaptchaToken) {
-      return res.status(400).json({ message: "กรุณายืนยันตัวตนก่อนเข้าสู่ระบบ" });
-    }
-    try {
-      const recaptchaSecret = getConfig("RECAPTCHA_SECRET_KEY", "RECAPTCHA_SECRET_KEY");
-      const verifyRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `secret=${encodeURIComponent(recaptchaSecret)}&response=${encodeURIComponent(recaptchaToken)}`,
-      });
-      const verifyData = await verifyRes.json() as { success: boolean };
-      if (!verifyData.success) {
-        return res.status(403).json({ message: "การยืนยันตัวตนไม่สำเร็จ กรุณาลองใหม่" });
+    const isDev = process.env.NODE_ENV !== "production";
+    if (!isDev) {
+      if (!recaptchaToken) {
+        return res.status(400).json({ message: "กรุณายืนยันตัวตนก่อนเข้าสู่ระบบ" });
       }
-    } catch {
-      return res.status(500).json({ message: "ไม่สามารถตรวจสอบ reCAPTCHA ได้" });
+      try {
+        const recaptchaSecret = getConfig("RECAPTCHA_SECRET_KEY", "RECAPTCHA_SECRET_KEY");
+        const verifyRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `secret=${encodeURIComponent(recaptchaSecret)}&response=${encodeURIComponent(recaptchaToken)}`,
+        });
+        const verifyData = await verifyRes.json() as { success: boolean };
+        if (!verifyData.success) {
+          return res.status(403).json({ message: "การยืนยันตัวตนไม่สำเร็จ กรุณาลองใหม่" });
+        }
+      } catch {
+        return res.status(500).json({ message: "ไม่สามารถตรวจสอบ reCAPTCHA ได้" });
+      }
     }
 
     passport.authenticate("local", async (err: any, user: any, info: any) => {
