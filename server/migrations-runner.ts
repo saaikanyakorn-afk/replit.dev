@@ -24,6 +24,11 @@
  *   it has an entry in db/pending-push-queue.md AND พี่ช้าง approved.
  * - ALL migrations use system_config flags — they are idempotent (safe to run again).
  * - Migrations run fire-and-forget at server startup. Server never crashes if one fails.
+ * - ⛔ NO "IF NOT EXISTS" fallback in ALTER TABLE — ever.
+ *   Rule 0a (replit.md): migration code must reflect confirmed fact from Step 1 VERIFY FIRST.
+ *   You verified the column does NOT exist → write plain ALTER TABLE without IF NOT EXISTS.
+ *   IF NOT EXISTS = silent fallback = hiding mistakes = forbidden.
+ *   Seen violated: ENTRY #015 (payment_type), ENTRY #017 (warehouse_id) — พี่ช้าง 2026-05-25.
  */
 
 import { db } from "./db";

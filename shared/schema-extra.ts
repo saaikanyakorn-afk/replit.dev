@@ -1274,7 +1274,7 @@ export async function runStockMovementWarehouseMigration(db: any) {
     const { sql } = await import("drizzle-orm");
     const flag = await db.execute(sql.raw(`SELECT config_value FROM system_config WHERE config_key = '${FLAG}' LIMIT 1`));
     if ((flag.rows || []).length > 0) return;
-    await db.execute(sql.raw(`ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS warehouse_id INTEGER`));
+    await db.execute(sql.raw(`ALTER TABLE stock_movements ADD COLUMN warehouse_id INTEGER`));
     await db.execute(sql.raw(`INSERT INTO system_config (config_key, config_value) VALUES ('${FLAG}', 'done_' || NOW()::TEXT) ON CONFLICT (config_key) DO NOTHING`));
     console.log("[migration] ✅ stock_movements.warehouse_id column added");
   } catch (e: any) {
