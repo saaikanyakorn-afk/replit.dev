@@ -1,5 +1,22 @@
 # 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
 
+## 📊 SUMMARY TABLE — รายการทั้งหมด session นี้
+
+| # | รายการ | Commit |
+|---|--------|--------|
+| 1 | Fix: product import ไม่ save warehouse_id | `30c6149` |
+| 2 | Debug: server ใช้ code เก่า → restart workflow | — |
+| 3 | Recalculate warehouse stock UI | `4283e09` |
+| 4 | N16 migration complete | `6aa7c2e5` |
+| 5 | Fix: payment default ล้างข้าม payment_type (รอบ 1) | `004331d` |
+| 6 | Fix: payment default ล้างข้าม payment_type (รอบ 2) | `6d7e7d7` |
+| 7 | Known issue: production ไม่มี pay methods → รอ deploy | — |
+| 8 | Settings tab "วิธีรับ/จ่ายเงิน" + dropdown รับ/จ่ายใน add form | `eba0309` + `90bc3b6` |
+| 9 | Fix: AP duplicate key — reset sequence (purchase_invoice_items_id_seq) | — |
+| 10 | Fix: TIV default payment method ไม่ขึ้น — condition auto-fill | — |
+
+---
+
 ## ✅ FIX: Settings tab rename + add form paymentType selector — 2026-05-25
 
 **รายการ:**
