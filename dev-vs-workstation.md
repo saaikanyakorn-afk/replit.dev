@@ -55,6 +55,62 @@ git pull
 
 ---
 
+## 🔍 PostgreSQL Transaction Audit — รอพี่ช้าง Review (2026-05-25)
+
+> **Background:** pm2 stop hang ระหว่าง deploy 2026-05-25 — สาเหตุที่เป็นไปได้คือ transaction() ที่ไม่ release lock บน PostgreSQL
+> **สถานะ:** พี่ช้างยังไม่มีเวลา — บันทึกไว้รอ review ภายหลัง
+
+### สรุป
+- **163 transactions** ใน **33 ไฟล์**
+- มี **nested transactions** บางจุด — risk สูงสุดสำหรับ deadlock/lock ไม่ release
+
+### จุดเสี่ยง: Nested Transactions
+| ไฟล์ | บรรทัด | รายละเอียด |
+|------|--------|-----------|
+| `server/routes/ecommerce-routes.ts` | 5604 | `db.transaction` ซ้อนอยู่ใน `ecomDb.transaction` |
+| `server/routes/sales-docs-routes.ts` | 2424, 3041 | nested transactions |
+| `server/routes/purchase-routes.ts` | 750, 1451 | nested transactions |
+
+### รายการทั้งหมด (จำนวน transactions per file)
+
+| # | ไฟล์ | จำนวน |
+|---|------|-------|
+| 1 | `server/routes/sales-docs-routes.ts` | 24 |
+| 2 | `server/routes/purchase-routes.ts` | 22 |
+| 3 | `server/routes/ecommerce-routes.ts` | 14 |
+| 4 | `server/routes/financial-docs-routes.ts` | 14 |
+| 5 | `server/routes/products-routes.ts` | 11 |
+| 6 | `server/routes/billing-notes-routes.ts` | 6 |
+| 7 | `server/routes/expense-routes.ts` | 6 |
+| 8 | `server/storage.ts` | 6 |
+| 9 | `server/routes/petty-cash-routes.ts` | 6 |
+| 10 | `server/routes/ecommerce-import-routes.ts` | 6 |
+| 11 | `server/routes/accounting-routes.ts` | 4 |
+| 12 | `server/routes/installment-routes.ts` | 4 |
+| 13 | `server/routes/firm-routes.ts` | 4 |
+| 14 | `server/routes/contacts-routes.ts` | 3 |
+| 15 | `server/routes/delivery-note-routes.ts` | 3 |
+| 16 | `server/routes/hr-routes.ts` | 2 |
+| 17 | `server/routes/manufacturing-routes.ts` | 2 |
+| 18 | `server/module-sync-engine.ts` | 2 |
+| 19 | `server/data-archive.ts` | 2 |
+| 20 | `server/route-helpers.ts` | 2 |
+| 21 | `server/routes/internal-chat.ts` | 2 |
+| 22 | `server/routes/gas-station-routes.ts` | 2 |
+| 23 | `server/routes/fixed-assets-routes.ts` | 2 |
+| 24 | `server/routes/reports-routes.ts` | 1 |
+| 25 | `server/routes/notifications-routes.ts` | 1 |
+| 26 | `server/routes/accounting-tools-routes.ts` | 1 |
+| 27 | `server/routes/import-batch-routes.ts` | 1 |
+| 28 | `server/routes/pos-routes.ts` | 1 (posDb) |
+| 29 | `server/routes/legacy-import.ts` | 1 |
+| 30 | `server/routes/subscription-routes.ts` | 1 |
+| 31 | `server/routes/platform-routes.ts` | 1 |
+| 32 | `server/auth.ts` | 1 |
+| 33 | `server/index.ts` | 1 |
+
+---
+
 ## กฎการอัปเดต status (พี่ช้าง 2026-05-25)
 
 > **status เป็น "done" ได้เฉพาะเมื่อพี่ทรายยืนยันว่า "working on production" เท่านั้น**
