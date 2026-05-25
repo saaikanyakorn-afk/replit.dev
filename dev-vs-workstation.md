@@ -59,5 +59,5 @@ git pull
 
 | วันที่ | ไฟล์ | สิ่งที่แก้ | สถานะ |
 |--------|------|-----------|-------|
-| 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES fix | ✅ dev — รอ push prod |
-| 2026-05-25 | `server/routes/core-routes.ts` | cleanup exceptions | ✅ dev — รอ push prod |
+| 2026-05-25 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES fix | ✅ dev verified พี่ทราย — รอ push prod |
+| 2026-05-25 | `server/routes/core-routes.ts` | cleanup exceptions | ✅ dev verified พี่ทราย — รอ push prod |

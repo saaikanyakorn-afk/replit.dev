@@ -14,7 +14,7 @@
 | `server/routes/core-routes.ts` lines 480-505 | ลบ managerExceptions / accountantExceptions / empCashierExceptions ออก เพราะไม่มีความหมายแล้ว — simplify เป็น filter เดียวสำหรับทุก non-admin role |
 
 **ผล:** ระบบผลิต (manufacturing), HR, ตั้งค่า ใช้ได้ทุกบริษัทในเครือแล้ว / firm-mgmt และ etax-hub ยังคง lock เฉพาะ primary company
-**สถานะ:** ✅ dev — รอพี่ช้าง verify + push production
+**สถานะ:** ✅ dev verified by พี่ทราย (2026-05-25) — รอพี่ช้าง review + push production
 
 ---
 
