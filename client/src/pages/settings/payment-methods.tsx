@@ -265,7 +265,17 @@ export default function PaymentMethodSettings() {
                   <tbody>
                     {addForm && (
                       <tr className="border-b bg-green-50/50">
-                        <td className="px-3 py-2 text-slate-400">ใหม่</td>
+                        <td className="px-3 py-2">
+                          <Select value={addForm.paymentType} onValueChange={v => setAddForm(prev => prev ? { ...prev, paymentType: v as "receive" | "pay" } : prev)}>
+                            <SelectTrigger data-testid="select-new-payment-type" className="h-8 text-xs w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="receive">รับเงิน</SelectItem>
+                              <SelectItem value="pay">จ่ายเงิน</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
                         <td className="px-3 py-2">
                           <Input data-testid="input-new-name" value={addForm.name} onChange={e => setAddForm(prev => prev ? { ...prev, name: e.target.value } : prev)} placeholder="Cash" className="h-8 text-sm" />
                         </td>
@@ -274,9 +284,13 @@ export default function PaymentMethodSettings() {
                         </td>
                         <td className="px-3 py-2">
                           <AccountCombobox
-                            accounts={cashBankAccounts}
+                            accounts={getAccountsForType(addForm.paymentType)}
                             value={addForm.accountCode}
-                            onSelect={(acc) => handleAccountSelect(acc.code, true)}
+                            onSelect={(acc) => {
+                              const accs = getAccountsForType(addForm.paymentType);
+                              const found = accs.find((a: any) => a.code === acc.code);
+                              setAddForm(prev => prev ? { ...prev, accountCode: acc.code, accountId: found?.id || null } : prev);
+                            }}
                             testId="select-new-account"
                             size="sm"
                             placeholder="เลือกบัญชี"
@@ -296,7 +310,7 @@ export default function PaymentMethodSettings() {
                         </td>
                         <td className="px-3 py-2 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <Button data-testid="button-save-new" size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:text-green-700" onClick={() => saveMutation.mutate({ ...addForm, paymentType: activeTab })} disabled={saveMutation.isPending}>
+                            <Button data-testid="button-save-new" size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:text-green-700" onClick={() => saveMutation.mutate(addForm)} disabled={saveMutation.isPending}>
                               <Save className="h-4 w-4" />
                             </Button>
                             <Button data-testid="button-cancel-new" size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-slate-600" onClick={() => setAddForm(null)}>
