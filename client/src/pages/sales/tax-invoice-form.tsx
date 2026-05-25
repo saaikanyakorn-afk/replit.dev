@@ -674,7 +674,7 @@ export default function TaxInvoiceForm() {
     } else if (editingId) {
       (async () => {
         try {
-          const res = await fetch(`/api/tax-invoices/${editingId}`, { credentials: "include" });
+          const res = await fetch(`/api/tax-invoices/${editingId}`, { credentials: "include", cache: "no-store" });
           if (res.ok) {
             const data = await res.json();
             setPriceMode(data.priceMode || "excluded");

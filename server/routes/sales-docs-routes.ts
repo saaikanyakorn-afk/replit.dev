@@ -2145,6 +2145,7 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
     const [existing] = await db.select().from(taxInvoices).where(eq(taxInvoices.id, Number(req.params.id)));
     if (!existing) return res.status(404).json({ message: "ไม่พบใบกำกับภาษี" });
     { const ac = await checkDocOwnership(existing.companyId, req.user); if (!ac.allowed) return res.status(403).json({ message: ac.message }); }
+    const oldTiItemsForReverse = await fetchTaxInvoiceItems(existing.id);
     const { items, ...body } = req.body;
     const updateData: any = {};
     const allowedFields = [
@@ -2361,6 +2362,14 @@ app.patch("/api/tax-invoices/:id", requireAuth, requireAnyModule("sales", "ecomm
         .map((i: any) => ({ productId: i.productId, qty: parseFloat(String(i.qty)), warehouseId: i.warehouseId || null, unitPrice: String(i.unitPrice || "0"), productName: i.productName || i.description }));
       const tiPatchTriggers = await getInventoryTriggers(updated.companyId);
       if (tiPatchTriggers.invoice_deduct) {
+        // reverse stock เก่าก่อนเสมอ แล้วค่อย deduct ใหม่ — ป้องกัน deduct ซ้ำตอนแก้ไขเอกสาร
+        const reverseItems = oldTiItemsForReverse
+          .filter((i: any) => i.productId && parseFloat(String(i.qty || "0")) > 0)
+          .map((i: any) => ({ productId: i.productId, qty: parseFloat(String(i.qty)), warehouseId: i.warehouseId || null }));
+        if (reverseItems.length > 0) {
+          await reverseWarehouseStockBundleAware(reverseItems, updated.companyId);
+          await deleteStockMovementsForDoc("tax_invoice", updated.id, updated.companyId);
+        }
         const docLabel2 = `ขายสินค้า ${updated.taxInvoiceNo}${updated.customerName ? ` (${updated.customerName})` : ""}`;
         await deductStockBundleAware(deductItems2, updated.companyId, docLabel2, "tax_invoice", updated.id, user.id);
       }
