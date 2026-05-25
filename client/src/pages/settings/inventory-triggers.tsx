@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/layout";
 import SettingsTabs from "@/components/settings-tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/lib/company-context";
-import { ArrowLeft, Warehouse, PackagePlus, PackageMinus, Info } from "lucide-react";
+import { ArrowLeft, Warehouse, PackagePlus, PackageMinus, Info, RefreshCw, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface InventoryTriggers {
@@ -65,6 +67,29 @@ export default function InventoryTriggersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { selectedCompanyId } = useCompany();
+  const [confirmRecalc, setConfirmRecalc] = useState(false);
+
+  const recalcMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch("/api/inventory/recalculate-warehouse-stock", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: selectedCompanyId }),
+      });
+      if (!r.ok) throw new Error("คำนวณไม่สำเร็จ");
+      return r.json();
+    },
+    onSuccess: (data) => {
+      setConfirmRecalc(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "คำนวณยอดคลังใหม่สำเร็จ", description: `อัปเดต ${data.warehouseRows} คลัง, ${data.productRows} สินค้า` });
+    },
+    onError: (e: any) => {
+      setConfirmRecalc(false);
+      toast({ title: "เกิดข้อผิดพลาด", description: e.message, variant: "destructive" });
+    },
+  });
 
   const { data: triggers, isLoading } = useQuery<InventoryTriggers>({
     queryKey: ["/api/settings/inventory-triggers", selectedCompanyId],
@@ -160,6 +185,59 @@ export default function InventoryTriggersPage() {
             );
           })
         )}
+
+        <Card className="border border-yellow-200 bg-yellow-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <RefreshCw className="h-4 w-4 text-yellow-600" />
+              คำนวณยอดคลังใหม่ทั้งหมด
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-yellow-800">
+              คำนวณยอดสินค้าในแต่ละคลังใหม่ทั้งหมด จากข้อมูลการเคลื่อนไหวสต๊อกที่บันทึกจริง
+              — ใช้เมื่อยอดคลังไม่ตรง เช่น ลบเอกสารแล้วยอดไม่คืน
+            </p>
+            <div className="flex items-start gap-2 p-2.5 rounded bg-yellow-100 border border-yellow-300 text-xs text-yellow-900">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>ระบบจะลบยอดคลังปัจจุบันแล้วคำนวณใหม่จากประวัติ — ยอดจอง (SO) จะถูก reset เป็น 0</span>
+            </div>
+            {!confirmRecalc ? (
+              <Button
+                data-testid="button-recalculate-warehouse"
+                variant="outline"
+                className="border-yellow-400 text-yellow-800 hover:bg-yellow-100"
+                onClick={() => setConfirmRecalc(true)}
+                disabled={recalcMutation.isPending}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                คำนวณยอดคลังใหม่
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-yellow-900">ยืนยันการคำนวณใหม่?</span>
+                <Button
+                  data-testid="button-recalculate-confirm"
+                  size="sm"
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                  onClick={() => recalcMutation.mutate()}
+                  disabled={recalcMutation.isPending}
+                >
+                  {recalcMutation.isPending ? "กำลังคำนวณ..." : "ยืนยัน"}
+                </Button>
+                <Button
+                  data-testid="button-recalculate-cancel"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmRecalc(false)}
+                  disabled={recalcMutation.isPending}
+                >
+                  ยกเลิก
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );

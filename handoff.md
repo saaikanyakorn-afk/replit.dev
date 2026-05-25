@@ -1,5 +1,21 @@
 # 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
 
+## ✅ RECALCULATE WAREHOUSE STOCK UI — 2026-05-25
+
+**`inventory-triggers.tsx`** — เพิ่ม Card "คำนวณยอดคลังใหม่ทั้งหมด" ใน Settings → ทริกเกอร์สต๊อกสินค้า
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| API ที่ใช้ | `POST /api/inventory/recalculate-warehouse-stock` (มีอยู่แล้วใน products-routes.ts line 1612) |
+| Logic | DELETE warehouse_stock_levels WHERE company_id → re-INSERT จาก SUM(stock_movements) GROUP BY product_id, warehouse_id → UPDATE product_stock |
+| UI | Card สีเหลือง + ปุ่ม 2 ขั้น (กด "คำนวณ" → confirm → ยืนยัน) ป้องกันกดผิด |
+| Push | commit `4283e09` — `client/src/pages/settings/inventory-triggers.tsx` |
+| สถานะ | ⏳ รอ พี่ทราย verify บน production |
+
+**วิธีเข้าถึง:** Settings → ทริกเกอร์สต๊อกสินค้า → เลื่อนลงล่างสุด → Card "คำนวณยอดคลังใหม่ทั้งหมด"
+
+---
+
 ## ✅ N16 MIGRATION COMPLETE — 2026-05-25 20:41 BKK
 
 **`stock_movements.warehouse_id` column** — ✅ ADD COLUMN ผ่านแล้วบน production
