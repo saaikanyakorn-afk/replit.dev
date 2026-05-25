@@ -1,5 +1,21 @@
 # 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
 
+## ⚠️ KNOWN ISSUE: Production ไม่มี pay methods (รอ deploy) — 2026-05-25
+
+**อาการ:** production (etaxerp.com) หน้า Settings → วิธีการชำระเงิน → tab จ่ายเงิน — "ยังไม่มีวิธีจ่ายเงิน"
+
+**Root cause:** production ยังใช้ code เก่า (ก่อน session นี้) — seed-defaults endpoint เก่าไม่มี `paymentType` filter → ตรวจ count แบบ "all" → เห็น receive มีอยู่แล้ว (cnt > 0) → ไม่ seed pay
+
+**แก้:** deploy production แล้ว auto-seed จะทำงานเองที่ UI line 80-81 (`if (payMethods.length === 0) seedDefaults("pay")`)
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| สถานะ | ⏳ รอ deploy production |
+| หลัง deploy | หน้า Settings → วิธีการชำระเงิน จะ auto-seed pay 6 รายการทันที |
+
+---
+
+
 ## ✅ FIX: Payment Methods — isDefault clear ข้าม payment_type — 2026-05-25
 
 **อาการ:** ตั้งค่าเริ่มต้น (ดาว ⭐) แล้วไม่ทำงาน — หรือ set default ฝั่งหนึ่งแล้วล้างอีกฝั่ง
