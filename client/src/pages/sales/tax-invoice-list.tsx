@@ -479,7 +479,7 @@ export default function TaxInvoiceList() {
                               <span className="font-semibold text-slate-800">{inv.customerName}</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-                            {!inv.paymentMethod ? null : (inv.paymentMethod && inv.paymentMethod !== "เครดิต") ? (() => {
+                            {!inv.paymentMethod ? null : inv.status === "cash" ? (() => {
                                 const ref = inv.refDoc || inv.referenceNo;
                                 const refPrefix = ref ? ref.replace(/\d.*$/, "").toUpperCase() : null;
                                 const label = refPrefix ? `Cash[${refPrefix}-TIV]` : "Cash[TIV]";
@@ -569,7 +569,7 @@ export default function TaxInvoiceList() {
                                 transfer_done: { label: "โอนแล้ว", cls: "bg-emerald-50 text-emerald-600 border-emerald-200" },
                                 completed: { label: "เสร็จสิ้น", cls: "bg-emerald-50 text-emerald-600 border-emerald-200" },
                               };
-                              const effectiveStatus = (inv.paymentMethod && inv.paymentMethod !== "เครดิต")
+                              const effectiveStatus = inv.status === "cash"
                                 ? "cash"
                                 : (inv.hasBillingNote && !["paid", "transfer_done", "completed", "cash", "credit_card", "cheque_done", "cancel", "cancelled"].includes(inv.status) ? "billing_note" : inv.status);
                               const a = approvalMap[effectiveStatus] || { label: "-", cls: "bg-slate-50 text-slate-500 border-slate-200" };
