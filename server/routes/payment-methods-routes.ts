@@ -147,7 +147,8 @@ app.patch("/api/payment-methods/:id", requireAuth, async (req, res) => {
     }
     const { name, nameTh, accountCode, accountId, active, isDefault, sortOrder, bankName, bankAccountNo, paymentType } = req.body;
     if (isDefault) {
-      const pmTypeForClear = paymentType ?? existing.paymentType ?? "receive";
+      const pmTypeRow = await db.execute(sql`SELECT payment_type FROM payment_methods WHERE id = ${id} LIMIT 1`);
+      const pmTypeForClear = (pmTypeRow.rows[0] as any)?.payment_type ?? paymentType ?? "receive";
       await db.execute(sql`UPDATE payment_methods SET is_default = false WHERE company_id = ${existing.companyId} AND payment_type = ${pmTypeForClear}`);
     }
     const updateData: any = {};
