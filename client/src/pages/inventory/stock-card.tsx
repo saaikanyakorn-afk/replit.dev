@@ -228,7 +228,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
   const handleExportCSV = () => {
     if (!selectedProduct || movementsWithCost.length === 0) return;
     const methodInfo = COSTING_METHODS[activeMethod] || COSTING_METHODS.moving_average;
-    const headers = ["ลำดับ", "วันที่", "ประเภท", "เอกสาร", "รับเข้า", "ราคา/หน่วย(เข้า)", "รวม(เข้า)", "เบิกออก", "ราคา/หน่วย(ออก)", "รวม(ออก)", "T.Sell ราคาขายรวม", "G.Profit กำไรขั้นต้น", "คงเหลือ", "ต้นทุน/หน่วย", "Balance มูลค่า", "หมายเหตุ"];
+    const headers = ["ลำดับ", "วันที่", "คลัง", "เอกสารอ้างอิง", "รับเข้า", "ราคา/หน่วย(เข้า)", "รวม(เข้า)", "เบิกออก", "ราคา/หน่วย(ออก)", "รวม(ออก)", "T.Sell ราคาขายรวม", "G.Profit กำไรขั้นต้น", "คงเหลือ", "ต้นทุน/หน่วย", "Balance มูลค่า", "หมายเหตุ"];
     const csvRows: string[][] = [];
     if (costingData?.balanceBF) {
       csvRows.push(["-", "", "B/F ยอดยกมา", "", "", "", "", "", "", "", "", "", formatNumber(costingData.balanceBF.qty, 2), formatCurrency(costingData.balanceBF.unitCost), formatCurrency(costingData.balanceBF.value), ""]);
@@ -238,11 +238,12 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
       const ml = MOVEMENT_LABELS[m.movementType] || { label: m.movementType };
       const isIn = qty > 0;
       const isOut = qty < 0;
+      const refDoc = m.referenceNo ? `${ml.label} ${m.referenceNo}` : ml.label;
       csvRows.push([
         String(i + 1),
         formatDateTime(m.documentDate || m.createdAt, dateEra, dateFmt),
-        ml.label,
-        m.referenceNo || "",
+        m.warehouseName || "",
+        refDoc,
         isIn ? formatNumber(qty, 2) : "",
         isIn ? formatCurrency(m.unitCost) : "",
         isIn ? formatCurrency(m.totalCost) : "",
@@ -490,9 +491,8 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                         <TableRow className="bg-slate-50">
                           <TableHead className="text-xs w-10 text-center">#</TableHead>
                           <TableHead className="text-xs w-[100px]">วันที่</TableHead>
-                          <TableHead className="text-xs w-[80px]">ประเภท</TableHead>
                           <TableHead className="text-xs w-[90px]">คลัง</TableHead>
-                          <TableHead className="text-xs w-[120px]">เอกสารอ้างอิง</TableHead>
+                          <TableHead className="text-xs w-[170px]">เอกสารอ้างอิง</TableHead>
                           <TableHead className="text-xs" colSpan={3}>
                             <div className="text-center bg-emerald-50 rounded px-2 py-1 text-emerald-700 font-semibold">รับเข้า</div>
                           </TableHead>
@@ -510,7 +510,6 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                           </TableHead>
                         </TableRow>
                         <TableRow className="bg-slate-50/50 border-b">
-                          <TableHead></TableHead>
                           <TableHead></TableHead>
                           <TableHead></TableHead>
                           <TableHead></TableHead>
@@ -533,7 +532,7 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                         {costingData?.balanceBF && (
                           <TableRow className="bg-slate-100 border-b-2 border-slate-300" data-testid="row-balance-bf">
                             <TableCell className="text-xs text-center font-bold text-slate-500">-</TableCell>
-                            <TableCell className="text-xs font-semibold text-slate-600" colSpan={3}>B/F ยอดยกมา</TableCell>
+                            <TableCell className="text-xs font-semibold text-slate-600" colSpan={2}>B/F ยอดยกมา</TableCell>
                             <TableCell className="text-xs text-right bg-emerald-50/30" colSpan={3}>-</TableCell>
                             <TableCell className="text-xs text-right bg-red-50/30" colSpan={3}>-</TableCell>
                             <TableCell className="text-xs text-right bg-amber-50/30">-</TableCell>
@@ -565,11 +564,6 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                               <TableCell className="text-xs whitespace-nowrap">
                                 {formatDateTime(m.documentDate || m.createdAt, dateEra, dateFmt)}
                               </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className={`text-[10px] ${ml.color} ${ml.bgColor}`}>
-                                  {ml.label}
-                                </Badge>
-                              </TableCell>
                               <TableCell className="text-xs text-slate-500 whitespace-nowrap" data-testid={`text-warehouse-${m.id}`}>
                                 {m.warehouseName ? (
                                   <span className="inline-flex items-center gap-1 text-violet-700 bg-violet-50 rounded px-1.5 py-0.5 text-[10px] font-medium">
@@ -578,26 +572,29 @@ export default function StockCardPage(props: { Wrapper?: React.ComponentType<{ c
                                 ) : <span className="text-slate-300 text-[10px]">-</span>}
                               </TableCell>
                               <TableCell>
-                                {refLabel ? (
-                                  canClick ? (
-                                    <button
-                                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-medium"
-                                      onClick={() => handleRefClick(m.referenceType, m.referenceId)}
-                                      data-testid={`link-ref-${m.id}`}
-                                    >
-                                      <FileText className="h-3 w-3" />
-                                      {refLabel}
-                                      <ExternalLink className="h-2.5 w-2.5" />
-                                    </button>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <FileText className="h-3 w-3" />
-                                      {refLabel}
-                                    </span>
-                                  )
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">-</span>
-                                )}
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="outline" className={`text-[10px] w-fit ${ml.color} ${ml.bgColor}`}>
+                                    {ml.label}
+                                  </Badge>
+                                  {refLabel ? (
+                                    canClick ? (
+                                      <button
+                                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-medium"
+                                        onClick={() => handleRefClick(m.referenceType, m.referenceId)}
+                                        data-testid={`link-ref-${m.id}`}
+                                      >
+                                        <FileText className="h-3 w-3" />
+                                        {refLabel}
+                                        <ExternalLink className="h-2.5 w-2.5" />
+                                      </button>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <FileText className="h-3 w-3" />
+                                        {refLabel}
+                                      </span>
+                                    )
+                                  ) : null}
+                                </div>
                               </TableCell>
                               <TableCell className="text-xs text-right bg-emerald-50/30">
                                 {isIn ? (
