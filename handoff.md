@@ -15,6 +15,9 @@
 | 9 | Fix: AP duplicate key — reset sequence (purchase_invoice_items_id_seq) | — |
 | 10 | Fix: TIV default payment method ไม่ขึ้น — condition auto-fill | — |
 | 11 | Fix: stock-card ต้องกด refresh หลังออก TIV — เพิ่ม refetchOnMount: "always" | — |
+| 12 | Fix: TIV สร้างด้วย Credit → status = "cash" — เปลี่ยน condition เป็น isCashMethod() ใน form | — |
+| 13 | Fix: TIV list badge แสดง Cash[TIV] + effectiveStatus ผิด — เปลี่ยนจาก paymentMethod !== "เครดิต" → inv.status === "cash" | — |
+| 14 | Fix: TIV list ค้างชำระ = 0 ผิด — ลบ isPaid condition ที่ดู paymentMethod ออก | — |
 
 ---
 
