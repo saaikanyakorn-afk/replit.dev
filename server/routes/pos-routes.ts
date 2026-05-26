@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { posDb } from "../pos-db";
+import { posDb, getPosPoolInstance } from "../pos-db";
 import { storage } from "../storage";
 import { eq, and, desc, asc, sql, count, ilike, inArray, or, isNull } from "drizzle-orm";
 import { activeProducts } from "@shared/schema-extra";
@@ -739,10 +739,20 @@ export function registerPosRoutes(app: Express) {
         );
       }
 
-      const result = await posDb.select().from(products)
-        .where(and(...conditions))
-        .orderBy(asc(products.name));
-      res.json(result);
+      const pool = getPosPoolInstance();
+      let queryResult;
+      if (search) {
+        queryResult = await pool.query(
+          `SELECT id, code, name, price, product_type AS "productType", image_url AS "imageUrl", category, vat_type AS "vatType", barcode, sub_unit AS "subUnit", conversion_rate AS "conversionRate", price_retail AS "priceRetail", price_wholesale AS "priceWholesale", price_agent AS "priceAgent", price_special AS "priceSpecial", price_vip AS "priceVip" FROM products WHERE company_id=$1 AND active=true AND (code ILIKE $2 OR name ILIKE $2 OR barcode=$3) ORDER BY name`,
+          [companyId, `%${search}%`, search]
+        );
+      } else {
+        queryResult = await pool.query(
+          `SELECT id, code, name, price, product_type AS "productType", image_url AS "imageUrl", category, vat_type AS "vatType", barcode, sub_unit AS "subUnit", conversion_rate AS "conversionRate", price_retail AS "priceRetail", price_wholesale AS "priceWholesale", price_agent AS "priceAgent", price_special AS "priceSpecial", price_vip AS "priceVip" FROM products WHERE company_id=$1 AND active=true ORDER BY name`,
+          [companyId]
+        );
+      }
+      res.json(queryResult.rows);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
