@@ -743,7 +743,7 @@ export function registerPosRoutes(app: Express) {
         .innerJoin(activeProducts, eq(activeProducts.id, products.id))
         .where(and(...conditions))
         .orderBy(asc(products.name));
-      res.json(result);
+      res.json(result.map((r: any) => r.products ?? r));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
