@@ -18,6 +18,27 @@
 | 12 | Fix: stock-card.tsx — always refetchOnMount เพื่อดึงข้อมูลใหม่ทุกครั้ง | `client/src/pages/inventory/stock-card.tsx` | `93d70dbe` |
 | 13 | Fix: products-routes.ts — import สินค้า: save warehouse_id ก่อน stock_movements insert | `server/routes/products-routes.ts` | `27673733` |
 | 14 | Feature: inventory-triggers.tsx — ปุ่ม recalculate warehouse stock levels | `client/src/pages/settings/inventory-triggers.tsx` | `8b7b227c` |
+| 15 | Fix: tax-invoice-form.tsx — ลบ hardcode "เครดิต" ทุกจุด + validate ก่อน save | `client/src/pages/sales/tax-invoice-form.tsx` | `d9ea134c` |
+| 16 | Fix: purchase-invoice.tsx — เพิ่ม validate paymentMethod ก่อน save (ทั้งสองฝั่ง) | `client/src/pages/purchases/purchase-invoice.tsx` | `b854d382` |
+| 17 | Push 11 files → github-production main ✅ 11/11 success | 11 ไฟล์ | ดูตาราง push ด้านล่าง |
+
+---
+
+## ✅ PUSH LOG — 2026-05-26 (พี่ช้างอนุมัติ)
+
+| # | ไฟล์ | Commit (github-production) |
+|---|------|--------------------------|
+| 1 | `shared/permissions.ts` | `0674e21d` |
+| 2 | `server/routes/core-routes.ts` | `2c06e7e8` |
+| 3 | `server/routes/payment-methods-routes.ts` | `5680b072` |
+| 4 | `client/src/pages/settings/payment-methods.tsx` | `cccb6cb1` |
+| 5 | `client/src/components/settings-tabs.tsx` | `a58f7891` |
+| 6 | `client/src/pages/purchases/purchase-invoice.tsx` | `edba62e3` |
+| 7 | `client/src/pages/sales/tax-invoice-form.tsx` | `7e864228` |
+| 8 | `client/src/pages/sales/tax-invoice-list.tsx` | `1a11ffa7` |
+| 9 | `client/src/pages/inventory/stock-card.tsx` | `b584fd7a` |
+| 10 | `server/routes/products-routes.ts` | `efe81db3` |
+| 11 | `client/src/pages/settings/inventory-triggers.tsx` | `3173a397` |
 
 ---
 

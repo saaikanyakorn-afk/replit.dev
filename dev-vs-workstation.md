@@ -6,6 +6,24 @@
 
 ---
 
+## ✅ PUSHED — 2026-05-26 (github-production main)
+
+| # | ไฟล์ | Commit |
+|---|------|--------|
+| 1 | `shared/permissions.ts` | `0674e21d` |
+| 2 | `server/routes/core-routes.ts` | `2c06e7e8` |
+| 3 | `server/routes/payment-methods-routes.ts` | `5680b072` |
+| 4 | `client/src/pages/settings/payment-methods.tsx` | `cccb6cb1` |
+| 5 | `client/src/components/settings-tabs.tsx` | `a58f7891` |
+| 6 | `client/src/pages/purchases/purchase-invoice.tsx` | `edba62e3` |
+| 7 | `client/src/pages/sales/tax-invoice-form.tsx` | `7e864228` |
+| 8 | `client/src/pages/sales/tax-invoice-list.tsx` | `1a11ffa7` |
+| 9 | `client/src/pages/inventory/stock-card.tsx` | `b584fd7a` |
+| 10 | `server/routes/products-routes.ts` | `efe81db3` |
+| 11 | `client/src/pages/settings/inventory-triggers.tsx` | `3173a397` |
+
+---
+
 ## สิ่งที่อยู่บน Replit Dev แต่ยังไม่อยู่บน Workstation
 
 | # | ไฟล์ | การเปลี่ยนแปลง | วันที่ | ผู้อนุมัติ |
@@ -15,8 +33,8 @@
 | 3 | `server/routes/payment-methods-routes.ts` | fix setDefault: allow multiple defaults per type + fix logic | 2026-05-26 | — |
 | 4 | `client/src/pages/settings/payment-methods.tsx` | เพิ่ม payment_type selector เมื่อเพิ่ม payment method ใหม่ | 2026-05-26 | — |
 | 5 | `client/src/components/settings-tabs.tsx` | เปลี่ยนชื่อ tab การชำระเงิน → การรับ/จ่ายเงิน | 2026-05-26 | — |
-| 6 | `client/src/pages/purchases/purchase-invoice.tsx` | auto-select warehouse_id ใน items เมื่อเปิดฟอร์ม | 2026-05-26 | — |
-| 7 | `client/src/pages/sales/tax-invoice-form.tsx` | default paymentMethod = credit + badge isCashMethod() fix | 2026-05-26 | — |
+| 6 | `client/src/pages/purchases/purchase-invoice.tsx` | auto-select warehouse_id + validate paymentMethod ก่อน save | 2026-05-26 | — |
+| 7 | `client/src/pages/sales/tax-invoice-form.tsx` | ลบ hardcode "เครดิต" ทุกจุด + อ่านจาก ★ default + validate ก่อน save | 2026-05-26 | — |
 | 8 | `client/src/pages/sales/tax-invoice-list.tsx` | badge effectiveStatus (inv.status==="cash") + outstanding=0 fix | 2026-05-26 | — |
 | 9 | `client/src/pages/inventory/stock-card.tsx` | always refetch on page enter (invalidateQueries) | 2026-05-26 | — |
 | 10 | `server/routes/products-routes.ts` | fix product import: warehouse_id required → save ก่อน | 2026-05-26 | — |
