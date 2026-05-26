@@ -31,6 +31,23 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ---
 
+## 🔴 HOTFIX — TIV React error #185 (infinite loop) — 2026-05-26
+**วันที่:** 2026-05-26
+**อนุมัติ:** รอพี่ช้าง
+**สถานะ:** ⏳ awaiting
+
+### Root cause
+`activePaymentMethods` ถูก define เป็น `.filter()` ธรรมดา → new array reference ทุก render → useEffect deps เปลี่ยนทุก render → `setForm` → re-render → loop → React error #185 → หน้า TIV crash
+
+### Fix
+ห่อ `activePaymentMethods` ด้วย `useMemo([paymentMethodsList])` → reference stable → loop หยุด
+
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `client/src/pages/sales/tax-invoice-form.tsx` | useMemo fix for activePaymentMethods | ⏳ awaiting |
+
+---
+
 ## 🚀 Task #2 — 4-Topic Batch Push — 2026-05-22 (37 files)
 **วันที่ push:** 2026-05-22
 **อนุมัติ:** พี่ช้าง ✅ (batch one-push approved 2026-05-22)
