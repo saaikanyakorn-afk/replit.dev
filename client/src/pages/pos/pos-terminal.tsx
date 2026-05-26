@@ -237,6 +237,10 @@ export default function PosTerminal() {
   });
 
   const products = Array.isArray(productsData) ? productsData : [];
+  if (products.length > 0) {
+    const s = products[0] as any;
+    console.log("[POS] product[0] keys:", Object.keys(s), "name:", s.name, "price:", s.price, "code:", s.code);
+  }
   const pmethods = Array.isArray(paymentMethodsData) ? paymentMethodsData : [];
   const contactsList = Array.isArray(contactsData) ? contactsData : [];
 
@@ -1000,6 +1004,7 @@ export default function PosTerminal() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
+              {products.length > 0 && (() => { const s = products[0] as any; return <div className="mb-2 p-1 bg-yellow-100 text-xs text-yellow-900 rounded">🔍 DEBUG: count={products.length} | name="{s.name}" | price="{s.price}" | code="{s.code}"</div>; })()}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                 {filteredProducts.map((p: any) => (
                   <Card
