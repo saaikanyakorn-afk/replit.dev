@@ -278,7 +278,7 @@ export default function TaxInvoiceForm() {
     originalTaxInvoiceNo: "",
     currencyCode: "THB",
     exchangeRate: "1",
-    paymentMethod: "เครดิต",
+    paymentMethod: "",
     sellerBranchId: selectedCompany?.sellerBranchId || "00000",
   });
   const [customerSearch, setCustomerSearch] = useState<string | null>(null);
@@ -393,11 +393,11 @@ export default function TaxInvoiceForm() {
   });
 
   useEffect(() => {
-    if (!editingId && activePaymentMethods.length > 0 && (!form.paymentMethod || form.paymentMethod === "เครดิต")) {
-      const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
-      if (defaultPm) {
-        setForm(p => ({ ...p, paymentMethod: defaultPm.accountCode }));
-      }
+    if (editingId) return;
+    if (activePaymentMethods.length === 0) return;
+    const defaultPm = activePaymentMethods.find((m: any) => m.isDefault);
+    if (defaultPm) {
+      setForm(p => ({ ...p, paymentMethod: defaultPm.accountCode }));
     }
   }, [activePaymentMethods, editingId]);
 
@@ -709,7 +709,7 @@ export default function TaxInvoiceForm() {
               originalTaxInvoiceNo: data.originalTaxInvoiceNo || "",
               currencyCode: data.currencyCode || "THB",
               exchangeRate: String(data.exchangeRate || "1"),
-              paymentMethod: data.paymentMethod || "เครดิต",
+              paymentMethod: data.paymentMethod || "",
               sellerBranchId: data.sellerBranchId || selectedCompany?.sellerBranchId || "00000",
               invoiceId: data.invoiceId || null,
             } as any);
@@ -992,7 +992,7 @@ export default function TaxInvoiceForm() {
       originalTaxInvoiceNo: "",
       currencyCode: "THB",
       exchangeRate: "1",
-      paymentMethod: "เครดิต",
+      paymentMethod: "",
       sellerBranchId: selectedCompany?.sellerBranchId || "00000",
     });
     setItems([{ ...emptyItem(), vatType: defaultVatType }]);
@@ -1026,6 +1026,10 @@ export default function TaxInvoiceForm() {
   async function handleSubmit() {
     if (!form.customerName) {
       toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", description: "ต้องระบุชื่อลูกค้า", variant: "destructive" });
+      return;
+    }
+    if (!form.paymentMethod) {
+      toast({ title: "กรุณาเลือกวิธีการรับเงิน", description: "ต้องระบุวิธีการรับเงินก่อนบันทึก", variant: "destructive" });
       return;
     }
     let newContact: { id: number; code: string } | null = null;
