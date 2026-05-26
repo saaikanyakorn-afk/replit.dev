@@ -5,7 +5,7 @@ import { parse as csvParse } from "csv-parse/sync";
 import { db } from "../db";
 import { storage } from "../storage";
 import { eq, and, desc, or, sql, count, not, ilike, inArray } from "drizzle-orm";
-import { purchaseRequests, purchaseRequestItems, bidComparisons, bidComparisonItems, bidVendors, purchaseOrders, purchaseOrderItems, purchaseInvoices, purchaseInvoiceItems, companies, accounts, contacts, products, journalEntries, journalLines, productStock, stockMovements, expenses, expenseItems, withholdingTaxCerts, whtCertItems, documentImportBatches, firmClients, clientUploadLinks, clientUploadFiles, purchaseDebitNotes, purchaseDebitNoteItems, accountingFormulas, accountingFormulaLines } from "@shared/schema";
+import { purchaseRequests, purchaseRequestItems, bidComparisons, bidComparisonItems, bidVendors, purchaseOrders, purchaseOrderItems, purchaseInvoices, purchaseInvoiceItems, companies, accounts, contacts, products, journalEntries, journalLines, productStock, stockMovements, expenses, expenseItems, withholdingTaxCerts, whtCertItems, documentImportBatches, firmClients, clientUploadLinks, clientUploadFiles, purchaseDebitNotes, purchaseDebitNoteItems, accountingFormulas, accountingFormulaLines, paymentMethods } from "@shared/schema";
 import { expenseDailyBatches, pdfImportTemplates } from "@shared/schema-extra";
 import { requireAuth, requireModule, requireRole, checkDocOwnership } from "../route-middleware";
 import { getNextDocNo, validateDocNo, createAutoJournalEntry, resolvePaymentMethodAccountCode, getNextJournalEntryNo, checkDocumentLimit, deleteStockMovementsForDoc, deleteJournalEntriesForDoc, logActivity, upsertWarehouseStockLevel, getInventoryTriggers } from "../route-helpers";
@@ -823,7 +823,11 @@ export function registerPurchaseRoutes(app: Express) {
         const userIds = Array.from(new Set(rows.map((r: any) => r.createdBy).concat(rows.map((r: any) => r.updatedBy)).filter(Boolean))) as number[];
         const userMap: Record<number, string> = {};
         for (const uid of userIds) { const u = await storage.getUser(uid); if (u) userMap[uid] = u.username; }
-        return rows.map((r: any) => ({ ...r, createdByName: r.createdBy ? userMap[r.createdBy] || "-" : "-", updatedByName: r.updatedBy ? userMap[r.updatedBy] || "-" : "-" }));
+        const allPm = await db.select({ accountCode: paymentMethods.accountCode, name: paymentMethods.name, nameTh: paymentMethods.nameTh }).from(paymentMethods).where(eq(paymentMethods.companyId, companyId));
+        return rows.map((r: any) => {
+          const pm = allPm.find((p: any) => p.accountCode === r.paymentMethod);
+          return { ...r, paymentMethodName: pm ? (pm.name || pm.nameTh || null) : null, createdByName: r.createdBy ? userMap[r.createdBy] || "-" : "-", updatedByName: r.updatedBy ? userMap[r.updatedBy] || "-" : "-" };
+        });
       };
       if (req.query.page) {
         const { page, pageSize, offset } = parsePagination(req, { pageSize: 50 });
