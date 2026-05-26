@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { FetchRateButton } from "@/components/fetch-rate-button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute, useSearch } from "wouter";
@@ -139,8 +139,13 @@ function calcItemTotal(qty: string, unitPrice: string, discount: string): string
   return (subtotal - d).toFixed(2);
 }
 
-const isCreditPm = (name?: string | null) =>
-  !!name && (name.toLowerCase() === "credit" || name === "เครดิต" || name.startsWith("เครดิต("));
+const isCreditPm = (name?: string | null) => {
+  if (!name) return true;
+  const n = name.toLowerCase();
+  if ((n.includes("เครดิต") || n.includes("credit")) && !n.includes("บัตร") && !n.includes("card")) return true;
+  if (n.includes("เจ้าหนี้") || n.includes("payable")) return true;
+  return false;
+};
 
 const emptyItem = (): APItemForm => ({
   productCode: "",
@@ -303,7 +308,10 @@ export default function PurchaseInvoice() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+  const activePaymentMethods = useMemo(
+    () => paymentMethodsList.filter((m: any) => m.active !== false),
+    [paymentMethodsList]
+  );
 
   useEffect(() => {
     if (!editingId && activePaymentMethods.length > 0 && !form.paymentMethod) {

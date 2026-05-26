@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import Layout from "@/components/layout";
@@ -146,7 +146,10 @@ export default function DebitNoteForm() {
     },
     enabled: !!companyId,
   });
-  const activePaymentMethods = paymentMethodsList.filter((m: any) => m.active !== false);
+  const activePaymentMethods = useMemo(
+    () => paymentMethodsList.filter((m: any) => m.active !== false),
+    [paymentMethodsList]
+  );
 
   const { data: approvedInvoices = [] } = useQuery<any[]>({
     queryKey: ["/api/purchase-invoices", companyId, "approved"],
