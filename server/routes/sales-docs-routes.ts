@@ -1904,6 +1904,18 @@ app.get("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce")
       const bnLinkedTivIds = new Set<number>();
       const approvalMap: Record<number, string> = {};
       const journalEntryIds = new Set<number>();
+      // Build pmIsCash map: lookup account parent_code for each PM accountCode
+      // parent_code starting with "10" = Cash/Bank group = immediate payment (pmIsCash=true)
+      const pmCashMap: Record<string, boolean> = {};
+      const pmCodes = Array.from(new Set(rows.map((r: any) => r.paymentMethod).filter(Boolean)));
+      if (pmCodes.length > 0) {
+        const accts = await db.select({ code: accounts.code, parentCode: accounts.parentCode })
+          .from(accounts)
+          .where(and(eq(accounts.companyId, companyId), inArray(accounts.code, pmCodes)));
+        for (const a of accts) {
+          pmCashMap[a.code] = !!(a.parentCode && String(a.parentCode).startsWith("10"));
+        }
+      }
       if (rows.length > 0) {
         const ids = rows.map((r: any) => r.id);
         const bnLinks = await db.select({ docId: billingNoteLinkedDocs.docId })
@@ -1917,7 +1929,7 @@ app.get("/api/tax-invoices", requireAuth, requireAnyModule("sales", "ecommerce")
         const jeRows = await db.execute(sql.raw(`SELECT DISTINCT source_doc_id FROM journal_entries WHERE source_doc_type = 'tax_invoice' AND source_doc_id = ANY(ARRAY[${ids.join(",")}]::int[])`));
         for (const je of (jeRows as any).rows || []) journalEntryIds.add(Number(je.source_doc_id));
       }
-      return rows.map((r: any) => ({ ...r, createdByName: r.createdBy ? userMap[r.createdBy] || "-" : "-", updatedByName: r.updatedBy ? userMap[r.updatedBy] || "-" : "-", paidAmount: paidMap[r.id] || 0, cnAmount: cnMap[r.id] || 0, hasBillingNote: bnLinkedTivIds.has(r.id), approvalStatus: approvalMap[r.id] || null, hasJournalEntry: journalEntryIds.has(r.id) }));
+      return rows.map((r: any) => ({ ...r, createdByName: r.createdBy ? userMap[r.createdBy] || "-" : "-", updatedByName: r.updatedBy ? userMap[r.updatedBy] || "-" : "-", paidAmount: paidMap[r.id] || 0, cnAmount: cnMap[r.id] || 0, hasBillingNote: bnLinkedTivIds.has(r.id), approvalStatus: approvalMap[r.id] || null, hasJournalEntry: journalEntryIds.has(r.id), pmIsCash: r.paymentMethod ? (pmCashMap[r.paymentMethod] ?? false) : null }));
     };
     if (req.query.page) {
       const { page, pageSize, offset } = parsePagination(req, { pageSize: 50 });
