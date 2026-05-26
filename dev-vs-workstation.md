@@ -1,6 +1,6 @@
 # 🖥️ Environment Diff: Replit Dev vs พี่ช้าง Workstation
 
-> อัปเดตล่าสุด: 2026-05-25
+> อัปเดตล่าสุด: 2026-05-26
 > ใช้งานไฟล์นี้ตลอดช่วงที่พี่ช้างอ่าน code อยู่ (ประมาณ 2-3 วัน)
 > Workflow: **Replit Dev → พี่ช้าง review → push production**
 
@@ -12,6 +12,15 @@
 |---|------|---------------|--------|-----------|
 | 1 | `shared/permissions.ts` | PRIMARY_ONLY_MODULES ลดเหลือ `["firm-mgmt","etax-hub"]` | 2026-05-25 | พี่ทราย |
 | 2 | `server/routes/core-routes.ts` | ลบ managerExceptions / accountantExceptions / empCashierExceptions — simplify เป็น filter เดียว | 2026-05-25 | พี่ทราย |
+| 3 | `server/routes/payment-methods-routes.ts` | fix setDefault: allow multiple defaults per type + fix logic | 2026-05-26 | — |
+| 4 | `client/src/pages/settings/payment-methods.tsx` | เพิ่ม payment_type selector เมื่อเพิ่ม payment method ใหม่ | 2026-05-26 | — |
+| 5 | `client/src/components/settings-tabs.tsx` | เปลี่ยนชื่อ tab การชำระเงิน → การรับ/จ่ายเงิน | 2026-05-26 | — |
+| 6 | `client/src/pages/purchases/purchase-invoice.tsx` | auto-select warehouse_id ใน items เมื่อเปิดฟอร์ม | 2026-05-26 | — |
+| 7 | `client/src/pages/sales/tax-invoice-form.tsx` | default paymentMethod = credit + badge isCashMethod() fix | 2026-05-26 | — |
+| 8 | `client/src/pages/sales/tax-invoice-list.tsx` | badge effectiveStatus (inv.status==="cash") + outstanding=0 fix | 2026-05-26 | — |
+| 9 | `client/src/pages/inventory/stock-card.tsx` | always refetch on page enter (invalidateQueries) | 2026-05-26 | — |
+| 10 | `server/routes/products-routes.ts` | fix product import: warehouse_id required → save ก่อน | 2026-05-26 | — |
+| 11 | `client/src/pages/settings/inventory-triggers.tsx` | เพิ่มปุ่ม recalculate warehouse stock levels | 2026-05-26 | — |
 
 ---
 
@@ -141,3 +150,12 @@ git pull
 | 2026-05-25 | `client/src/pages/purchases/purchase-invoice-list.tsx` | invalidateQueries stock หลัง delete | ✅ `fc8de039` | ⏳ in progress — รอพี่ทราย verify production |
 | 2026-05-25 | `client/src/pages/inventory/goods-receiving-form.tsx` | invalidateQueries stock หลัง save | ✅ `c0fba5f7` | ⏳ in progress — รอพี่ทราย verify production |
 | 2026-05-25 | `client/src/components/send-email-dialog.tsx` | ไฟล์ใหม่ — dependency ของ tax-invoice-list.tsx ที่ไม่เคยมีบน GitHub | ✅ `4ec457c4` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `server/routes/payment-methods-routes.ts` | fix setDefault: allow multiple defaults per type + fix logic | ✅ `e60fbcb5` `95edf537` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `client/src/pages/settings/payment-methods.tsx` | เพิ่ม payment_type selector เมื่อเพิ่ม payment method ใหม่ | ✅ `f4faa670` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `client/src/components/settings-tabs.tsx` | เปลี่ยนชื่อ tab การชำระเงิน → การรับ/จ่ายเงิน | ✅ `43a9f7cd` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `client/src/pages/purchases/purchase-invoice.tsx` | auto-select warehouse_id ใน items เมื่อเปิดฟอร์ม | ✅ `443ca098` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `client/src/pages/sales/tax-invoice-form.tsx` | default paymentMethod = credit + badge isCashMethod() fix | ✅ `c2e7240d` `26edaeda` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `client/src/pages/sales/tax-invoice-list.tsx` | badge effectiveStatus (inv.status==="cash") + outstanding=0 fix | ✅ `95e15df5` `c143480c` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `client/src/pages/inventory/stock-card.tsx` | always refetch on page enter (invalidateQueries) | ✅ `93d70dbe` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `server/routes/products-routes.ts` | fix product import: warehouse_id required → save ก่อน | ✅ `27673733` | ⏳ in progress — รอพี่ทราย verify production |
+| 2026-05-26 | `client/src/pages/settings/inventory-triggers.tsx` | เพิ่มปุ่ม recalculate warehouse stock levels | ✅ `8b7b227c` | ⏳ in progress — รอพี่ทราย verify production |
