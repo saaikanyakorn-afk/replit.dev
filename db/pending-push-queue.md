@@ -1001,6 +1001,8 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 
 | Deploy # | Date | Entry | Files |
 |----------|------|-------|-------|
+| HOTFIX-TIV-loop | 2026-05-26 | React error #185 — activePaymentMethods useMemo fix, หน้า TIV crash บน production | `client/src/pages/sales/tax-invoice-form.tsx` (commit `07687619`) |
+| Batch-N4b-PM | 2026-05-26 | Payment Method fixes + validate + TIV/AP no hardcode + stock/inventory fixes (11 files) | `shared/permissions.ts` `server/routes/core-routes.ts` `server/routes/payment-methods-routes.ts` `client/src/pages/settings/payment-methods.tsx` `client/src/components/settings-tabs.tsx` `client/src/pages/purchases/purchase-invoice.tsx` `client/src/pages/sales/tax-invoice-form.tsx` `client/src/pages/sales/tax-invoice-list.tsx` `client/src/pages/inventory/stock-card.tsx` `server/routes/products-routes.ts` `client/src/pages/settings/inventory-triggers.tsx` (build pass 583ms, pm2 online 73.8mb) |
 | Bug1-warehouse | 2026-05-23 | AP PATCH warehouse_id not saved — code-only fix, no migration | `server/routes/purchase-routes.ts` (github-production commit `2f5a4916`, build pass 583ms, pm2 online 75.3mb) |
 | N11-schema | 2026-05-21 | N11 Manufacturing Schema Migration — 3 ADD COLUMN + 6 flags | migrations-runner.ts (`3e43ad9`, `5cf60e9`), schema-extra.ts (`40accd1`) |
 | #66 | 2026-05-15 | innerJoin migration + 6 other fixes | products-routes.ts, product-import-export.tsx, import-batch-routes.ts, commerce-intelligence.ts, price-calculator.ts, ad-cost-routes.ts, pos-routes.ts, ecommerce-routes.ts, notifications-routes.ts, storage.ts, bundle-management.tsx, inventory-list.tsx, queryClient.ts |
