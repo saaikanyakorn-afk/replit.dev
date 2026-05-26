@@ -22,6 +22,12 @@
 | 10 | `server/routes/products-routes.ts` | `efe81db3` |
 | 11 | `client/src/pages/settings/inventory-triggers.tsx` | `3173a397` |
 
+## 🔴 HOTFIX PUSHED — 2026-05-26 (github-production main)
+
+| # | ไฟล์ | Commit | หมายเหตุ |
+|---|------|--------|---------|
+| 1 | `client/src/pages/sales/tax-invoice-form.tsx` | `07687619` | useMemo fix — React error #185 infinite loop |
+
 ---
 
 ## สิ่งที่อยู่บน Replit Dev แต่ยังไม่อยู่บน Workstation

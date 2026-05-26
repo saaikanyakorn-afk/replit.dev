@@ -44,7 +44,7 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 | ไฟล์ | สิ่งที่แก้ | Status |
 |------|-----------|--------|
-| `client/src/pages/sales/tax-invoice-form.tsx` | useMemo fix for activePaymentMethods | ⏳ awaiting |
+| `client/src/pages/sales/tax-invoice-form.tsx` | useMemo fix for activePaymentMethods | ✅ pushed 2026-05-26 11:xx (Bangkok) |
 
 ---
 

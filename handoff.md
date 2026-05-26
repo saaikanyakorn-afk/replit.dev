@@ -21,6 +21,7 @@
 | 15 | Fix: tax-invoice-form.tsx — ลบ hardcode "เครดิต" ทุกจุด + validate ก่อน save | `client/src/pages/sales/tax-invoice-form.tsx` | `d9ea134c` |
 | 16 | Fix: purchase-invoice.tsx — เพิ่ม validate paymentMethod ก่อน save (ทั้งสองฝั่ง) | `client/src/pages/purchases/purchase-invoice.tsx` | `b854d382` |
 | 17 | Push 11 files → github-production main ✅ 11/11 success | 11 ไฟล์ | ดูตาราง push ด้านล่าง |
+| 18 | 🔴 HOTFIX: tax-invoice-form.tsx — React error #185 (infinite loop) บน production | `client/src/pages/sales/tax-invoice-form.tsx` | `07687619` |
 
 ---
 
@@ -39,6 +40,16 @@
 | 9 | `client/src/pages/inventory/stock-card.tsx` | `b584fd7a` |
 | 10 | `server/routes/products-routes.ts` | `efe81db3` |
 | 11 | `client/src/pages/settings/inventory-triggers.tsx` | `3173a397` |
+
+## 🔴 HOTFIX PUSH LOG — 2026-05-26 (พี่ช้างอนุมัติ)
+
+**Root cause:** `activePaymentMethods = paymentMethodsList.filter(...)` สร้าง array ใหม่ทุก render → useEffect deps เปลี่ยนทุก render → `setForm` → re-render → loop → React error #185 → หน้า TIV crash
+**Fix:** ห่อด้วย `useMemo([paymentMethodsList])` → reference stable → loop หยุด
+**ทำไมเกิดเฉพาะ production:** production มีข้อมูล ★ default PM จริง → `defaultPm` มีค่า → `setForm` ถูกเรียก → loop / dev ไม่มี ★ PM → return early → ไม่เห็น bug
+
+| # | ไฟล์ | Commit (github-production) |
+|---|------|--------------------------|
+| 1 | `client/src/pages/sales/tax-invoice-form.tsx` | `07687619` |
 
 ---
 
