@@ -1006,6 +1006,20 @@ VALUES ('vXXX', 'What changed', 'alter_column|add_column|data_migration', 'etaxe
 
 **Rule:** `git push <remote> main` = always rejected if main contains protected files. Cherry-pick is the ONLY safe method.
 
+### ⛔ DEPLOY COMMAND FORMAT — PERMANENT RULE (พี่ช้าง 2026-05-26)
+
+**Production server = Windows Server, CMD only. This will NOT change.**
+
+- ✅ CORRECT: Single-line CMD — all files space-separated on one line, no line breaks
+- ❌ NEVER: `\` line continuation (Linux/Git Bash syntax — fails silently on Windows CMD)
+- ❌ NEVER: `^` continuation (PowerShell only)
+- ❌ NEVER suggest running under Git Bash — พี่ช้าง runs CMD and will not change this
+
+**CMD template (copy exactly — no `\`, all files on one line):**
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- file1.ts file2.tsx file3.ts && npm run build && pm2 start etax-center
+```
+
 ## Production Push Tracking
 
 ⚠️ **SOURCE OF TRUTH for what is awaiting push AND what has been deployed = `db/pending-push-queue.md`** — NOT this section, NOT `.local/push-pull-log.md` (legacy, frozen — do not update).
