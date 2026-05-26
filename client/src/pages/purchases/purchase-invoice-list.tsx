@@ -40,6 +40,14 @@ import { useBulkDelete } from "@/hooks/use-bulk-delete";
 import { BulkDeleteButton, BulkDeleteConfirmDialog, SelectAllCheckbox, RowCheckbox } from "@/components/bulk-delete-bar";
 import SendEmailDialog from "@/components/send-email-dialog";
 
+const isCreditPm = (name?: string | null) => {
+  if (!name) return true;
+  const n = name.toLowerCase();
+  if ((n.includes("เครดิต") || n.includes("credit")) && !n.includes("บัตร") && !n.includes("card")) return true;
+  if (n.includes("เจ้าหนี้") || n.includes("payable")) return true;
+  return false;
+};
+
 const exportColumns = [
   { header: "วันที่", key: "apDate", width: 14 },
   { header: "เลขที่", key: "apNo", width: 20 },
@@ -362,6 +370,11 @@ export default function PurchaseInvoiceList() {
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-1 text-xs">
+                              {ap.paymentMethod && (
+                                isCreditPm(ap.paymentMethod)
+                                  ? <span className="text-purple-600">Credit[AP]</span>
+                                  : <span className="text-green-600">Cash[AP]</span>
+                              )}
                               <button
                                 data-testid={`button-journal-inline-${ap.id}`}
                                 onClick={(e) => { e.stopPropagation(); setJournalDoc({ open: true, id: ap.id }); }}
