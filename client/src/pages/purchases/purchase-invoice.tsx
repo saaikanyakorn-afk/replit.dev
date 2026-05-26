@@ -966,11 +966,19 @@ export default function PurchaseInvoice() {
   }
 
   async function handleSubmit() {
+    if (!form.paymentMethod) {
+      toast({ title: "กรุณาเลือกวิธีการจ่ายเงิน", description: "ต้องระบุวิธีการจ่ายเงินก่อนบันทึก", variant: "destructive" });
+      return;
+    }
     if (!(await runVatClosingCheck("save"))) return;
     doSave();
   }
 
   async function handleSaveAndWht() {
+    if (!form.paymentMethod) {
+      toast({ title: "กรุณาเลือกวิธีการจ่ายเงิน", description: "ต้องระบุวิธีการจ่ายเงินก่อนบันทึก", variant: "destructive" });
+      return;
+    }
     if (!(await runVatClosingCheck("saveWht"))) return;
     doSaveWht();
   }
