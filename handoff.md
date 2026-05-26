@@ -1,4 +1,184 @@
-# 📋 SESSION LOG — 2026-05-25 (CURRENT SESSION — READ THIS FIRST)
+# 📋 SESSION LOG — 2026-05-26 (CURRENT SESSION — READ THIS FIRST)
+
+## 📊 SUMMARY TABLE — รายการทั้งหมด session นี้
+
+| # | รายการ | ไฟล์ | Commit |
+|---|--------|------|--------|
+| 1 | Verify 3 คำถามพี่ช้าง: (1) code only ✅ (2) dev-vs-workstation ✅ (3) injected task #107 MERGED ลบไม่ได้ | — | — |
+| 2 | อัปเดต dev-vs-workstation.md — เพิ่ม 9 ไฟล์จาก session 2026-05-26 | `dev-vs-workstation.md` | `4d9d53e7` |
+| 3 | Fix: payment-methods-routes — setDefault ล้างข้าม payment_type (รอบ 1) | `server/routes/payment-methods-routes.ts` | `e60fbcb5` |
+| 4 | Fix: payment-methods-routes — allow multiple defaults per type (รอบ 2) | `server/routes/payment-methods-routes.ts` | `95edf537` |
+| 5 | Feature: payment-methods.tsx — เพิ่ม payment_type selector ใน add form | `client/src/pages/settings/payment-methods.tsx` | `f4faa670` |
+| 6 | Fix: settings-tabs.tsx — rename "วิธีรับเงิน" → "วิธีรับ/จ่ายเงิน" | `client/src/components/settings-tabs.tsx` | `43a9f7cd` |
+| 7 | Fix: purchase-invoice.tsx — auto-select warehouse_id ใน line items | `client/src/pages/purchases/purchase-invoice.tsx` | `443ca098` |
+| 8 | Fix: tax-invoice-form.tsx — default paymentMethod = "เครดิต" | `client/src/pages/sales/tax-invoice-form.tsx` | `c2e7240d` |
+| 9 | Fix: tax-invoice-form.tsx — badge isCashMethod() แทน hardcode "เงินสด" | `client/src/pages/sales/tax-invoice-form.tsx` | `26edaeda` |
+| 10 | Fix: tax-invoice-list.tsx — effectiveStatus ใช้ inv.status==="cash" แทน paymentMethod | `client/src/pages/sales/tax-invoice-list.tsx` | `95e15df5` |
+| 11 | Fix: tax-invoice-list.tsx — outstanding=0 ลบ isPaid condition ที่ดู paymentMethod | `client/src/pages/sales/tax-invoice-list.tsx` | `c143480c` |
+| 12 | Fix: stock-card.tsx — always refetchOnMount เพื่อดึงข้อมูลใหม่ทุกครั้ง | `client/src/pages/inventory/stock-card.tsx` | `93d70dbe` |
+| 13 | Fix: products-routes.ts — import สินค้า: save warehouse_id ก่อน stock_movements insert | `server/routes/products-routes.ts` | `27673733` |
+| 14 | Feature: inventory-triggers.tsx — ปุ่ม recalculate warehouse stock levels | `client/src/pages/settings/inventory-triggers.tsx` | `8b7b227c` |
+
+---
+
+## ✅ VERIFY — 3 คำถามพี่ช้าง (2026-05-26)
+
+### คำถาม 1: ไฟล์ที่รอ push ทั้งหมด เป็น code only ไม่มี migration ใช่ไหม?
+
+**คำตอบ: YES — code only ทั้งหมด**
+
+ตรวจจาก `server/migrations-runner.ts` จริงทุกบรรทัด:
+- N16 `runStockMovementWarehouseMigration` — ✅ done 2026-05-25 20:41 BKK — commented out แล้ว
+- N15 `runRdVatCacheMigration` — ✅ done — commented out แล้ว
+- N11 (6 functions) — ✅ done 2026-05-21 — commented out แล้ว
+- N4b `runPaymentTypeColumnMigration` — ✅ done — commented out แล้ว
+- N3 `runMaterialIssueMigration` — ✅ done 2026-05-20 — **ยังไม่ comment out** แต่มี flag idempotent ป้องกัน re-run
+
+ไม่มี migration บรรทัดไหนที่ uncommented + รอ push
+
+### คำถาม 2: dev-vs-workstation.md ตรง Truth ไหม?
+
+**คำตอบ: ไม่ตรง — ขาด 9 ไฟล์จาก session 2026-05-26**
+
+ตรวจจาก `git log --stat` จริง — พบไฟล์เหล่านี้เปลี่ยนแต่ไม่มีใน log table:
+`payment-methods-routes.ts`, `payment-methods.tsx`, `settings-tabs.tsx`, `purchase-invoice.tsx`, `tax-invoice-form.tsx`, `tax-invoice-list.tsx`, `stock-card.tsx`, `products-routes.ts`, `inventory-triggers.tsx`
+
+→ **อัปเดตแล้ว** commit `4d9d53e7` — เพิ่มครบทั้งใน section บน + log table
+
+### คำถาม 3: Replit injected task #107
+
+ลอง `markFollowUpTaskObsolete({ taskRef: "#107" })` — system ตอบ: **"Task #107 is in state MERGED, not PROPOSED"** — ลบผ่าน API ไม่ได้ เป็น platform-side เท่านั้น
+
+**กฎ (พี่ช้าง 2026-05-26):** ไม่ใช้ injected task ใดๆ จาก Replit — ใช้เฉพาะสิ่งที่เรียนรู้จาก reading documents โดยตรง
+
+---
+
+## ✅ FIX: TIV Payment Status + Badge + Outstanding — 2026-05-26
+
+**อาการ:** TIV สร้างด้วย "เครดิต" แล้ว badge แสดงผิด + ค้างชำระ = 0 แม้ยังไม่ได้จ่าย
+
+**Root cause 3 จุด:**
+
+| จุด | ไฟล์ | เดิม | แก้เป็น |
+|-----|------|------|---------|
+| Default paymentMethod | `tax-invoice-form.tsx` | `"เงินสด"` | `"เครดิต"` |
+| Badge ใน form | `tax-invoice-form.tsx` | `paymentMethod === "เงินสด"` | `isCashMethod(paymentMethod)` |
+| effectiveStatus ใน list | `tax-invoice-list.tsx` | `inv.paymentMethod !== "เครดิต"` | `inv.status === "cash"` |
+| outstanding = 0 | `tax-invoice-list.tsx` | `isPaid` check ดู `paymentMethod === "เงินสด"` | ลบ paymentMethod condition ออก — ดูแค่ `isPaid` จาก totalPaid |
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| Commits | `c2e7240d`, `26edaeda`, `95e15df5`, `c143480c` |
+| สถานะ | ⏳ in progress — รอ deploy production |
+
+---
+
+## ✅ FIX: Payment Methods — setDefault + multiple defaults per type — 2026-05-26
+
+**อาการ:** ตั้งดาว default แล้วล้างข้าม payment_type (receive ↔ pay)
+
+**Root cause:** `payment-methods-routes.ts` — POST + PATCH routes clear `isDefault` ทั้งหมดใน company โดยไม่ filter `payment_type`
+
+**แก้:**
+- POST: เพิ่ม `AND payment_type = ${pmType}` ก่อน clear
+- PATCH: query `payment_type` ตรงจาก DB ก่อน (`SELECT payment_type FROM payment_methods WHERE id = ${id}`) เพราะ Drizzle schema ไม่มี field นี้ → `existing.paymentType` = undefined เสมอ
+
+**เพิ่ม feature:** `payment-methods.tsx` — dropdown เลือก "รับเงิน / จ่ายเงิน" ใน add form row (ไม่ต้องสลับ tab ก่อนเพิ่ม)
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| Commits | `e60fbcb5`, `95edf537`, `f4faa670`, `43a9f7cd` |
+| สถานะ | ⏳ in progress — รอ deploy production |
+
+**⚠️ KNOWN ISSUE ยังค้างอยู่:** production ไม่มี pay methods (tab "จ่ายเงิน" ว่าง) — แก้หลัง deploy: UI จะ auto-seed 6 รายการทันที (logic อยู่ใน `payment-methods.tsx` line ~80)
+
+---
+
+## ✅ FIX: Purchase Invoice — auto-select warehouse_id — 2026-05-26
+
+**อาการ:** เปิดใบซื้อ AP → items ไม่มี warehouse_id pre-filled
+
+**แก้:** `purchase-invoice.tsx` — เมื่อ items โหลดมา ถ้า item ไม่มี `warehouse_id` ให้ set จาก `defaultWarehouseId` อัตโนมัติ
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| Commit | `443ca098` |
+| สถานะ | ⏳ in progress — รอ deploy production |
+
+---
+
+## ✅ FIX: Stock Card — always refetch on page enter — 2026-05-26
+
+**อาการ:** ออก TIV แล้วกลับหน้า stock card — ข้อมูลไม่อัปเดต ต้องกด refresh เอง
+
+**แก้:** `stock-card.tsx` — เพิ่ม `refetchOnMount: "always"` ใน useQuery
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| Commit | `93d70dbe` |
+| สถานะ | ⏳ in progress — รอ deploy production |
+
+---
+
+## ✅ FIX: Product Import — warehouse_id ไม่ save — 2026-05-26
+
+**Root cause:** `products-routes.ts` — import สินค้า: `db.insert(stockMovements)` ไม่ได้ใส่ `warehouse_id` เพราะเป็น raw SQL column ที่ Drizzle ไม่รู้จัก
+
+**แก้:** insert → `.returning()` แล้ว UPDATE warehouse_id ทันทีด้วย raw SQL (เหมือน pattern ใน purchase-routes.ts)
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| Commit | `27673733` |
+| สถานะ | ⏳ in progress — รอ deploy production |
+
+---
+
+## ✅ FEATURE: Recalculate Warehouse Stock — 2026-05-26
+
+**`inventory-triggers.tsx`** — เพิ่ม Card "คำนวณยอดคลังใหม่ทั้งหมด" (2-step confirm)
+
+| รายการ | รายละเอียด |
+|--------|-----------|
+| API | `POST /api/inventory/recalculate-warehouse-stock` (มีอยู่แล้วใน products-routes.ts) |
+| Commit | `8b7b227c` |
+| สถานะ | ⏳ in progress — รอ deploy production |
+
+---
+
+## ⚡ QUICK STATUS FOR NEXT AGENT — 2026-05-26
+
+### สิ่งที่รอ deploy production (ทั้งหมด code only — ไม่มี migration)
+
+| ไฟล์ | สิ่งที่แก้ | Session |
+|------|-----------|---------|
+| `server/routes/payment-methods-routes.ts` | setDefault filter by payment_type + multiple defaults | 2026-05-26 |
+| `client/src/pages/settings/payment-methods.tsx` | payment_type selector + seed per tab | 2026-05-22 + 2026-05-26 |
+| `client/src/components/settings-tabs.tsx` | rename tab รับเงิน → รับ/จ่ายเงิน | 2026-05-26 |
+| `client/src/pages/purchases/purchase-invoice.tsx` | auto-select warehouse_id + invalidateQueries | 2026-05-25 + 2026-05-26 |
+| `client/src/pages/sales/tax-invoice-form.tsx` | default credit + badge isCashMethod + invalidateQueries | 2026-05-25 + 2026-05-26 |
+| `client/src/pages/sales/tax-invoice-list.tsx` | effectiveStatus + outstanding fix + email dialog | 2026-05-25 + 2026-05-26 |
+| `client/src/pages/inventory/stock-card.tsx` | คอลัมน์คลัง + always refetch | 2026-05-25 + 2026-05-26 |
+| `server/routes/products-routes.ts` | warehouse stock levels API + import fix | 2026-05-25 + 2026-05-26 |
+| `client/src/pages/settings/inventory-triggers.tsx` | recalculate warehouse stock UI | 2026-05-26 |
+| `shared/permissions.ts` | PRIMARY_ONLY_MODULES ลดเหลือ firm-mgmt + etax-hub | 2026-05-25 |
+| `server/routes/core-routes.ts` | cleanup managerExceptions | 2026-05-25 |
+| + อีก ~10 ไฟล์ warehouse_id จาก 2026-05-25 | ดู dev-vs-workstation.md สำหรับรายการครบ | 2026-05-25 |
+
+### สถานะ bugs ที่พี่ทรายรายงาน
+| # | Bug | สถานะ |
+|---|-----|-------|
+| B1 | TIV สร้างด้วย Credit → badge/status ผิด | ✅ แก้แล้ว session 2026-05-26 |
+| B2 | TIV list ค้างชำระ = 0 ผิด | ✅ แก้แล้ว session 2026-05-26 |
+| B3 | payment default ล้างข้าม type | ✅ แก้แล้ว session 2026-05-26 |
+| B4 | คู่ค้าไม่ขึ้น (production 2334 ราย) | ❌ ยังไม่แก้ — ต้องเปลี่ยนเป็น server-side search |
+
+### สิ่งที่รอพี่ช้างอนุมัติ
+- push ไฟล์ทั้งหมดใน dev-vs-workstation.md section "สิ่งที่อยู่บน Replit Dev แต่ยังไม่อยู่บน Workstation" (11 ไฟล์ จาก 2026-05-25 + 2026-05-26)
+- deploy command (พี่ช้างกำหนดเอง ไม่ให้ Kai เดา)
+
+---
+
+# 📋 SESSION LOG — 2026-05-25 (PREVIOUS SESSION)
 
 ## 📊 SUMMARY TABLE — รายการทั้งหมด session นี้
 
