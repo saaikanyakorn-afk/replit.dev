@@ -2589,3 +2589,11 @@ All N11 migrations (2026-05-17) ran from inside route handlers — db fully boot
 **Fix applied 2026-05-22:** `server/index-extra.ts` — replaced immediate `runPendingMigrations()` call with `runMigrationsAfterBootstrap()` which polls `isBootstrapped()` every 500ms (max 30s) before calling migrations. Explicit log: `[migration] DB ready (attempt N) — running pending migrations`.
 
 **Files changed:** `server/index-extra.ts` — pushed to GitHub, requires server restart to take effect.
+
+---
+
+## ⛔ MANDATORY — AGENT RULE (พี่ช้าง 2026-05-26)
+
+**Push-pull history file = `db/pending-push-queue.md` → section `DEPLOYED — HISTORY`**
+
+Every agent MUST update `db/pending-push-queue.md` DEPLOYED — HISTORY section every single time a push or pull to/from github-production occurs. No exceptions. Failure to update = procedure violation.
