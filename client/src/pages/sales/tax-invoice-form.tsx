@@ -368,9 +368,16 @@ export default function TaxInvoiceForm() {
 
   const isCashMethod = (pm: string) => {
     if (!pm) return false;
-    if (pm === "เงินสด") return true; // backward compat for old saved records
+    if (pm === "เงินสด") return true; // backward compat
+    if (pm === "เครดิต") return false; // backward compat — credit term
     const found = activePaymentMethods.find((m: any) => m.accountCode === pm);
-    return !!(found && (found.name === "เงินสด" || found.nameTh === "เงินสด"));
+    if (!found) return false;
+    const nameStr = ((found.name || "") + " " + (found.nameTh || "")).toLowerCase();
+    const isCreditTerm = (nameStr.includes("เครดิต") && !nameStr.includes("บัตร") && !nameStr.includes("card"))
+      || (nameStr.includes("credit") && !nameStr.includes("card"))
+      || nameStr.includes("ลูกหนี้")
+      || nameStr.includes("debtor");
+    return !isCreditTerm;
   };
 
   const { data: warehouses = [] } = useQuery<any[]>({
