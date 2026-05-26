@@ -163,7 +163,7 @@ export default function PosTerminal() {
   });
 
   const { data: productsData } = useQuery({
-    queryKey: ["/api/pos/products", selectedCompanyId, searchTerm],
+    queryKey: ["pos-products-v2", selectedCompanyId, searchTerm],
     queryFn: async () => {
       const r = await fetch(`/api/pos/products?companyId=${selectedCompanyId}&search=${encodeURIComponent(searchTerm)}`, { credentials: "include", cache: "no-store" });
       if (!r.ok) return [];
@@ -1001,7 +1001,6 @@ export default function PosTerminal() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              {products.length > 0 && (() => { const s = products[0] as any; return <div className="mb-2 p-1 bg-yellow-100 text-xs text-yellow-900 rounded">🔍 count={products.length} | name="{s.name}" | price="{s.price}"</div>; })()}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                 {filteredProducts.map((p: any) => (
                   <Card
