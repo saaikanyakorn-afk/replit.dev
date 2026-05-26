@@ -171,6 +171,7 @@ export default function PosTerminal() {
     },
     enabled: !!selectedCompanyId && !!activeSession,
     staleTime: 0,
+    gcTime: 0,
   });
 
   const { data: paymentMethodsData } = useQuery({
@@ -1000,6 +1001,7 @@ export default function PosTerminal() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
+              {products.length > 0 && (() => { const s = products[0] as any; return <div className="mb-2 p-1 bg-yellow-100 text-xs text-yellow-900 rounded">🔍 count={products.length} | name="{s.name}" | price="{s.price}"</div>; })()}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                 {filteredProducts.map((p: any) => (
                   <Card
