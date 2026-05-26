@@ -1,0 +1,1 @@
+- [POS posDb Drizzle mismatch](pos-drizzle-mismatch.md) — posDb.select().from(products) returns empty-string fields; use getPosPoolInstance().query() raw SQL instead
