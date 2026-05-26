@@ -370,10 +370,10 @@ export default function PurchaseInvoiceList() {
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-1 text-xs">
-                              {(ap.paymentMethodName || ap.paymentMethod) && (
-                                isCreditPm(ap.paymentMethodName || ap.paymentMethod)
-                                  ? <span className="text-purple-600">Credit[AP]</span>
-                                  : <span className="text-green-600">Cash[AP]</span>
+                              {ap.paymentMethod && (
+                                ap.pmIsCash === true
+                                  ? <span className="text-green-600">Cash[AP]</span>
+                                  : <span className="text-purple-600">Credit[AP]</span>
                               )}
                               <button
                                 data-testid={`button-journal-inline-${ap.id}`}

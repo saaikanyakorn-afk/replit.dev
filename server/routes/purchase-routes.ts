@@ -824,9 +824,20 @@ export function registerPurchaseRoutes(app: Express) {
         const userMap: Record<number, string> = {};
         for (const uid of userIds) { const u = await storage.getUser(uid); if (u) userMap[uid] = u.username; }
         const allPm = await db.select({ accountCode: paymentMethods.accountCode, name: paymentMethods.name, nameTh: paymentMethods.nameTh }).from(paymentMethods).where(eq(paymentMethods.companyId, companyId));
+        // Build pmIsCash map: lookup account parent_code — parent_code starting "10" = Cash/Bank = paid immediately
+        const pmCashMap: Record<string, boolean> = {};
+        const pmCodes = Array.from(new Set(rows.map((r: any) => r.paymentMethod).filter(Boolean)));
+        if (pmCodes.length > 0) {
+          const accts = await db.select({ code: accounts.code, parentCode: accounts.parentCode })
+            .from(accounts)
+            .where(and(eq(accounts.companyId, companyId), inArray(accounts.code, pmCodes)));
+          for (const a of accts) {
+            pmCashMap[a.code] = !!(a.parentCode && String(a.parentCode).startsWith("10"));
+          }
+        }
         return rows.map((r: any) => {
           const pm = allPm.find((p: any) => p.accountCode === r.paymentMethod);
-          return { ...r, paymentMethodName: pm ? (pm.name || pm.nameTh || null) : null, createdByName: r.createdBy ? userMap[r.createdBy] || "-" : "-", updatedByName: r.updatedBy ? userMap[r.updatedBy] || "-" : "-" };
+          return { ...r, paymentMethodName: pm ? (pm.name || pm.nameTh || null) : null, pmIsCash: r.paymentMethod ? (pmCashMap[r.paymentMethod] ?? null) : null, createdByName: r.createdBy ? userMap[r.createdBy] || "-" : "-", updatedByName: r.updatedBy ? userMap[r.updatedBy] || "-" : "-" };
         });
       };
       if (req.query.page) {
