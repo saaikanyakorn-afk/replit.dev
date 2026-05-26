@@ -728,7 +728,7 @@ export function registerPosRoutes(app: Express) {
       const search = rawSearch.replace(/^\*+|\*+$/g, "").trim();
       if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
 
-      let conditions: any[] = [eq(products.companyId, companyId)];
+      let conditions: any[] = [eq(products.companyId, companyId), eq(products.active, true)];
       if (search) {
         conditions.push(
           or(
@@ -739,12 +739,10 @@ export function registerPosRoutes(app: Express) {
         );
       }
 
-      // innerJoin activeProducts as active-only filter; map r.products to get flat object with correct prices
       const result = await posDb.select().from(products)
-        .innerJoin(activeProducts, eq(activeProducts.id, products.id))
         .where(and(...conditions))
         .orderBy(asc(products.name));
-      res.json(result.map((r: any) => r.products ?? r));
+      res.json(result);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 

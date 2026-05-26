@@ -165,11 +165,12 @@ export default function PosTerminal() {
   const { data: productsData } = useQuery({
     queryKey: ["/api/pos/products", selectedCompanyId, searchTerm],
     queryFn: async () => {
-      const r = await fetch(`/api/pos/products?companyId=${selectedCompanyId}&search=${encodeURIComponent(searchTerm)}`, { credentials: "include" });
+      const r = await fetch(`/api/pos/products?companyId=${selectedCompanyId}&search=${encodeURIComponent(searchTerm)}`, { credentials: "include", cache: "no-store" });
       if (!r.ok) return [];
       return r.json();
     },
     enabled: !!selectedCompanyId && !!activeSession,
+    staleTime: 0,
   });
 
   const { data: paymentMethodsData } = useQuery({
