@@ -728,22 +728,21 @@ export function registerPosRoutes(app: Express) {
       const search = rawSearch.replace(/^\*+|\*+$/g, "").trim();
       if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
 
-      let conditions = [eq(products.companyId, companyId)];
+      let conditions: any[] = [eq(activeProducts.companyId, companyId)];
       if (search) {
         conditions.push(
           or(
-            ilike(products.code, `%${search}%`),
-            ilike(products.name, `%${search}%`),
-            eq(products.barcode, search),
+            ilike(activeProducts.code, `%${search}%`),
+            ilike(activeProducts.name, `%${search}%`),
+            eq(activeProducts.barcode, search),
           )!
         );
       }
 
-      const result = await posDb.select().from(products)
-        .innerJoin(activeProducts, eq(activeProducts.id, products.id))
+      const result = await posDb.select().from(activeProducts)
         .where(and(...conditions))
-        .orderBy(asc(products.name));
-      res.json(result.map((r: any) => r.products ?? r));
+        .orderBy(asc(activeProducts.name));
+      res.json(result);
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
