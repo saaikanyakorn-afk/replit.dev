@@ -528,10 +528,10 @@ export default function TaxInvoiceList() {
                               const whtAmt = parseFloat(String(inv.withholdingTax || inv.whtAmount || 0));
                               const grossTotal = total + whtAmt;
                               const PAID_STATUSES = ["paid", "cash", "credit_card", "cheque_done", "transfer_done", "paid_by_ar", "completed"];
-                              const isPaid = PAID_STATUSES.includes(inv.status) || inv.paymentStatus === "paid" || inv.paymentStatus === "success" || !!(inv.paymentMethod && inv.paymentMethod !== "เครดิต");
+                              const isPaid = PAID_STATUSES.includes(inv.status) || inv.paymentStatus === "paid" || inv.paymentStatus === "success";
                               const effectiveTotal = grossTotal - cnAmt;
                               const outstanding = isPaid ? 0 : Math.max(0, effectiveTotal - paid);
-                              const isCreditUnpaid = inv.paymentMethod === "เครดิต" && !isPaid;
+                              const isCreditUnpaid = !isPaid;
                               return (
                                 <>
                                   <div className="text-xs text-muted-foreground">{fmt(outstanding)}</div>
