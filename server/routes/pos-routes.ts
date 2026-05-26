@@ -728,21 +728,23 @@ export function registerPosRoutes(app: Express) {
       const search = rawSearch.replace(/^\*+|\*+$/g, "").trim();
       if (!companyId) return res.status(400).json({ message: "กรุณาระบุบริษัท" });
 
-      let conditions: any[] = [eq(activeProducts.companyId, companyId)];
+      let conditions: any[] = [eq(products.companyId, companyId)];
       if (search) {
         conditions.push(
           or(
-            ilike(activeProducts.code, `%${search}%`),
-            ilike(activeProducts.name, `%${search}%`),
-            eq(activeProducts.barcode, search),
+            ilike(products.code, `%${search}%`),
+            ilike(products.name, `%${search}%`),
+            eq(products.barcode, search),
           )!
         );
       }
 
-      const result = await posDb.select().from(activeProducts)
+      // innerJoin activeProducts as active-only filter; map r.products to get flat object with correct prices
+      const result = await posDb.select().from(products)
+        .innerJoin(activeProducts, eq(activeProducts.id, products.id))
         .where(and(...conditions))
-        .orderBy(asc(activeProducts.name));
-      res.json(result);
+        .orderBy(asc(products.name));
+      res.json(result.map((r: any) => r.products ?? r));
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
