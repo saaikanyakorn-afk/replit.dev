@@ -31,6 +31,171 @@ Every push to production MUST be reflected in this file. If a file is not in thi
 
 ---
 
+## 📝 Batch #13 — Invoice ค้างชำระ TIV status bug — recomputePaymentStatus + computeRemainingBalance fix — 2026-05-27
+**วันที่:** 2026-05-27
+**อนุมัติ:** รอพี่ช้าง
+**สถานะ:** 📝 dev — รอพี่ทราย test บน dev ก่อน ขอ approve แล้วค่อย push production
+
+### Root Cause
+`computeRemainingBalance` (L1262) และ `recomputePaymentStatus` (L1321) ใน `server/route-helpers.ts`
+ใช้ `WHERE invoice_id = $1 AND status = 'paid'` สำหรับ query TIV — แต่ TIV จริงบน production
+มี `status = 'debtor'` → `tivSum = 0` ตลอด → 116 invoices ที่ออก TIV แล้วยัง `payment_status = 'unpaid'`
+→ หน้า Invoice list แสดง ค้างชำระ ผิด / badge ผิด
+
+### Fix
+เปลี่ยน `status = 'paid'` → `status NOT IN ('cancelled','voided','cancel') AND (payment_method IS NULL OR payment_method != 'เครดิต')` ทั้ง 2 จุด
+
+### ⚠️ ONE-TIME PRODUCTION RECOMPUTE (หลัง deploy)
+หลัง push แล้ว ต้อง run script นี้ 1 ครั้งบน production เพื่อแก้ invoices ที่มี payment_status ผิดอยู่ใน DB:
+```bash
+# Dry run ก่อน (ดูว่า invoice ไหนจะถูกแก้)
+DB_PROD_URL="postgresql://etaxusr:..." DRY_RUN=true npx tsx server/scripts/recompute-invoice-payment-status.ts
+
+# Commit จริง (หลัง verify dry run แล้ว)
+DB_PROD_URL="postgresql://etaxusr:..." DRY_RUN=false npx tsx server/scripts/recompute-invoice-payment-status.ts
+```
+> ⚠️ DB_PROD_URL ดึงจาก system_config ตาม handoff.md — ห้าม hardcode ที่นี่
+
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `server/route-helpers.ts` | L1262 + L1321: TIV status filter แก้ทั้ง 2 จุด (`computeRemainingBalance` + `recomputePaymentStatus`) | 📝 dev |
+| `server/scripts/recompute-invoice-payment-status.ts` | NEW — one-time recompute script สำหรับ fix DB ที่ค้างอยู่ (dry-run safe) | 📝 dev |
+
+### Deploy Command (Production) — พี่ช้าง run บน server
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/route-helpers.ts server/scripts/recompute-invoice-payment-status.ts && npm run build && pm2 start etax-center
+```
+> แล้วรัน recompute script ข้างบน (dry run → verify → commit)
+
+---
+
+## ✅ Batch #10+#11 — COMBINED DEPLOY — LineSendDialog clientFilter + getFirmClients whtRate fix — 2026-05-27
+**วันที่:** 2026-05-27
+**อนุมัติ:** พี่ช้าง ✅
+**สถานะ:** ✅ DEPLOYED — build success + pm2 started 2026-05-27
+
+### สิ่งที่แก้ (รวม 2 batch)
+
+**Batch #10** — LineSendDialog จับคู่กลุ่ม LINE ผิดกรณี invoice เก่า customer_id=null
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `client/src/components/line-send-dialog.tsx` | clientFilter=true in params + useEffect customerName guard | ✅ pushed commit `e280a4e` |
+| `server/routes/line-routes.ts` | clientFilter guard: return [] if no contactId/customerName | ✅ pushed commit `b4dc5cc` |
+
+**Batch #11** — หน้า edit firm client ช่อง whtRate (หัก ณ ที่จ่าย) บันทึกแล้วค่าหาย
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `server/storage.ts` | getFirmClients select เพิ่ม whtRate + 11 fields ที่หายไป | ✅ pushed commit `edfb464` |
+
+### Windows Deploy Command (one-line)
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/src/components/line-send-dialog.tsx server/routes/line-routes.ts server/storage.ts && npm run build && pm2 start etax-center
+```
+
+---
+
+## ✅ Batch #9 — LineSendDialog bypassNoGroup + customerName fallback — 2026-05-27
+**วันที่:** 2026-05-27
+**อนุมัติ:** พี่ช้าง ✅ (เวิร์กแล้ว)
+**สถานะ:** ✅ DEPLOYED — build success + pm2 running 2026-05-27
+
+### สิ่งที่แก้
+- ปุ่ม "เลือกกลุ่มเอง" กด onClick `setConfirmMode(false)` แต่ confirmMode=false อยู่แล้ว → ไม่มีผล
+- Fix: เพิ่ม `bypassNoGroup` state → ปุ่มกดแล้วซ่อน banner และแสดง dropdown เลือกกลุ่มได้
+- เพิ่ม `customerName` fallback: ถ้าไม่มี contactId → ส่ง `?customerName=X` ไป backend → LOWER() match `firmClients.name`
+- `cache: "no-store"` bypass HTTP cache, queryKey รวม customerName
+- reset `bypassNoGroup` เมื่อ dialog ปิด
+- ลบ debug console.log ทั้งหมด (frontend + backend)
+
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `client/src/components/line-send-dialog.tsx` | bypassNoGroup state + customerName fallback + cache:no-store + queryKey | ✅ pushed 2026-05-27 commit `1831841` |
+| `server/routes/line-routes.ts` | GET /api/line-documents/groups รับ ?customerName= → LOWER() match firmClients.name | ✅ pushed 2026-05-27 commit `e57d81c` |
+
+### Deploy Command (Production)
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/src/components/line-send-dialog.tsx server/routes/line-routes.ts && npm run build && pm2 start etax-center
+```
+
+---
+
+## ✅ Batch #8 — LineSendDialog contactId→firmClientId fix (ทุกหน้าเอกสาร) — 2026-05-27
+**วันที่:** 2026-05-27
+**สถานะ:** ✅ DEPLOYED — build success + pm2 running 2026-05-27
+
+### สิ่งที่แก้
+- LineSendDialog ไม่แสดงกลุ่ม LINE ถูกต้องบนหน้าเอกสาร (invoice, tax-invoice, receipt, quotation, credit-note, sales-order, billing-notes)
+- Root cause: dialog auto-select `fromMappingGroups[0]` เพราะ companyId=null ทุก mapping
+- Fix: เพิ่ม `contactId` prop → backend lookup `contacts.taxId` → match `firmClients.taxId` → filter groups ด้วย firmClientId
+
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `server/storage.ts` | getLineGroupMappings เพิ่ม firmClientId param | ✅ pushed 2026-05-27 |
+| `server/routes/line-routes.ts` | GET /api/line-documents/groups รับ ?contactId= → lookup → filter + return [] เมื่อไม่ match | ✅ pushed 2026-05-27 (hotfix x2) |
+| `client/src/components/line-send-dialog.tsx` | เพิ่ม contactId prop + ส่ง ?contactId= ใน query + UI "ไม่มีกลุ่ม LINE" เมื่อ groups=[] | ✅ pushed 2026-05-27 (hotfix x2) |
+| `client/src/pages/sales/invoice-list.tsx` | เพิ่ม contactId ใน state + setLineDialog + LineSendDialog | ✅ pushed 2026-05-27 |
+| `client/src/pages/sales/tax-invoice-list.tsx` | เพิ่ม contactId ใน state + setLineDialog + LineSendDialog | ✅ pushed 2026-05-27 |
+| `client/src/pages/sales/receipt-list.tsx` | เพิ่ม contactId ใน state + setLineDialog + LineSendDialog | ✅ pushed 2026-05-27 |
+| `client/src/pages/sales/quotation-list.tsx` | เพิ่ม contactId ใน state + setLineDialog + LineSendDialog | ✅ pushed 2026-05-27 |
+| `client/src/pages/sales/credit-note-list.tsx` | เพิ่ม contactId ใน state + setLineDialog + LineSendDialog | ✅ pushed 2026-05-27 |
+| `client/src/pages/sales/sales-order-list.tsx` | เพิ่ม contactId ใน state + setLineDialog + LineSendDialog | ✅ pushed 2026-05-27 |
+| `client/src/pages/finance/billing-notes.tsx` | เพิ่ม contactId ใน state + setLineDialog + LineSendDialog | ✅ pushed 2026-05-27 |
+
+### Deploy Command (Production)
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/storage.ts server/routes/line-routes.ts client/src/components/line-send-dialog.tsx client/src/pages/sales/invoice-list.tsx client/src/pages/sales/tax-invoice-list.tsx client/src/pages/sales/receipt-list.tsx client/src/pages/sales/quotation-list.tsx client/src/pages/sales/credit-note-list.tsx client/src/pages/sales/sales-order-list.tsx client/src/pages/finance/billing-notes.tsx && npm run build && pm2 start etax-center
+```
+
+---
+
+## ✅ Batch #7 — LINE billing show group + revert dialog companyId filter — 2026-05-27
+**วันที่:** 2026-05-27
+**อนุมัติ:** พี่ช้าง ✅
+**สถานะ:** ✅ DEPLOYED — build success + pm2 started 2026-05-27
+
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `client/src/components/line-send-dialog.tsx` | revert companyId filter → return ทุกกลุ่มของ tenant | ✅ pushed 2026-05-27 commit `8cf909b` |
+| `client/src/pages/firm-mgmt/billing.tsx` | เพิ่ม LINE groups query + scroll list แสดงบริษัท→กลุ่มใน confirm dialog | ✅ pushed 2026-05-27 commit `f2196c4` |
+
+### Deploy Command (Production)
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- client/src/components/line-send-dialog.tsx client/src/pages/firm-mgmt/billing.tsx && npm run build && pm2 start etax-center
+```
+
+---
+
+
+---
+
+## 🚀 POS Fix + Camera Scan Button + pmIsCash Fix — 2026-05-26 (9 files)
+**วันที่:** 2026-05-26
+**อนุมัติ:** พี่ช้าง ✅ (2026-05-26)
+**สถานะ:** ✅ DEPLOYED — PM2 restart สำเร็จ 2026-05-26 คืน
+
+### สิ่งที่แก้
+- POS terminal: blank products fix (raw SQL แทน Drizzle ORM) + queryKey v2 + camera scan button
+- pmIsCash fix: purchase-routes, sales-docs-routes, purchase-invoice, purchase-invoice-list, debit-note-form, tax-invoice-list, tax-invoice-form
+
+| ไฟล์ | สิ่งที่แก้ | Status |
+|------|-----------|--------|
+| `server/routes/pos-routes.ts` | raw SQL fix (blank products on POS terminal) | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `6749c4ec` |
+| `server/routes/purchase-routes.ts` | pmIsCash fix | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `1e68f638` |
+| `server/routes/sales-docs-routes.ts` | pmIsCash fix | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `2de78558` |
+| `client/src/pages/pos/pos-terminal.tsx` | queryKey v2 + camera scan button | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `e068608a` |
+| `client/src/pages/purchases/purchase-invoice.tsx` | pmIsCash + warehouse fix | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `7304cdf7` |
+| `client/src/pages/purchases/purchase-invoice-list.tsx` | pmIsCash fix | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `89a88c7a` |
+| `client/src/pages/purchases/debit-note-form.tsx` | pmIsCash fix | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `db935b71` |
+| `client/src/pages/sales/tax-invoice-list.tsx` | pmIsCash fix | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `8651a5dc` |
+| `client/src/pages/sales/tax-invoice-form.tsx` | pmIsCash fix | ✅ pushed 2026-05-26 20:17 (Bangkok) commit `a15dec90` |
+
+### Deploy Command (Production) — พี่ช้าง run บน server
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/routes/pos-routes.ts server/routes/purchase-routes.ts server/routes/sales-docs-routes.ts client/src/pages/pos/pos-terminal.tsx client/src/pages/purchases/purchase-invoice.tsx client/src/pages/purchases/purchase-invoice-list.tsx client/src/pages/purchases/debit-note-form.tsx client/src/pages/sales/tax-invoice-list.tsx client/src/pages/sales/tax-invoice-form.tsx && npm run build && pm2 start etax-center
+```
+
+---
+
 ## 🔴 HOTFIX — TIV React error #185 (infinite loop) — 2026-05-26
 **วันที่:** 2026-05-26
 **อนุมัติ:** รอพี่ช้าง
@@ -1001,6 +1166,14 @@ pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/m
 
 | Deploy # | Date | Entry | Files |
 |----------|------|-------|-------|
+| Batch-13-rawSQL-whtRate | 2026-05-27 Bangkok | getFirmClients/getFirmClient → pool.query() raw SQL + wht_rate::text cast (bypass Drizzle decimal falsy) + billing.tsx 3-point != null fix (build success, pm2 started พี่ช้าง ✅) | `server/storage.ts` (`cda1fcc`) `client/src/pages/firm-mgmt/billing.tsx` (`32266d0`) |
+| Batch-12-whtRate-falsy | 2026-05-27 Bangkok | client-form.tsx whtRate `\|\| "3"` falsy bug — 0 ถูก treat เป็น falsy → form แสดง "3" เสมอ แก้เป็น `!= null` check (build success, pm2 started พี่ช้าง ✅) | `client/src/pages/firm-mgmt/client-form.tsx` (`b5badd8`) |
+| Batch-10-11-clientFilter-whtRate | 2026-05-27 Bangkok | Batch #10: LineSendDialog clientFilter guard ป้องกัน auto-select ผิดเมื่อ customerId=null / Batch #11: getFirmClients select เพิ่ม whtRate + 11 fields (build success, pm2 started พี่ช้าง ✅) | `client/src/components/line-send-dialog.tsx` (`e280a4e`) `server/routes/line-routes.ts` (`b4dc5cc`) `server/storage.ts` (`edfb464`) |
+| LINE-dialog-companyId-groups-query | 2026-05-27 Bangkok | fix: LINE send dialog ส่ง ?companyId= ใน /api/line-documents/groups query → return เฉพาะกลุ่มของ company นั้น → auto-select ถูกกลุ่มใน production (297 กลุ่ม) | `client/src/components/line-send-dialog.tsx` (`bce3e4a9`) |
+| LINE-group-companyId-UI | 2026-05-27 Bangkok | เพิ่ม dropdown "บริษัทที่ใช้รับส่ง LINE" ใน Settings → LINE → กลุ่ม LINE → แก้ไข — ผูก companyId ได้จาก UI ไม่ต้องแก้ DB มือ | `server/routes/line-routes.ts` (`d54154b1`) `client/src/pages/settings/line-settings.tsx` (`94983a90`) |
+| LINE-race-calendar | 2026-05-27 Bangkok | (1) LINE send dialog race condition fix: fromMapping override confirmMode ทันทีโดยไม่รอ !to + queryKey รวม companyId (2) Popover z-50→z-[10002] ให้ calendar แสดงเหนือ dialog ทุก dialog ✅ พี่ทราย verified | `client/src/components/line-send-dialog.tsx` (`b69c7fc2`) `client/src/components/ui/popover.tsx` (`14ef4ea7`) |
+| LINE-confirm-mode | 2026-05-27 Bangkok | LINE send dialog — confirmMode fix: ถ้ามี mappedGroups → auto-select + confirm UI + ปุ่ม "เปลี่ยนกลุ่ม" (build success, pm2 started พี่ช้าง ✅) | `client/src/components/line-send-dialog.tsx` (`ab75783a`) |
+| POS-Camera-pmIsCash | 2026-05-26 20:17 Bangkok | POS raw SQL fix (blank products) + camera scan button + pmIsCash fix across AP/TIV (9 files) — Group 2 file pos-routes.ts authorized by พี่ช้าง case-by-case | `server/routes/pos-routes.ts` (`6749c4ec`) `server/routes/purchase-routes.ts` (`1e68f638`) `server/routes/sales-docs-routes.ts` (`2de78558`) `client/src/pages/pos/pos-terminal.tsx` (`e068608a`) `client/src/pages/purchases/purchase-invoice.tsx` (`7304cdf7`) `client/src/pages/purchases/purchase-invoice-list.tsx` (`89a88c7a`) `client/src/pages/purchases/debit-note-form.tsx` (`db935b71`) `client/src/pages/sales/tax-invoice-list.tsx` (`8651a5dc`) `client/src/pages/sales/tax-invoice-form.tsx` (`a15dec90`) |
 | HOTFIX-TIV-loop | 2026-05-26 | React error #185 — activePaymentMethods useMemo fix, หน้า TIV crash บน production | `client/src/pages/sales/tax-invoice-form.tsx` (commit `07687619`) |
 | Batch-N4b-PM | 2026-05-26 | Payment Method fixes + validate + TIV/AP no hardcode + stock/inventory fixes (11 files) | `shared/permissions.ts` `server/routes/core-routes.ts` `server/routes/payment-methods-routes.ts` `client/src/pages/settings/payment-methods.tsx` `client/src/components/settings-tabs.tsx` `client/src/pages/purchases/purchase-invoice.tsx` `client/src/pages/sales/tax-invoice-form.tsx` `client/src/pages/sales/tax-invoice-list.tsx` `client/src/pages/inventory/stock-card.tsx` `server/routes/products-routes.ts` `client/src/pages/settings/inventory-triggers.tsx` (build pass 583ms, pm2 online 73.8mb) |
 | Bug1-warehouse | 2026-05-23 | AP PATCH warehouse_id not saved — code-only fix, no migration | `server/routes/purchase-routes.ts` (github-production commit `2f5a4916`, build pass 583ms, pm2 online 75.3mb) |
