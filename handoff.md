@@ -22,6 +22,16 @@
 | 16 | Fix: purchase-invoice.tsx — เพิ่ม validate paymentMethod ก่อน save (ทั้งสองฝั่ง) | `client/src/pages/purchases/purchase-invoice.tsx` | `b854d382` |
 | 17 | Push 11 files → github-production main ✅ 11/11 success | 11 ไฟล์ | ดูตาราง push ด้านล่าง |
 | 18 | 🔴 HOTFIX: tax-invoice-form.tsx — React error #185 (infinite loop) บน production | `client/src/pages/sales/tax-invoice-form.tsx` | `07687619` |
+| 19 | Batch #7: billing confirm dialog แสดงบริษัท→กลุ่ม LINE + revert dialog companyId filter | `client/src/components/line-send-dialog.tsx`, `client/src/pages/firm-mgmt/billing.tsx` | `8cf909b`, `f2196c4` |
+| 20 | ✅ DEPLOYED Batch #7 — build success + pm2 started 2026-05-27 | — | — |
+| 21 | Batch #8: LineSendDialog แสดงกลุ่ม LINE ถูกต้องบนทุกหน้าเอกสาร (contactId→taxId→firmClientId→group) | 10 ไฟล์ (storage, line-routes, line-send-dialog, invoice/tax/receipt/quotation/credit/sales-order lists, billing-notes) | pushed 2026-05-27 |
+| 22 | Batch #9: LineSendDialog fix bypassNoGroup (ปุ่ม "เลือกกลุ่มเอง" กดได้) + customerName fallback + cache:no-store | `line-send-dialog.tsx`, `line-routes.ts` | `1831841`, `e57d81c` pushed 2026-05-27 |
+| 23 | Batch #10: LineSendDialog clientFilter=true guard — ป้องกัน auto-select ผิดเมื่อ customerId=null + useEffect customerName fix | `line-send-dialog.tsx`, `line-routes.ts` | `e280a4e`, `b4dc5cc` pushed 2026-05-27 |
+| 24 | Batch #11: getFirmClients select ขาด whtRate (และ 11 fields อื่น) → form โหลดค่า default เสมอ แก้ครบทุก field | `server/storage.ts` | ✅ DEPLOYED 2026-05-27 |
+| 25 | ✅ DEPLOYED Batch #10+#11 COMBINED — build success + pm2 started 2026-05-27 | — | — |
+| 26 | ✅ DEPLOYED Batch #12 — client-form.tsx whtRate falsy bug fixed (build success + pm2 started 2026-05-27) | `client/src/pages/firm-mgmt/client-form.tsx` | commit `b5badd8` |
+| 27 | ✅ DEPLOYED Batch #13 — raw SQL getFirmClients/getFirmClient + wht_rate::text cast + billing.tsx falsy fix (build success + pm2 started 2026-05-27) | `server/storage.ts` `client/src/pages/firm-mgmt/billing.tsx` | `cda1fcc` `32266d0` |
+| 28 | 🔍 DEBUG endpoint: GET /api/invoices/:id/paid-debug — return breakdown ของ paidMap เพื่อ diagnose "ค้างชำระ" ผิดใน invoice list | `server/routes/sales-docs-routes.ts` | `c05e5f68` |
 
 ---
 
@@ -40,6 +50,8 @@
 | 9 | `client/src/pages/inventory/stock-card.tsx` | `b584fd7a` |
 | 10 | `server/routes/products-routes.ts` | `efe81db3` |
 | 11 | `client/src/pages/settings/inventory-triggers.tsx` | `3173a397` |
+| 12 | `client/src/components/line-send-dialog.tsx` | `8cf909b` — Batch #7 revert companyId filter |
+| 13 | `client/src/pages/firm-mgmt/billing.tsx` | `f2196c4` — Batch #7 billing show LINE group |
 
 ## 🔴 HOTFIX PUSH LOG — 2026-05-26 (พี่ช้างอนุมัติ)
 
@@ -2592,8 +2604,90 @@ All N11 migrations (2026-05-17) ran from inside route handlers — db fully boot
 
 ---
 
+## SESSION 2026-05-26 NIGHT — POS Fix + Camera Scan + pmIsCash + 9-file push
+
+### สิ่งที่ทำ session นี้
+
+**1. replit.md — แก้ rule ที่ผิด:**
+- Line 975 (PRE-PUSH CHECKLIST): ลบ `server/routes/pos-routes.ts` ออกจาก NEVER list
+- เพิ่ม note ว่า pos-routes.ts อยู่ใน Group 2 Restricted (case-by-case permission) ไม่ใช่ NEVER
+
+**2. push 9 ไฟล์ไปยัง github-production main (พี่ช้าง authorized 2026-05-26):**
+
+| ไฟล์ | สิ่งที่แก้ | Commit |
+|------|-----------|--------|
+| `server/routes/pos-routes.ts` | raw SQL fix — POS products blank (Drizzle returns empty strings, raw SQL แก้ได้) | `6749c4ec` |
+| `server/routes/purchase-routes.ts` | pmIsCash fix | `1e68f638` |
+| `server/routes/sales-docs-routes.ts` | pmIsCash fix | `2de78558` |
+| `client/src/pages/pos/pos-terminal.tsx` | queryKey v2 + camera scan button | `e068608a` |
+| `client/src/pages/purchases/purchase-invoice.tsx` | pmIsCash + warehouse fix | `7304cdf7` |
+| `client/src/pages/purchases/purchase-invoice-list.tsx` | pmIsCash fix | `89a88c7a` |
+| `client/src/pages/purchases/debit-note-form.tsx` | pmIsCash fix | `db935b71` |
+| `client/src/pages/sales/tax-invoice-list.tsx` | pmIsCash fix | `8651a5dc` |
+| `client/src/pages/sales/tax-invoice-form.tsx` | pmIsCash fix | `a15dec90` |
+
+**Push time:** 2026-05-26 20:17 Bangkok
+**Deploy command:** รัน 2026-05-26 คืน — **PM2 restart สำเร็จ ✅**
+```
+pm2 stop etax-center && git fetch origin && git checkout origin/main -- server/routes/pos-routes.ts server/routes/purchase-routes.ts server/routes/sales-docs-routes.ts client/src/pages/pos/pos-terminal.tsx client/src/pages/purchases/purchase-invoice.tsx client/src/pages/purchases/purchase-invoice-list.tsx client/src/pages/purchases/debit-note-form.tsx client/src/pages/sales/tax-invoice-list.tsx client/src/pages/sales/tax-invoice-form.tsx && npm run build && pm2 start etax-center
+```
+
+**3. docs updated:**
+- `replit.md` — pos-routes.ts rule corrected (NEVER → Group 2)
+- `db/pending-push-queue.md` — ACTIVE QUEUE + DEPLOYED — HISTORY updated
+- `dev-vs-workstation.md` — Batch #2 section added (9 files) + list 17 files updated
+
+**4. สถานะปัจจุบัน:**
+- พี่ช้าง off คืนนี้ — ถ้ามีปัญหาจะ deal tomorrow
+- รอพี่ทราย test บน production
+- ถ้า debug กับพี่ทราย ต้อง update "LAST ACT" ใน handoff.md ทุกครั้งก่อน session จบ เพื่อ agent ถัดไปหาได้
+
+---
+
+### LAST ACT (2026-05-27 Bangkok — session 2)
+**สถานะ:** 📝 dev done — Batch #13 Invoice TIV payment bug fix เสร็จแล้ว รอพี่ทราย test → พี่ช้าง approve → push production
+**งานที่ทำในรอบนี้:**
+- **Bug: ค้างชำระ column แสดงผิด + badge ผิดบน production (116 invoices)**
+  - Root cause: `computeRemainingBalance` (L1262) + `recomputePaymentStatus` (L1321) ใน `server/route-helpers.ts`
+    ใช้ `WHERE status = 'paid'` สำหรับ TIV query แต่ production TIV มี `status = 'debtor'` → tivSum = 0 ตลอด
+  - Fix: แก้ทั้ง 2 จุด → `status NOT IN ('cancelled','voided','cancel') AND (payment_method IS NULL OR payment_method != 'เครดิต')`
+  - Script: `server/scripts/recompute-invoice-payment-status.ts` (NEW) — dry-run safe, run 1 ครั้งหลัง deploy
+
+**ไฟล์ที่แก้:**
+| ไฟล์ | สถานะ |
+|------|--------|
+| `server/route-helpers.ts` | 📝 dev — L1262 + L1321 fixed |
+| `server/scripts/recompute-invoice-payment-status.ts` | 📝 dev — NEW script |
+
+**ขั้นตอนถัดไป (สำหรับ agent ถัดไป):**
+1. พี่ทราย test บน dev ว่าค้างชำระ column ถูกต้องหลังออก TIV แล้ว
+2. ถ้า OK → พี่ช้าง approve → push Batch #13 ใน `db/pending-push-queue.md`
+3. พี่ช้าง run deploy command + recompute script (dry run → verify → commit)
+4. ตรวจสอบว่า 116 invoices เปลี่ยน payment_status จาก 'unpaid' → 'paid' ✅
+
+**LAST ACT ก่อนหน้า (2026-05-27 Bangkok — session 1):**
+- Bug LINE full picker: ✅ deployed Hotfix #6b — 297 กลุ่มกลับมาครบ พี่ช้าง confirmed
+- LINE contactId→firmClientId: ✅ Batch #8–#11 deployed
+- Bug ปฏิทินซ่อนหลัง dialog: ✅ PopoverContent z-50 → z-[10002]
+
+---
+
 ## ⛔ MANDATORY — AGENT RULE (พี่ช้าง 2026-05-26)
 
 **Push-pull history file = `db/pending-push-queue.md` → section `DEPLOYED — HISTORY`**
 
 Every agent MUST update `db/pending-push-queue.md` DEPLOYED — HISTORY section every single time a push or pull to/from github-production occurs. No exceptions. Failure to update = procedure violation.
+
+### ⚠️ FILE STRUCTURE WARNING — READ THIS BEFORE EDITING
+
+`db/pending-push-queue.md` has 3 sections in this order:
+1. **`## ACTIVE QUEUE`** (top) — entries awaiting push, status ⏳/📝/🚀
+2. **`## DEPLOYED — HISTORY`** (~line 1000) — entries already pushed ✅ — **THIS IS THE SECTION TO UPDATE**
+3. **`## BACKLOG`** (bottom, ~line 1017–1072) — future features not yet started
+
+**DO NOT judge this file as stale based on the last line.**
+The last line of the file reads `"Last verified: 2026-05-20"` — this is the **BACKLOG section footer**, not the deploy history. The file IS current and IS the correct file.
+
+To find the DEPLOYED — HISTORY section: search for `## DEPLOYED — HISTORY` (not the last line).
+To add a new pending entry: add under `## ACTIVE QUEUE`.
+To record a completed push: move the entry from ACTIVE QUEUE → DEPLOYED — HISTORY.
