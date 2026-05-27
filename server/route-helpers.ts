@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, pool } from "./db";
 import { ecomDb } from "./ecom-db";
 import { storage } from "./storage";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
@@ -1221,94 +1221,131 @@ export async function deleteStockMovementsForDoc(tx: any, referenceType: string,
 }
 
 export async function computeRemainingBalance(docType: "taxInvoice" | "invoice", docId: number): Promise<{ docTotal: number; totalPaid: number; remaining: number }> {
-  const table = docType === "taxInvoice" ? taxInvoices : invoices;
-  const linkCol = docType === "taxInvoice" ? receipts.taxInvoiceId : receipts.invoiceId;
   const rldDocType = docType === "taxInvoice" ? "TIV" : "IV";
-  const [doc] = await db.select().from(table).where(eq(table.id, docId));
-  if (!doc) throw new Error(`ไม่พบเอกสาร ${docType} id=${docId}`);
-  const docTotal = parseFloat((doc as any).totalAmount || "0");
-  const linkedReceipts = await db.select().from(receipts).where(eq(linkCol, docId));
-  let ivLinkedReceipts: any[] = [];
-  if (docType === "taxInvoice") {
-    const tivInvoiceId = (doc as any).invoiceId;
-    if (tivInvoiceId) {
-      ivLinkedReceipts = await db.select().from(receipts).where(eq(receipts.invoiceId, tivInvoiceId));
-    }
+  const tbl = docType === "taxInvoice" ? "tax_invoices" : "invoices";
+  const linkCol = docType === "taxInvoice" ? "tax_invoice_id" : "invoice_id";
+
+  const docRes = await pool.query(
+    `SELECT total_amount::text AS "totalAmount", withholding_tax::text AS "withholdingTax"${docType === "taxInvoice" ? ', invoice_id AS "invoiceId"' : ""} FROM ${tbl} WHERE id = $1`,
+    [docId]
+  );
+  if (!docRes.rows[0]) throw new Error(`ไม่พบเอกสาร ${docType} id=${docId}`);
+  const doc = docRes.rows[0];
+  const docTotal = parseFloat(doc.totalAmount || "0");
+
+  const directRes = await pool.query(
+    `SELECT COALESCE(SUM(total_amount),0)::text AS s FROM receipts WHERE ${linkCol} = $1`,
+    [docId]
+  );
+  let directSum = parseFloat(directRes.rows[0]?.s || "0");
+
+  if (docType === "taxInvoice" && doc.invoiceId) {
+    const ivRes = await pool.query(
+      `SELECT COALESCE(SUM(total_amount),0)::text AS s FROM receipts WHERE invoice_id = $1 AND (tax_invoice_id IS NULL OR tax_invoice_id != $2)`,
+      [doc.invoiceId, docId]
+    );
+    directSum += parseFloat(ivRes.rows[0]?.s || "0");
   }
-  const allDirectReceipts = [...linkedReceipts, ...ivLinkedReceipts.filter((iv: any) => !linkedReceipts.some((r: any) => r.id === iv.id))];
-  const directSum = allDirectReceipts.reduce((sum: number, r: any) => sum + parseFloat(r.totalAmount || "0"), 0);
-  const linkedDocs = await db.select().from(receiptLinkedDocs).where(and(eq(receiptLinkedDocs.docType, rldDocType), eq(receiptLinkedDocs.docId, docId)));
-  const batchSum = linkedDocs.reduce((sum: number, ld: any) => sum + parseFloat(ld.amount || "0"), 0);
+
+  const batchRes = await pool.query(
+    `SELECT COALESCE(SUM(amount),0)::text AS s FROM receipt_linked_docs WHERE doc_type = $1 AND doc_id = $2`,
+    [rldDocType, docId]
+  );
+  const batchSum = parseFloat(batchRes.rows[0]?.s || "0");
+
   let tivSum = 0;
   if (docType === "invoice") {
-    const nonCreditTIVs = await db.select({ subtotal: taxInvoices.subtotal, vatAmount: taxInvoices.vatAmount })
-      .from(taxInvoices).where(sql`invoice_id = ${docId} AND status = 'paid'`);
-    tivSum = nonCreditTIVs.reduce((sum: number, tiv: any) => sum + parseFloat(String(tiv.subtotal || "0")) + parseFloat(String(tiv.vatAmount || "0")), 0);
+    const tivRes = await pool.query(
+      `SELECT COALESCE(SUM(subtotal + COALESCE(vat_amount,0)),0)::text AS s FROM tax_invoices WHERE invoice_id = $1 AND status NOT IN ('cancelled','voided','cancel') AND (payment_method IS NULL OR payment_method != 'เครดิต')`,
+      [docId]
+    );
+    tivSum = parseFloat(tivRes.rows[0]?.s || "0");
   }
+
   const rawPaid = directSum + batchSum + tivSum;
-  const whtAmount = rawPaid > 0 ? parseFloat((doc as any).withholdingTax || "0") : 0;
+  const whtAmount = rawPaid > 0 ? parseFloat(doc.withholdingTax || "0") : 0;
   const totalPaid = rawPaid + whtAmount;
   const remaining = Math.max(0, docTotal - totalPaid);
   return { docTotal, totalPaid, remaining };
 }
 
 export async function recomputePaymentStatus(docType: "taxInvoice" | "invoice", docId: number) {
-  const table = docType === "taxInvoice" ? taxInvoices : invoices;
-  const linkCol = docType === "taxInvoice" ? receipts.taxInvoiceId : receipts.invoiceId;
   const rldDocType = docType === "taxInvoice" ? "TIV" : "IV";
-  const [doc] = await db.select().from(table).where(eq(table.id, docId));
-  if (!doc) return;
-  const docTotal = parseFloat((doc as any).totalAmount || "0");
-  const linkedReceipts = await db.select().from(receipts).where(eq(linkCol, docId));
-  // กรณี TIV ที่มี invoiceId → ให้ค้นหา receipts ที่ link กับ invoice นั้นด้วย (receipt.invoiceId)
-  let ivLinkedReceipts: any[] = [];
-  if (docType === "taxInvoice") {
-    const tivInvoiceId = (doc as any).invoiceId;
-    if (tivInvoiceId) {
-      ivLinkedReceipts = await db.select().from(receipts).where(eq(receipts.invoiceId, tivInvoiceId));
-    }
+  const tbl = docType === "taxInvoice" ? "tax_invoices" : "invoices";
+  const linkCol = docType === "taxInvoice" ? "tax_invoice_id" : "invoice_id";
+
+  const docRes = await pool.query(
+    `SELECT total_amount::text AS "totalAmount", withholding_tax::text AS "withholdingTax", status${docType === "taxInvoice" ? ', invoice_id AS "invoiceId"' : ""} FROM ${tbl} WHERE id = $1`,
+    [docId]
+  );
+  if (!docRes.rows[0]) return;
+  const doc = docRes.rows[0];
+  const docTotal = parseFloat(doc.totalAmount || "0");
+  const docStatus = doc.status || "";
+
+  const directRes = await pool.query(
+    `SELECT COALESCE(SUM(total_amount),0)::text AS s FROM receipts WHERE ${linkCol} = $1`,
+    [docId]
+  );
+  let directSum = parseFloat(directRes.rows[0]?.s || "0");
+
+  let lastRcPayMethod: string | null = null;
+  if (docType === "taxInvoice" && doc.invoiceId) {
+    const ivRes = await pool.query(
+      `SELECT COALESCE(SUM(total_amount),0)::text AS s FROM receipts WHERE invoice_id = $1 AND (tax_invoice_id IS NULL OR tax_invoice_id != $2)`,
+      [doc.invoiceId, docId]
+    );
+    directSum += parseFloat(ivRes.rows[0]?.s || "0");
   }
-  const allDirectReceipts = [...linkedReceipts, ...ivLinkedReceipts.filter((iv: any) => !linkedReceipts.some((r: any) => r.id === iv.id))];
-  const directSum = allDirectReceipts.reduce((sum: number, r: any) => sum + parseFloat(r.totalAmount || "0"), 0);
-  const linkedDocs = await db.select().from(receiptLinkedDocs).where(and(eq(receiptLinkedDocs.docType, rldDocType), eq(receiptLinkedDocs.docId, docId)));
-  const batchSum = linkedDocs.reduce((sum: number, ld: any) => sum + parseFloat(ld.amount || "0"), 0);
+  if (docType === "taxInvoice") {
+    const pmRes = await pool.query(
+      `SELECT payment_method FROM receipts WHERE ${linkCol} = $1 ORDER BY id DESC LIMIT 1`,
+      [docId]
+    );
+    lastRcPayMethod = pmRes.rows[0]?.payment_method || null;
+  }
+
+  const batchRes = await pool.query(
+    `SELECT COALESCE(SUM(amount),0)::text AS s, MAX(receipt_id) AS last_rc_id FROM receipt_linked_docs WHERE doc_type = $1 AND doc_id = $2`,
+    [rldDocType, docId]
+  );
+  const batchSum = parseFloat(batchRes.rows[0]?.s || "0");
+  const lastBatchRcId = batchRes.rows[0]?.last_rc_id || null;
+
   let tivSum = 0;
   if (docType === "invoice") {
-    const nonCreditTIVs = await db.select({ subtotal: taxInvoices.subtotal, vatAmount: taxInvoices.vatAmount })
-      .from(taxInvoices)
-      .where(sql`invoice_id = ${docId} AND status = 'paid'`);
-    tivSum = nonCreditTIVs.reduce((sum: number, tiv: any) => sum + parseFloat(String(tiv.subtotal || "0")) + parseFloat(String(tiv.vatAmount || "0")), 0);
+    const tivRes = await pool.query(
+      `SELECT COALESCE(SUM(subtotal + COALESCE(vat_amount,0)),0)::text AS s FROM tax_invoices WHERE invoice_id = $1 AND status NOT IN ('cancelled','voided','cancel') AND (payment_method IS NULL OR payment_method != 'เครดิต')`,
+      [docId]
+    );
+    tivSum = parseFloat(tivRes.rows[0]?.s || "0");
   }
+
   const rawPaid = directSum + batchSum + tivSum;
-  // WHT ถือว่าชำระแล้ว (ลูกค้าหักแล้วโอนส่วนที่เหลือ) เฉพาะเมื่อมีการชำระจริงเกิดขึ้น
-  const whtAmount = rawPaid > 0
-    ? parseFloat((doc as any).withholdingTax || "0")
-    : 0;
+  const whtAmount = rawPaid > 0 ? parseFloat(doc.withholdingTax || "0") : 0;
   const totalPaid = rawPaid + whtAmount;
+
   let newPaymentStatus: "unpaid" | "partial" | "paid" = "unpaid";
   if (totalPaid > 0 && totalPaid < docTotal - 0.01) newPaymentStatus = "partial";
   else if (totalPaid >= docTotal - 0.01 && totalPaid > 0) newPaymentStatus = "paid";
-  const updateFields: any = { paymentStatus: newPaymentStatus };
-  const docStatus = (doc as any).status || "";
+
+  const updateFields: Record<string, any> = { payment_status: newPaymentStatus };
   if (newPaymentStatus === "paid" && !["cancelled", "voided", "cancel"].includes(docStatus)) {
     updateFields.status = "paid";
     if (docType === "taxInvoice") {
-      const allLinked = allDirectReceipts;
-      if (allLinked.length > 0) {
-        const rcPm = allLinked[allLinked.length - 1].paymentMethod;
-        if (rcPm) updateFields.paymentMethod = rcPm;
-      } else if (linkedDocs.length > 0) {
-        const batchRcId = linkedDocs[linkedDocs.length - 1].receiptId;
-        if (batchRcId) {
-          const [batchRc] = await db.select({ paymentMethod: receipts.paymentMethod }).from(receipts).where(eq(receipts.id, batchRcId));
-          if (batchRc?.paymentMethod) updateFields.paymentMethod = batchRc.paymentMethod;
-        }
+      if (!lastRcPayMethod && lastBatchRcId) {
+        const pmRes2 = await pool.query(`SELECT payment_method FROM receipts WHERE id = $1`, [lastBatchRcId]);
+        lastRcPayMethod = pmRes2.rows[0]?.payment_method || null;
       }
+      if (lastRcPayMethod) updateFields.payment_method = lastRcPayMethod;
     }
   } else if (newPaymentStatus !== "paid" && docStatus === "paid") {
     updateFields.status = "debtor";
   }
-  await db.update(table).set(updateFields).where(eq(table.id, docId));
+
+  const setClauses = Object.entries(updateFields).map(([k, v], i) => `${k} = $${i + 2}`).join(", ");
+  const vals = Object.values(updateFields);
+  await pool.query(`UPDATE ${tbl} SET ${setClauses} WHERE id = $1`, [docId, ...vals]);
 }
 
 export async function recomputeAPPaymentStatus(docType: "purchaseInvoice" | "expense", docId: number) {
